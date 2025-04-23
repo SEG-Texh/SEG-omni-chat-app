@@ -2,29 +2,26 @@
 const express = require('express');
 const router = express.Router();
 const bodyParser = require('body-parser');
-const { handleFacebookWebhook, verifyFacebookWebhook, sendFacebookMessage, getFacebookMessages } = require('../controllers/facebookController');
+const {
+  handleVerification,
+  handleWebhook,
+  sendMessageAPI,
+  getMessages
+} = require('../controllers/facebookController');
 
+// Parse incoming JSON for all /facebook routes
 router.use(bodyParser.json());
 
 // Facebook Webhook Verification
-router.get('/webhook', verifyFacebookWebhook);
+router.get('/webhook', handleVerification);
 
 // Facebook Webhook Receiver
-router.post('/webhook', handleFacebookWebhook);
+router.post('/webhook', handleWebhook);
 
 // Get stored Facebook messages
-router.get('/messages', getFacebookMessages);
+router.get('/messages', getMessages);
 
 // Send a message via Facebook
-router.post('/messages', async (req, res) => {
-  const { recipientId, message } = req.body;
-  try {
-    await sendFacebookMessage(recipientId, message);
-    res.status(200).json({ status: 'Message sent' });
-  } catch (err) {
-    console.error('Send error:', err);
-    res.status(500).json({ error: 'Failed to send message' });
-  }
-});
+router.post('/messages', sendMessageAPI);
 
 module.exports = router;
