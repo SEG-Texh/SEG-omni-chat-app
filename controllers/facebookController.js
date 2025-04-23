@@ -1,7 +1,7 @@
 const request = require('request');
 
-const VERIFY_TOKEN = process.env.FACEBOOK_VERIFY_TOKEN;
-const PAGE_ACCESS_TOKEN = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
+const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 const receivedMessages = [];
 
 exports.handleVerification = (req, res) => {
