@@ -7,7 +7,7 @@ const {
   handleWebhook,
   sendMessageAPI,
   getMessages
-} = require('../controllers/facebookController');
+} = require('/controllers/facebookController');
 
 // Parse incoming JSON for all /facebook routes
 router.use(bodyParser.json());
