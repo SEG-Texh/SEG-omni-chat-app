@@ -1,41 +1,60 @@
+// server.js
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const http = require('http');
 const { Server } = require('socket.io');
+
 const authRoutes = require('./routes/auth');
 const messageRoutes = require('./routes/message');
-const facebookRoutes = require('./routes/facebook'); // ⬅️ Import Facebook
+const facebookRoutes = require('./routes/facebook');
 
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
+const io = new Server(server, {
+  cors: {
+    origin: '*', // Replace with frontend URL in production
+    methods: ['GET', 'POST']
+  }
+});
 
+// Attach Socket.IO to app instance for access in controllers
 app.set('io', io);
+
+// Middleware
 app.use(express.json());
 app.use(cors());
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/messages', messageRoutes);
-app.use('/facebook', facebookRoutes); // ⬅️ Mount Facebook routes
+app.use('/facebook', facebookRoutes); // Facebook webhook & message routes
 
-// Socket.IO
+// Socket.IO setup
 io.on('connection', (socket) => {
-  console.log(`User connected: ${socket.id}`);
-  socket.on('disconnect', () => console.log(`User disconnected: ${socket.id}`));
+  console.log(`🔌 User connected: ${socket.id}`);
+
+  socket.on('disconnect', () => {
+    console.log(`❌ User disconnected: ${socket.id}`);
+  });
 });
 
-// MongoDB & Start Server
+// MongoDB Connection & Server Startup
 const PORT = process.env.PORT || 5000;
-mongoose.connect(process.env.MONGO_URI)
+
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
   .then(() => {
-    console.log('MongoDB connected');
+    console.log('✅ MongoDB connected');
     server.listen(PORT, () => {
-      console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`🚀 Server running at http://localhost:${PORT}`);
     });
   })
-  .catch(err => console.error('MongoDB connection error:', err));
+  .catch((err) => {
+    console.error('❌ MongoDB connection error:', err);
+  });
