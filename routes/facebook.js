@@ -71,7 +71,7 @@ router.get('/messages', (req, res) => {
 
 // Helper to send message through Facebook Send API
 async function sendTextMessage(recipientId, message) {
-  const url = `https://graph.facebook.com/v18.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
+  const url = `https://graph.facebook.com/v22.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
   const payload = {
     recipient: { id: recipientId },
     message: { text: message }
