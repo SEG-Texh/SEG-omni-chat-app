@@ -21,7 +21,7 @@ router.get('/webhook', (req, res) => {
       console.log('WEBHOOK_VERIFIED');
       res.status(200).send(challenge);
     } else {
-      res.sendStatus(403);
+      res.sendStatus(403); // Forbidden if token doesn't match
     }
   }
 });
@@ -47,7 +47,7 @@ router.post('/webhook', (req, res) => {
 
     res.status(200).send('EVENT_RECEIVED');
   } else {
-    res.sendStatus(404);
+    res.sendStatus(404); // Not found if body doesn't match 'page'
   }
 });
 
@@ -77,7 +77,13 @@ async function sendTextMessage(recipientId, message) {
     message: { text: message }
   };
 
-  await axios.post(url, payload);
+  try {
+    const response = await axios.post(url, payload);
+    console.log('Message sent successfully:', response.data);
+  } catch (error) {
+    console.error('Error sending message:', error.response?.data || error.message);
+    throw error; // Rethrow error to propagate to the caller
+  }
 }
 
 module.exports = router;

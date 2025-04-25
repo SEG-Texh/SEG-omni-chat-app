@@ -24,7 +24,7 @@ const io = new Server(server, {
 app.set('io', io);
 
 // Middleware
-app.use(express.json());
+app.use(express.json());  // Body parser for JSON requests
 app.use(cors());
 
 // Routes
@@ -45,7 +45,7 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 5000;
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => {
     console.log('✅ MongoDB connected');
     server.listen(PORT, () => {
