@@ -15,9 +15,9 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*', // Replace with frontend URL in production
-    methods: ['GET', 'POST']
-  }
+    origin: '*', // Replace with frontend URL in production for security
+    methods: ['GET', 'POST'],
+  },
 });
 
 // Attach Socket.IO to app instance for access in controllers
@@ -28,11 +28,11 @@ app.use(express.json());  // Body parser for JSON requests
 app.use(cors());
 
 // Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/messages', messageRoutes);
-app.use('/facebook', facebookRoutes); // Facebook webhook & message routes
+app.use('/api/auth', authRoutes);        // Authentication routes
+app.use('/api/messages', messageRoutes); // Messaging routes
+app.use('/facebook', facebookRoutes);    // Facebook webhook & message routes
 
-// Socket.IO setup
+// Socket.IO setup for real-time communication
 io.on('connection', (socket) => {
   console.log(`🔌 User connected: ${socket.id}`);
 
