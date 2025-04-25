@@ -4,7 +4,7 @@ const bodyParser = require('body-parser');
 const axios = require('axios');
 require('dotenv').config();
 
-const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
+const VERIFY_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 
 // Parse incoming JSON
