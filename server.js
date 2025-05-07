@@ -32,6 +32,10 @@ app.use('/api/auth', authRoutes);        // Authentication routes
 app.use('/api/messages', messageRoutes); // Messaging routes
 app.use('/facebook', facebookRoutes);    // Facebook webhook & message routes
 
+app.get('/', (req, res) => {
+  res.send('🎉 Omni Chat Server is Live');
+});
+
 // Socket.IO setup for real-time communication
 io.on('connection', (socket) => {
   console.log(`🔌 User connected: ${socket.id}`);
