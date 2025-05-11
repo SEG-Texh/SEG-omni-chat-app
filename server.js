@@ -9,6 +9,8 @@ const authRoutes = require('./routes/auth');
 const messageRoutes = require('./routes/message');
 const facebookRoutes = require('./routes/facebook');
 const whatsappRoutes = require('./routes/whatsapp');
+const emailRoutes = require('./routes/email');
+
 
 dotenv.config();
 
@@ -33,6 +35,8 @@ app.use('/api/auth', authRoutes);        // Authentication routes
 app.use('/api/messages', messageRoutes); // Messaging routes
 app.use('/facebook', facebookRoutes);    // Facebook webhook & message routes
 app.use('/whatsapp', whatsappRoutes);    // whatsapp webhook & message routes
+app.use('/email', emailRoutes);          // email & message routes
+
 
 
 app.get('/', (req, res) => {
