@@ -8,6 +8,7 @@ const { Server } = require('socket.io');
 const authRoutes = require('./routes/auth');
 const messageRoutes = require('./routes/message');
 const facebookRoutes = require('./routes/facebook');
+const whatsappRoutes = require('./routes/whatsapp');
 
 dotenv.config();
 
@@ -31,6 +32,8 @@ app.use(cors());
 app.use('/api/auth', authRoutes);        // Authentication routes
 app.use('/api/messages', messageRoutes); // Messaging routes
 app.use('/facebook', facebookRoutes);    // Facebook webhook & message routes
+app.use('/whatsapp', whatsappRoutes);    // whatsapp webhook & message routes
+
 
 app.get('/', (req, res) => {
   res.send('🎉 Omni Chat Server is Live');
