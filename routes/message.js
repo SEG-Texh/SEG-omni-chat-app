@@ -11,9 +11,8 @@ router.post('/', authMiddleware, async (req, res) => {
     const newMessage = new Message({ sender, recipient, channel, content });
     await newMessage.save();
 
-    // Emit real-time event
     const io = req.app.get('io');
-    io.emit('new_message', newMessage);
+    io.emit('new_message', newMessage); // 🔌 Emit new message event
 
     res.status(201).json({ message: 'Message created', data: newMessage });
   } catch (err) {
@@ -22,10 +21,10 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
-// Get all messages (filter by claimed status)
+// Get all unclaimed messages (for agents)
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const messages = await Message.find({ claimedBy: null }); // Only open messages
+    const messages = await Message.find({ claimedBy: null });
     res.json(messages);
   } catch (err) {
     console.error(err);
@@ -40,12 +39,18 @@ router.post('/:id/claim', authMiddleware, async (req, res) => {
 
   try {
     const message = await Message.findById(messageId);
+    if (!message) return res.status(404).json({ message: 'Message not found' });
+
     if (message.claimedBy) {
       return res.status(400).json({ message: 'Message already claimed' });
     }
 
     message.claimedBy = userId;
     await message.save();
+
+    const io = req.app.get('io');
+    io.emit('message_claimed', { messageId, claimedBy: userId }); // 🔌 Emit claim event
+
     res.json({ message: 'Message claimed', data: message });
   } catch (err) {
     console.error(err);
@@ -61,8 +66,10 @@ router.post('/:id/reply', authMiddleware, async (req, res) => {
 
   try {
     const message = await Message.findById(messageId);
+    if (!message) return res.status(404).json({ message: 'Message not found' });
+
     if (!message.claimedBy || message.claimedBy.toString() !== userId) {
-      return res.status(400).json({ message: 'You must claim the message first' });
+      return res.status(403).json({ message: 'You must claim the message first' });
     }
 
     const reply = {
@@ -74,9 +81,8 @@ router.post('/:id/reply', authMiddleware, async (req, res) => {
     message.replies.push(reply);
     await message.save();
 
-    // Emit real-time reply event
     const io = req.app.get('io');
-    io.emit('new_reply', { messageId, reply });
+    io.emit('new_reply', { messageId, reply }); // 🔌 Emit reply event
 
     res.json({ message: 'Reply added', data: message });
   } catch (err) {
@@ -84,19 +90,20 @@ router.post('/:id/reply', authMiddleware, async (req, res) => {
     res.status(500).json({ message: 'Error replying to message' });
   }
 });
-// Get all messages (admin only)
+
+// Admin: Get all messages with claimed status
 router.get('/all', authMiddleware, async (req, res) => {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-  
-    try {
-      const messages = await Message.find().populate('claimedBy', 'email role');
-      res.json(messages);
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: 'Error fetching all messages' });
-    }
-  });
-  
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Access denied' });
+  }
+
+  try {
+    const messages = await Message.find().populate('claimedBy', 'email role');
+    res.json(messages);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error fetching all messages' });
+  }
+});
+
 module.exports = router;

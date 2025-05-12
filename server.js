@@ -10,6 +10,8 @@ const messageRoutes = require('./routes/message');
 const facebookRoutes = require('./routes/facebook');
 const whatsappRoutes = require('./routes/whatsapp');
 const emailRoutes = require('./routes/email');
+const path = require('path');
+
 
 
 dotenv.config();
@@ -37,6 +39,7 @@ app.use('/facebook', facebookRoutes);    // Facebook webhook & message routes
 app.use('/whatsapp', whatsappRoutes);    // whatsapp webhook & message routes
 app.use('/email', emailRoutes);          // email & message routes
 
+app.use(express.static(path.join(__dirname, 'public')));
 
 
 app.get('/', (req, res) => {
