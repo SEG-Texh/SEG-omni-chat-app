@@ -20,11 +20,12 @@ router.get('/webhook', (req, res) => {
   if (mode && token) {
     if (mode === 'subscribe' && token === VERIFY_TOKEN) {
       console.log('WEBHOOK_VERIFIED');
-      res.status(200).send(challenge);
+      return res.status(200).send(challenge);
     } else {
-      res.sendStatus(403); // Forbidden if token doesn't match
+      return res.sendStatus(403); // Forbidden if token doesn't match
     }
   }
+  return res.sendStatus(404); // Not found if parameters are missing
 });
 
 // Webhook receiver
@@ -32,6 +33,7 @@ router.post('/webhook', async (req, res) => {
   const body = req.body;
 
   if (body.object === 'page') {
+    // Loop through the entries
     for (const entry of body.entry) {
       const webhookEvent = entry.messaging[0];
       console.log('Webhook Event:', webhookEvent);
@@ -42,7 +44,7 @@ router.post('/webhook', async (req, res) => {
       if (message) {
         console.log(`Message from ${senderId}: ${message}`);
 
-        // Save to MongoDB
+        // Save message to MongoDB
         const newMessage = new Message({
           source: 'facebook',
           senderId,
@@ -57,14 +59,20 @@ router.post('/webhook', async (req, res) => {
           console.error('Error saving message:', err);
         }
 
-        // Optionally send an auto-reply:
-        sendTextMessage(senderId, `Echo: ${message}`);
+        // Send an auto-reply to the user
+        try {
+          await sendTextMessage(senderId, `Echo: ${message}`);
+        } catch (err) {
+          console.error('Error sending message:', err);
+        }
+      } else {
+        console.log('No message content received');
       }
     }
 
-    res.status(200).send('EVENT_RECEIVED');
+    return res.status(200).send('EVENT_RECEIVED');
   } else {
-    res.sendStatus(404); // Not found if body doesn't match 'page'
+    return res.sendStatus(404); // Not found if body doesn't match 'page'
   }
 });
 
@@ -86,7 +94,7 @@ async function sendTextMessage(recipientId, message) {
   const url = `https://graph.facebook.com/v22.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
   const payload = {
     recipient: { id: recipientId },
-    message: { text: message }
+    message: { text: message },
   };
 
   try {
