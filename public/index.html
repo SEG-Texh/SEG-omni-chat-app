@@ -1,23 +1,24 @@
+<!-- public/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Omni Chat Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
-  <h2>Welcome to Omni Chat</h2>
-  <button onclick="logout()">Logout</button>
-  <h3>Unclaimed Messages</h3>
-  <ul id="messages"></ul>
+  <h1>📨 Omni Chat Dashboard</h1>
 
-  <h3>Reply to Message</h3>
-  <div id="replySection" style="display: none;">
-    <p>Replying to: <span id="replyTo"></span></p>
-    <textarea id="replyContent"></textarea><br />
-    <button onclick="sendReply()">Send Reply</button>
-  </div>
+  <div id="user-info"></div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="/script.js"></script>
+  <div id="messages"></div>
+
+  <form id="reply-form">
+    <input type="text" id="reply" placeholder="Type your reply..." />
+    <button type="submit">Send</button>
+  </form>
+
+  <script src="app.js"></script>
 </body>
 </html>
