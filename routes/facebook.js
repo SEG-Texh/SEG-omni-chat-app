@@ -22,6 +22,7 @@ router.get('/webhook', (req, res) => {
       console.log('WEBHOOK_VERIFIED');
       return res.status(200).send(challenge);
     } else {
+      console.error('Token mismatch: ', token);
       return res.sendStatus(403); // Forbidden if token doesn't match
     }
   }
@@ -72,6 +73,7 @@ router.post('/webhook', async (req, res) => {
 
     return res.status(200).send('EVENT_RECEIVED');
   } else {
+    console.error('Invalid webhook object');
     return res.sendStatus(404); // Not found if body doesn't match 'page'
   }
 });
@@ -79,6 +81,10 @@ router.post('/webhook', async (req, res) => {
 // Send message via Facebook API
 router.post('/messages', async (req, res) => {
   const { recipientId, message } = req.body;
+
+  if (!recipientId || !message) {
+    return res.status(400).json({ success: false, error: 'Recipient ID and message content are required' });
+  }
 
   try {
     await sendTextMessage(recipientId, message);
