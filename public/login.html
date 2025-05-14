@@ -1,69 +1,33 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Login | OmniChat</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login / Signup</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>OmniChat Login / Signup</h1>
-
-  <section>
-    <h2>Sign Up</h2>
-    <form id="signup-form">
-      <input type="text" name="username" placeholder="Username" required /><br />
-      <input type="email" name="email" placeholder="Email" required /><br />
-      <input type="password" name="password" placeholder="Password" required /><br />
+  <div class="container">
+    <h2>Signup</h2>
+    <form id="signupForm">
+      <input type="text" id="signupName" placeholder="Name" required />
+      <input type="email" id="signupEmail" placeholder="Email" required />
+      <input type="password" id="signupPassword" placeholder="Password" required />
+      <select id="signupRole">
+        <option value="agent">Agent</option>
+        <option value="admin">Admin</option>
+      </select>
       <button type="submit">Sign Up</button>
     </form>
-  </section>
 
-  <section>
-    <h2>Log In</h2>
-    <form id="login-form">
-      <input type="email" name="email" placeholder="Email" required /><br />
-      <input type="password" name="password" placeholder="Password" required /><br />
+    <h2>Login</h2>
+    <form id="loginForm">
+      <input type="email" id="loginEmail" placeholder="Email" required />
+      <input type="password" id="loginPassword" placeholder="Password" required />
       <button type="submit">Login</button>
     </form>
-  </section>
+  </div>
 
-  <script>
-    const API = "http://localhost:3000/api/auth";
-
-    document.getElementById("signup-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const { username, email, password } = e.target;
-      const res = await fetch(`${API}/signup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: username.value,
-          email: email.value,
-          password: password.value,
-        }),
-      });
-      const data = await res.json();
-      alert(data.message || "Signed up!");
-    });
-
-    document.getElementById("login-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const { email, password } = e.target;
-      const res = await fetch(`${API}/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.value,
-          password: password.value,
-        }),
-      });
-      const data = await res.json();
-      if (data.token) {
-        localStorage.setItem("token", data.token);
-        window.location.href = "index.html";
-      } else {
-        alert(data.message || "Login failed");
-      }
-    });
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>

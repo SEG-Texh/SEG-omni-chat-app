@@ -1,64 +1,53 @@
-const token = localStorage.getItem("token");
-const messagesDiv = document.getElementById("messages");
-
-if (!token) {
-  alert("Please log in");
-  window.location.href = "login.html";
-}
-
-async function loadMessages() {
-  try {
-    const res = await fetch("/api/message/all", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+document.addEventListener('DOMContentLoaded', () => {
+    const signupForm = document.getElementById('signupForm');
+    const loginForm = document.getElementById('loginForm');
+  
+    // SIGNUP HANDLER
+    signupForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+  
+      const name = document.getElementById('signupName').value;
+      const email = document.getElementById('signupEmail').value;
+      const password = document.getElementById('signupPassword').value;
+      const role = document.getElementById('signupRole').value;
+  
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, role }),
+      });
+  
+      const data = await res.json();
+      if (res.ok) {
+        alert('Signup successful. You can now login.');
+        signupForm.reset();
+      } else {
+        alert(data.message || 'Signup failed');
+      }
     });
-    const messages = await res.json();
-
-    messagesDiv.innerHTML = "";
-
-    messages.forEach((msg) => {
-      const div = document.createElement("div");
-      div.className = "message";
-      div.innerHTML = `
-        <p><strong>${msg.source}</strong>: ${msg.content}</p>
-        ${
-          msg.claimedBy
-            ? `<p><em>Claimed by: ${msg.claimedBy.username}</em></p>`
-            : `<button onclick="claimMessage('${msg._id}')">Claim</button>`
-        }
-        <hr />
-      `;
-      messagesDiv.appendChild(div);
+  
+    // LOGIN HANDLER
+    loginForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+  
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+  
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+  
+      const data = await res.json();
+      if (res.ok) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        alert('Login successful');
+        window.location.href = 'index.html';
+      } else {
+        alert(data.message || 'Login failed');
+      }
     });
-  } catch (err) {
-    console.error("Error loading messages:", err);
-    alert("Could not load messages");
-  }
-}
-
-async function claimMessage(id) {
-  try {
-    const res = await fetch(`/api/message/claim/${id}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    const data = await res.json();
-    alert(data.message);
-    loadMessages();
-  } catch (err) {
-    console.error("Error claiming message:", err);
-    alert("Failed to claim message");
-  }
-}
-
-// Socket.IO real-time updates (if you're emitting from backend)
-const socket = io();
-socket.on("newMessage", () => {
-  console.log("New message received");
-  loadMessages();
-});
-
-loadMessages();
+  });
+  
