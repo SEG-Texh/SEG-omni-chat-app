@@ -38,6 +38,8 @@ app.use('/api/messages', messageRoutes); // Messaging routes
 app.use('/facebook', facebookRoutes);    // Facebook webhook & message routes
 app.use('/whatsapp', whatsappRoutes);    // whatsapp webhook & message routes
 app.use('/email', emailRoutes);          // email & message routes
+app.use('/api/auth', require('./routes/auth'));
+
 
 app.use(express.static(path.join(__dirname, 'public')));
 

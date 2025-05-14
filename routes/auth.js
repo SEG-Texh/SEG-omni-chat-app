@@ -1,11 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { register, login } = require('../controllers/authController'); // Import from controller
+const { register, login } = require('../controllers/authController');
 
-// Register route
+// @route   POST /api/auth/register
+// @desc    Register a new user
+// @access  Public
 router.post('/register', register);
 
-// Login route
+// @route   POST /api/auth/login
+// @desc    Login a user and return JWT
+// @access  Public
 router.post('/login', login);
 
 module.exports = router;
