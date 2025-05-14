@@ -1,24 +1,14 @@
-<!-- public/index.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>Omni Chat Dashboard</title>
+  <title>OmniChat Dashboard</title>
   <link rel="stylesheet" href="style.css" />
-  <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
-  <h1>📨 Omni Chat Dashboard</h1>
-
-  <div id="user-info"></div>
-
+  <h1>Inbox</h1>
   <div id="messages"></div>
 
-  <form id="reply-form">
-    <input type="text" id="reply" placeholder="Type your reply..." />
-    <button type="submit">Send</button>
-  </form>
-
+  <script src="/socket.io/socket.io.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

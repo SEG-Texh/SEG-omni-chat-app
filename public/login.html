@@ -1,38 +1,68 @@
-<!-- public/login.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>Login</title>
+  <title>Login | OmniChat</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h2>Login</h2>
-  <form id="login-form">
-    <input type="text" id="email" placeholder="Email" /><br />
-    <input type="password" id="password" placeholder="Password" /><br />
-    <button type="submit">Login</button>
-  </form>
+  <h1>OmniChat Login / Signup</h1>
+
+  <section>
+    <h2>Sign Up</h2>
+    <form id="signup-form">
+      <input type="text" name="username" placeholder="Username" required /><br />
+      <input type="email" name="email" placeholder="Email" required /><br />
+      <input type="password" name="password" placeholder="Password" required /><br />
+      <button type="submit">Sign Up</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Log In</h2>
+    <form id="login-form">
+      <input type="email" name="email" placeholder="Email" required /><br />
+      <input type="password" name="password" placeholder="Password" required /><br />
+      <button type="submit">Login</button>
+    </form>
+  </section>
 
   <script>
-    document.getElementById('login-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
+    const API = "http://localhost:3000/api/auth";
 
-      fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.token) {
-            localStorage.setItem('token', data.token);
-            window.location.href = '/index.html';
-          } else {
-            alert('Login failed');
-          }
-        });
+    document.getElementById("signup-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const { username, email, password } = e.target;
+      const res = await fetch(`${API}/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: username.value,
+          email: email.value,
+          password: password.value,
+        }),
+      });
+      const data = await res.json();
+      alert(data.message || "Signed up!");
+    });
+
+    document.getElementById("login-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const { email, password } = e.target;
+      const res = await fetch(`${API}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.value,
+          password: password.value,
+        }),
+      });
+      const data = await res.json();
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+        window.location.href = "index.html";
+      } else {
+        alert(data.message || "Login failed");
+      }
     });
   </script>
 </body>

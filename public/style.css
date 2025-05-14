@@ -1,28 +1,14 @@
-/* public/style.css */
 body {
     font-family: Arial, sans-serif;
-    margin: 20px;
+    padding: 20px;
   }
-  
-  #messages {
-    border: 1px solid #ccc;
-    padding: 10px;
-    max-height: 300px;
-    overflow-y: scroll;
-    margin-bottom: 10px;
+  input {
+    margin: 5px;
   }
-  
   .message {
-    padding: 5px;
-    border-bottom: 1px solid #eee;
-  }
-  
-  .message.claimed {
-    background-color: #e6ffe6;
-  }
-  
-  #reply-form {
-    display: flex;
-    gap: 10px;
+    padding: 10px;
+    background: #f2f2f2;
+    border-radius: 5px;
+    margin-bottom: 10px;
   }
   
