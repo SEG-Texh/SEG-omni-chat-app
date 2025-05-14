@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bodyParser = require('body-parser');
 const axios = require('axios');
+const Message = require('../models/message');
 require('dotenv').config();
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
@@ -27,11 +28,11 @@ router.get('/webhook', (req, res) => {
 });
 
 // Webhook receiver
-router.post('/webhook', (req, res) => {
+router.post('/webhook', async (req, res) => {
   const body = req.body;
 
   if (body.object === 'page') {
-    body.entry.forEach(entry => {
+    for (const entry of body.entry) {
       const webhookEvent = entry.messaging[0];
       console.log('Webhook Event:', webhookEvent);
 
@@ -40,10 +41,26 @@ router.post('/webhook', (req, res) => {
 
       if (message) {
         console.log(`Message from ${senderId}: ${message}`);
+
+        // Save to MongoDB
+        const newMessage = new Message({
+          source: 'facebook',
+          senderId,
+          content: message,
+          timestamp: new Date(),
+        });
+
+        try {
+          await newMessage.save();
+          console.log('Message saved to DB');
+        } catch (err) {
+          console.error('Error saving message:', err);
+        }
+
         // Optionally send an auto-reply:
         sendTextMessage(senderId, `Echo: ${message}`);
       }
-    });
+    }
 
     res.status(200).send('EVENT_RECEIVED');
   } else {
@@ -62,11 +79,6 @@ router.post('/messages', async (req, res) => {
     console.error('Error sending message:', err.response?.data || err.message);
     res.status(500).json({ success: false, error: 'Failed to send message' });
   }
-});
-
-// Dummy getMessages endpoint (optional – update as needed)
-router.get('/messages', (req, res) => {
-  res.json({ message: 'This would return stored messages if implemented.' });
 });
 
 // Helper to send message through Facebook Send API
