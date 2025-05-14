@@ -1,106 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Omni Chat Dashboard</title>
-  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
-  <style>
-    body { font-family: Arial; padding: 20px; }
-    .message { margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 10px; }
-    .claimed { color: orange; }
-    .reply { margin-left: 20px; color: green; }
-    .login { margin-bottom: 20px; }
-    button { margin-top: 5px; }
-  </style>
 </head>
 <body>
-  <h1>📡 Omni Chat Real-Time Dashboard</h1>
+  <h2>Welcome to Omni Chat</h2>
+  <button onclick="logout()">Logout</button>
+  <h3>Unclaimed Messages</h3>
+  <ul id="messages"></ul>
 
-  <div class="login" id="login-form">
-    <input type="text" id="userId" placeholder="Enter your user ID" />
-    <button onclick="login()">Login</button>
+  <h3>Reply to Message</h3>
+  <div id="replySection" style="display: none;">
+    <p>Replying to: <span id="replyTo"></span></p>
+    <textarea id="replyContent"></textarea><br />
+    <button onclick="sendReply()">Send Reply</button>
   </div>
 
-  <div id="messages"></div>
-
-  <script>
-    const socket = io(); // Use dynamic origin
-    let currentUserId = null;
-    const messagesDiv = document.getElementById('messages');
-
-    function login() {
-      const input = document.getElementById('userId');
-      currentUserId = input.value.trim();
-      if (!currentUserId) {
-        alert("Please enter a valid User ID");
-        return;
-      }
-
-      document.getElementById('login-form').style.display = 'none';
-      socket.emit('user_connected', currentUserId);
-      loadMessages();
-    }
-
-    function renderMessage(message, type = 'new') {
-      const div = document.createElement('div');
-      div.className = 'message';
-      div.id = `message-${message._id}`;
-      div.innerHTML = `
-        <strong>📨 ${message.channel.toUpperCase()}</strong><br/>
-        From: ${message.sender} → To: ${message.recipient}<br/>
-        Content: ${message.content}<br/>
-        ${message.claimedBy
-          ? `<span class="claimed">⚠️ Claimed by User ID: ${message.claimedBy}</span><br/>`
-          : `<button onclick="claimMessage('${message._id}')">Claim This Message</button><br/>`
-        }
-        <div class="replies" id="replies-${message._id}"></div>
-      `;
-      messagesDiv.prepend(div);
-    }
-
-    function appendReply(messageId, reply) {
-      const replyDiv = document.getElementById(`replies-${messageId}`);
-      if (replyDiv) {
-        replyDiv.innerHTML += `<div class="reply">↪️ ${reply.content} (User: ${reply.sender})</div>`;
-      }
-    }
-
-    function claimMessage(messageId) {
-      if (!currentUserId) return alert('Please login first!');
-      socket.emit('claim_message', { messageId, userId: currentUserId });
-    }
-
-    function loadMessages() {
-      fetch('/api/messages') // Adjust this path if needed
-        .then(res => res.json())
-        .then(data => {
-          data.forEach(msg => renderMessage(msg));
-        })
-        .catch(err => console.error('Error loading messages:', err));
-    }
-
-    socket.on('connect', () => {
-      console.log('✅ Connected to Socket.IO');
-    });
-
-    socket.on('new_message', (msg) => {
-      console.log('📥 New Message:', msg);
-      renderMessage(msg, 'new');
-    });
-
-    socket.on('message_claimed', (data) => {
-      console.log('🧾 Message Claimed:', data);
-      const msgDiv = document.getElementById(`message-${data.messageId}`);
-      if (msgDiv) {
-        msgDiv.querySelector('button')?.remove();
-        msgDiv.innerHTML += `<div class="claimed">⚠️ Claimed by User ID: ${data.claimedBy}</div>`;
-      }
-    });
-
-    socket.on('new_reply', ({ messageId, reply }) => {
-      console.log('🗨️ New Reply:', reply);
-      appendReply(messageId, reply);
-    });
-  </script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/script.js"></script>
 </body>
 </html>
