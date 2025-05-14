@@ -55,6 +55,9 @@ io.on('connection', (socket) => {
   });
 });
 
+const path = require('path');
+app.use(express.static(path.join(__dirname, 'public')));
+
 // MongoDB Connection & Server Startup
 const PORT = process.env.PORT || 5000;
 
