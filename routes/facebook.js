@@ -11,7 +11,7 @@ const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 // Parse incoming JSON
 router.use(bodyParser.json());
 
-// Webhook verification
+// Webhook verification (unchanged)
 router.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
@@ -29,7 +29,7 @@ router.get('/webhook', (req, res) => {
   return res.sendStatus(404);
 });
 
-// Updated webhook handler with complete validation
+// Updated webhook handler to match your schema
 router.post('/webhook', async (req, res) => {
   if (req.body.object !== 'page') {
     console.error('Invalid webhook object');
@@ -38,33 +38,28 @@ router.post('/webhook', async (req, res) => {
 
   try {
     for (const entry of req.body.entry) {
-      // Skip if no messaging events
-      if (!entry.messaging || !Array.isArray(entry.messaging)) {  // Fixed: Added missing parenthesis
+      if (!entry.messaging || !Array.isArray(entry.messaging)) {
         console.log('Entry has no messaging array');
         continue;
       }
 
       for (const event of entry.messaging) {
         try {
-          // Validate all required fields exist
+          // Validate required fields
           if (!event.sender?.id || !event.recipient?.id || !event.message?.text) {
-            console.log('Incomplete message event:', {
-              hasSender: !!event.sender,
-              hasRecipient: !!event.recipient,
-              hasMessageText: !!event.message?.text
-            });
+            console.log('Incomplete message event');
             continue;
           }
 
           const messageData = {
-            senderId: event.sender.id,
-            recipientId: event.recipient.id,
-            source: 'facebook',
+            sender: event.sender.id,  // Changed from senderId to sender
+            recipient: event.recipient.id,  // Changed from recipientId to recipient
+            channel: 'facebook',  // Changed from source to channel
             content: event.message.text,
-            timestamp: new Date()
+            // createdAt and updatedAt will be added automatically by Mongoose
+            // replies array will be empty by default
           };
 
-          // Validate against schema before saving
           const newMessage = new Message(messageData);
           const validationError = newMessage.validateSync();
           
@@ -75,63 +70,78 @@ router.post('/webhook', async (req, res) => {
 
           await newMessage.save();
           console.log('Message saved successfully:', {
-            senderId: messageData.senderId,
-            recipientId: messageData.recipientId,
-            length: messageData.content.length
+            id: newMessage._id,
+            sender: newMessage.sender,
+            recipient: newMessage.recipient
           });
 
-          // Send response
-          await sendTextMessage(messageData.senderId, `Echo: ${messageData.content}`);
+          await sendTextMessage(messageData.sender, `Echo: ${messageData.content}`);
         } catch (error) {
-          console.error('Error processing individual message:', {
-            error: error.message,
-            stack: error.stack
-          });
+          console.error('Error processing message:', error.message);
         }
       }
     }
     return res.status(200).send('EVENT_RECEIVED');
   } catch (err) {
-    console.error('Top-level webhook error:', {
-      error: err.message,
-      stack: err.stack,
-      body: req.body
-    });
+    console.error('Webhook processing error:', err);
     return res.sendStatus(500);
   }
 });
 
-// Send message manually
+// Updated manual message endpoint to match schema
 router.post('/messages', async (req, res) => {
-  const { recipientId, message } = req.body;
+  const { recipient, message } = req.body;  // Changed from recipientId to recipient
 
-  if (!recipientId || !message) {
-    return res.status(400).json({ success: false, error: 'Recipient ID and message content are required' });
+  if (!recipient || !message) {
+    return res.status(400).json({ 
+      success: false, 
+      error: 'Recipient and message content are required' 
+    });
   }
 
   try {
-    await sendTextMessage(recipientId, message);
-    res.status(200).json({ success: true, message: 'Message sent!' });
+    // Create message in database first
+    const newMessage = new Message({
+      sender: 'system',  // Or whatever default sender you want
+      recipient,
+      channel: 'facebook',
+      content: message
+    });
+
+    await newMessage.save();
+    
+    // Then send via Facebook
+    await sendTextMessage(recipient, message);
+    
+    res.status(200).json({ 
+      success: true, 
+      message: 'Message sent!',
+      messageId: newMessage._id
+    });
   } catch (err) {
-    console.error('Error sending message:', err.response?.data || err.message);
-    res.status(500).json({ success: false, error: 'Failed to send message' });
+    console.error('Error:', err.response?.data || err.message);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to send message',
+      details: err.message
+    });
   }
 });
 
-// Helper to send Facebook message
-async function sendTextMessage(recipientId, message) {
+// Updated sendTextMessage to use recipient instead of recipientId
+async function sendTextMessage(recipient, message) {
   const url = `https://graph.facebook.com/v22.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
   const payload = {
-    recipient: { id: recipientId },
+    recipient: { id: recipient },  // Changed to use recipient directly
     message: { text: message },
   };
 
   try {
     const response = await axios.post(url, payload);
-    console.log('Message sent successfully:', response.data);
+    console.log('Facebook API response:', response.data);
     return response.data;
   } catch (error) {
-    console.error('Error sending message:', error.response?.data || error.message);
+    console.error('Facebook API error:', error.response?.data || error.message);
     throw error;
   }
 }
