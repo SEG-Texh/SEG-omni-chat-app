@@ -14,7 +14,8 @@ router.use(bodyParser.json());
 router.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
-  const challenge = req.query['hub.challenge'];
+  const challenge = req.query['hub.challenge'];  
+
 
   if (mode && token) {
     if (mode === 'subscribe' && token === VERIFY_TOKEN) {
@@ -30,6 +31,22 @@ router.get('/webhook', (req, res) => {
 
 // Facebook message webhook
 router.post('/webhook', async (req, res) => {
+  console.log('Incoming Facebook Webhook:', JSON.stringify(req.body, null, 2));
+  router.post('/webhook', async (req, res) => {
+    console.log('Incoming Facebook Webhook:', JSON.stringify(req.body, null, 2));
+  
+    const messaging = req.body.entry?.[0]?.messaging?.[0];
+    const senderId = messaging?.sender?.id;
+    const recipientId = messaging?.recipient?.id;
+    const text = messaging?.message?.text;
+  
+    // Example usage (optional):
+    console.log('Parsed senderId:', senderId);
+    console.log('Parsed recipientId:', recipientId);
+    console.log('Parsed message text:', text);
+  
+    // Your existing logic continues...
+  });
   if (req.body.object !== 'page') {
     console.error('Invalid webhook object');
     return res.sendStatus(404);
