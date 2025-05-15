@@ -22,11 +22,11 @@ router.get('/webhook', (req, res) => {
       console.log('WEBHOOK_VERIFIED');
       return res.status(200).send(challenge);
     } else {
-      console.error('Token mismatch: ', token);
-      return res.sendStatus(403); // Forbidden if token doesn't match
+      console.error('Token mismatch:', token);
+      return res.sendStatus(403);
     }
   }
-  return res.sendStatus(404); // Not found if parameters are missing
+  return res.sendStatus(404);
 });
 
 // Webhook receiver
@@ -34,26 +34,26 @@ router.post('/webhook', async (req, res) => {
   const body = req.body;
 
   if (body.object === 'page') {
-    // Loop through the entries
     for (const entry of body.entry) {
       const webhookEvent = entry.messaging[0];
       console.log('Webhook Event:', webhookEvent);
 
       const senderId = webhookEvent.sender.id;
+      const recipientId = webhookEvent.recipient.id;
+      const timestamp = webhookEvent.timestamp;
       const message = webhookEvent.message?.text;
 
       if (message) {
         console.log(`Message from ${senderId}: ${message}`);
 
-        // Save message to MongoDB
         const newMessage = new Message({
           channel: 'facebook',
           sender: senderId,
           recipient: recipientId,
-          text: message.text,
+          text: message,
           timestamp: timestamp
         });
-        
+
         try {
           await newMessage.save();
           console.log('Message saved to DB');
@@ -61,11 +61,10 @@ router.post('/webhook', async (req, res) => {
           console.error('Error saving message:', err);
         }
 
-        // Send an auto-reply to the user
         try {
           await sendTextMessage(senderId, `Echo: ${message}`);
         } catch (err) {
-          console.error('Error sending message:', err);
+          console.error('Error sending message:', err.response?.data || err.message);
         }
       } else {
         console.log('No message content received');
@@ -75,11 +74,11 @@ router.post('/webhook', async (req, res) => {
     return res.status(200).send('EVENT_RECEIVED');
   } else {
     console.error('Invalid webhook object');
-    return res.sendStatus(404); // Not found if body doesn't match 'page'
+    return res.sendStatus(404);
   }
 });
 
-// Send message via Facebook API
+// Send message manually
 router.post('/messages', async (req, res) => {
   const { recipientId, message } = req.body;
 
@@ -96,7 +95,7 @@ router.post('/messages', async (req, res) => {
   }
 });
 
-// Helper to send message through Facebook Send API
+// Helper to send Facebook message
 async function sendTextMessage(recipientId, message) {
   const url = `https://graph.facebook.com/v22.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
   const payload = {
@@ -109,7 +108,7 @@ async function sendTextMessage(recipientId, message) {
     console.log('Message sent successfully:', response.data);
   } catch (error) {
     console.error('Error sending message:', error.response?.data || error.message);
-    throw error; // Rethrow error to propagate to the caller
+    throw error;
   }
 }
 
