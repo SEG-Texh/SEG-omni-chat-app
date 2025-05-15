@@ -29,74 +29,79 @@ router.get('/webhook', (req, res) => {
   return res.sendStatus(404);
 });
 
-// Webhook receiver - Improved with better validation
+// Updated webhook handler with complete validation
 router.post('/webhook', async (req, res) => {
-  const body = req.body;
-
-  if (body.object !== 'page') {
+  if (req.body.object !== 'page') {
     console.error('Invalid webhook object');
     return res.sendStatus(404);
   }
 
   try {
-    for (const entry of body.entry) {
+    for (const entry of req.body.entry) {
       // Skip if no messaging events
-      if (!entry.messaging || !entry.messaging.length) {
-        console.log('No messaging events in entry');
+      if (!entry.messaging || !Array.isArray(entry.messaging)) {  // Fixed: Added missing parenthesis
+        console.log('Entry has no messaging array');
         continue;
       }
 
-      const webhookEvent = entry.messaging[0];
-      console.log('Webhook Event:', webhookEvent);
+      for (const event of entry.messaging) {
+        try {
+          // Validate all required fields exist
+          if (!event.sender?.id || !event.recipient?.id || !event.message?.text) {
+            console.log('Incomplete message event:', {
+              hasSender: !!event.sender,
+              hasRecipient: !!event.recipient,
+              hasMessageText: !!event.message?.text
+            });
+            continue;
+          }
 
-      // Validate required fields
-      if (!webhookEvent.sender || !webhookEvent.sender.id) {
-        console.error('Missing sender ID');
-        continue;
-      }
+          const messageData = {
+            senderId: event.sender.id,
+            recipientId: event.recipient.id,
+            source: 'facebook',
+            content: event.message.text,
+            timestamp: new Date()
+          };
 
-      if (!webhookEvent.recipient || !webhookEvent.recipient.id) {
-        console.error('Missing recipient ID');
-        continue;
-      }
+          // Validate against schema before saving
+          const newMessage = new Message(messageData);
+          const validationError = newMessage.validateSync();
+          
+          if (validationError) {
+            console.error('Validation failed:', validationError);
+            continue;
+          }
 
-      const senderId = webhookEvent.sender.id;
-      const recipientId = webhookEvent.recipient.id;
-      const messageText = webhookEvent.message?.text;
+          await newMessage.save();
+          console.log('Message saved successfully:', {
+            senderId: messageData.senderId,
+            recipientId: messageData.recipientId,
+            length: messageData.content.length
+          });
 
-      if (!messageText) {
-        console.log('No message content received');
-        continue;
-      }
-
-      try {
-        const newMessage = new Message({
-          senderId,
-          recipientId,
-          source: 'facebook',
-          content: messageText,
-          // Add timestamp if your schema requires it
-          timestamp: new Date()
-        });
-
-        await newMessage.save();
-        console.log('Message saved to DB');
-
-        // Echo the message back
-        await sendTextMessage(senderId, `Echo: ${messageText}`);
-      } catch (saveError) {
-        console.error('Error saving message to DB:', saveError);
-        // Continue processing other messages even if one fails
+          // Send response
+          await sendTextMessage(messageData.senderId, `Echo: ${messageData.content}`);
+        } catch (error) {
+          console.error('Error processing individual message:', {
+            error: error.message,
+            stack: error.stack
+          });
+        }
       }
     }
     return res.status(200).send('EVENT_RECEIVED');
   } catch (err) {
-    console.error('Error handling webhook event:', err);
+    console.error('Top-level webhook error:', {
+      error: err.message,
+      stack: err.stack,
+      body: req.body
+    });
     return res.sendStatus(500);
   }
 });
 
-// Send message manually - Already looks good
+// Send message manually
 router.post('/messages', async (req, res) => {
   const { recipientId, message } = req.body;
 
@@ -113,7 +118,7 @@ router.post('/messages', async (req, res) => {
   }
 });
 
-// Helper to send Facebook message - No changes needed
+// Helper to send Facebook message
 async function sendTextMessage(recipientId, message) {
   const url = `https://graph.facebook.com/v22.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
   const payload = {
