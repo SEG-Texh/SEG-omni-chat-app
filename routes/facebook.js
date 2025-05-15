@@ -34,49 +34,44 @@ router.post('/webhook', async (req, res) => {
   const body = req.body;
 
   if (body.object === 'page') {
-    for (const entry of body.entry) {
-      const webhookEvent = entry.messaging[0];
-      console.log('Webhook Event:', webhookEvent);
+    try {
+      for (const entry of body.entry) {
+        const webhookEvent = entry.messaging[0];
+        console.log('Webhook Event:', webhookEvent);
 
-      const senderId = webhookEvent.sender.id;
-      const recipientId = webhookEvent.recipient.id;
-      const timestamp = webhookEvent.timestamp;
-      const message = webhookEvent.message?.text;
+        const senderId = webhookEvent.sender.id;
+        const recipientId = webhookEvent.recipient.id;
+        const message = webhookEvent.message?.text;
 
-      if (message) {
-        console.log(`Message from ${senderId}: ${message}`);
+        if (message) {
+          console.log(`Message from ${senderId}: ${message}`);
 
-        const newMessage = new Message({
-          channel: 'facebook',
-          sender: senderId,
-          recipient: recipientId,
-          text: message,
-          timestamp: timestamp
-        });
+          const newMessage = new Message({
+            senderId,
+            recipientId,
+            source: 'facebook',
+            content: message,
+          });
 
-        try {
           await newMessage.save();
           console.log('Message saved to DB');
-        } catch (err) {
-          console.error('Error saving message:', err);
-        }
 
-        try {
           await sendTextMessage(senderId, `Echo: ${message}`);
-        } catch (err) {
-          console.error('Error sending message:', err.response?.data || err.message);
+        } else {
+          console.log('No message content received');
         }
-      } else {
-        console.log('No message content received');
       }
+      return res.status(200).send('EVENT_RECEIVED');
+    } catch (err) {
+      console.error('Error handling webhook event:', err);
+      return res.sendStatus(500);
     }
-
-    return res.status(200).send('EVENT_RECEIVED');
   } else {
     console.error('Invalid webhook object');
     return res.sendStatus(404);
   }
 });
+
 
 // Send message manually
 router.post('/messages', async (req, res) => {
