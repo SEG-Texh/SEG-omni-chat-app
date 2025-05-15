@@ -33,7 +33,6 @@ app.use(express.json());  // Body parser for JSON requests
 app.use(cors());
 
 // Routes
-app.use('/api/auth', authRoutes);        // Authentication routes
 app.use('/api/messages', messageRoutes); // Messaging routes
 app.use('/facebook', facebookRoutes);    // Facebook webhook & message routes
 app.use('/whatsapp', whatsappRoutes);    // whatsapp webhook & message routes
