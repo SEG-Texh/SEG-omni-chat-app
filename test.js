@@ -1,6 +1,6 @@
 // Example: testConnection.js
 const mongoose = require('mongoose');
-const Message = require('./models/Message'); // your message model
+const Message = require('./models/message');
 
 mongoose.connect('your_connection_string', { useNewUrlParser: true, useUnifiedTopology: true })
   .then(async () => {
