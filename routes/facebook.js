@@ -47,12 +47,13 @@ router.post('/webhook', async (req, res) => {
 
         // Save message to MongoDB
         const newMessage = new Message({
-          source: 'facebook',
-          senderId,
-          content: message,
-          timestamp: new Date(),
+          channel: 'facebook',
+          sender: senderId,
+          recipient: recipientId,
+          text: message.text,
+          timestamp: timestamp
         });
-
+        
         try {
           await newMessage.save();
           console.log('Message saved to DB');
