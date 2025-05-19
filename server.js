@@ -4,51 +4,50 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const http = require('http');
 const { Server } = require('socket.io');
+const path = require('path');
+
+dotenv.config();
 
 const authRoutes = require('./routes/auth');
 const messageRoutes = require('./routes/message');
 const facebookRoutes = require('./routes/facebook');
 const whatsappRoutes = require('./routes/whatsapp');
 const emailRoutes = require('./routes/email');
-const path = require('path');
-const Message = require('./models/message');
-
-
-
-dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+
+// Socket.IO setup
 const io = new Server(server, {
   cors: {
-    origin: '*', // Replace with frontend URL in production for security
+    origin: '*', // In production, use your frontend URL here
     methods: ['GET', 'POST'],
   },
 });
 
-// Attach Socket.IO to app instance for access in controllers
+// Attach io instance to the app for controller access
 app.set('io', io);
 
 // Middleware
-app.use(express.json());  // Body parser for JSON requests
-app.use(cors());
+app.use(express.json());  // Parse JSON bodies
+app.use(cors());           // Enable CORS
 
-// Routes
-app.use('/api/messages', messageRoutes); // Messaging routes
-app.use('/facebook', facebookRoutes);    // Facebook webhook & message routes
-app.use('/whatsapp', whatsappRoutes);    // whatsapp webhook & message routes
-app.use('/email', emailRoutes);          // email & message routes
-app.use('/api/auth', require('./routes/auth'));
-
-
+// Serve static frontend files from /public
 app.use(express.static(path.join(__dirname, 'public')));
 
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/facebook', facebookRoutes);
+app.use('/whatsapp', whatsappRoutes);
+app.use('/email', emailRoutes);
 
+// Health check or root route
 app.get('/', (req, res) => {
   res.send('🎉 Omni Chat Server is Live');
 });
 
-// Socket.IO setup for real-time communication
+// Socket.IO events
 io.on('connection', (socket) => {
   console.log(`🔌 User connected: ${socket.id}`);
 
@@ -57,14 +56,13 @@ io.on('connection', (socket) => {
   });
 });
 
-
-app.use(express.static(path.join(__dirname, 'public')));
-
-// MongoDB Connection & Server Startup
+// MongoDB connection and server start
 const PORT = process.env.PORT || 5000;
 
-// MongoDB Connection
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
   .then(() => {
     console.log('✅ MongoDB connected');
     server.listen(PORT, () => {
