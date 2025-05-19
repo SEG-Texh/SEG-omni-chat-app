@@ -1,18 +1,23 @@
 const Message = require('../models/message');
 
-exports.saveFacebookMessage = async (data) => {
+exports.saveFacebookMessage = async (req, res) => {
   try {
+    const entry = req.body.entry[0];
+    const messagingEvent = entry.messaging[0];
+
     const message = new Message({
-      sender: data.sender.id,
-      recipient: data.recipient.id,
-      text: data.message.text,
-      source: 'facebook',
-      direction: 'inbound', // ✅ Add this line
-      timestamp: new Date()
+      platform: 'facebook',
+      sender: messagingEvent.sender.id,
+      recipient: messagingEvent.recipient.id,
+      content: messagingEvent.message.text,
+      timestamp: messagingEvent.timestamp,
+      direction: 'inbound', // ✅ Required field
     });
+
     await message.save();
-    console.log('✅ Facebook message saved');
-  } catch (err) {
-    console.error('❌ Error saving Facebook message:', err);
+    res.sendStatus(200);
+  } catch (error) {
+    console.error('Error saving Facebook message:', error);
+    res.sendStatus(500);
   }
 };
