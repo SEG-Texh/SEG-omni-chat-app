@@ -1,18 +1,8 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
-
-dotenv.config();
-
 const authRoutes = require('./routes/auth');
 const messageRoutes = require('./routes/message');
 const facebookRoutes = require('./routes/facebook');
 const whatsappRoutes = require('./routes/whatsapp');
-const emailRoutes = require('./routes/email');
+const { router: emailRoutes, setupEmailPolling } = require('./routes/email');
 
 const app = express();
 const server = http.createServer(app);
@@ -29,8 +19,8 @@ const io = new Server(server, {
 app.set('io', io);
 
 // Middleware
-app.use(express.json());  // Parse JSON bodies
-app.use(cors());           // Enable CORS
+app.use(express.json()); // Parse JSON bodies
+app.use(cors()); // Enable CORS
 
 // Serve static frontend files from /public
 app.use(express.static(path.join(__dirname, 'public')));
@@ -50,7 +40,7 @@ app.get('/', (req, res) => {
 // Socket.IO events
 io.on('connection', (socket) => {
   console.log(`🔌 User connected: ${socket.id}`);
-
+  
   socket.on('disconnect', () => {
     console.log(`❌ User disconnected: ${socket.id}`);
   });
@@ -58,7 +48,6 @@ io.on('connection', (socket) => {
 
 // MongoDB connection and server start
 const PORT = process.env.PORT || 5000;
-
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -67,6 +56,10 @@ mongoose.connect(process.env.MONGO_URI, {
     console.log('✅ MongoDB connected');
     server.listen(PORT, () => {
       console.log(`🚀 Server running at http://localhost:${PORT}`);
+      
+      // Start email polling after server is running
+      setupEmailPolling(app);
+      console.log('📧 Email polling service started');
     });
   })
   .catch((err) => {
