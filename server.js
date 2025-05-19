@@ -11,7 +11,7 @@ const facebookRoutes = require('./routes/facebook');
 const whatsappRoutes = require('./routes/whatsapp');
 const emailRoutes = require('./routes/email');
 const path = require('path');
-const Message = require('../models/message');
+const Message = require('./models/message');
 
 
 
