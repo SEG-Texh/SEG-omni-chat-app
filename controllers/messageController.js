@@ -1,42 +1,18 @@
 const Message = require('../models/message');
 
-exports.saveFacebookMessage = async (event) => {
+exports.saveFacebookMessage = async (data) => {
   try {
-    const senderId = event?.sender?.id;
-    const recipientId = event?.recipient?.id;
-    const messageText = event?.message?.text;
-
-    if (!senderId || !recipientId || !messageText) {
-      console.log('Incomplete or unsupported message event:', event);
-      return null;
-    }
-
-    const messageData = {
-      senderId,
-      recipientId,
+    const message = new Message({
+      sender: data.sender.id,
+      recipient: data.recipient.id,
+      text: data.message.text,
       source: 'facebook',
-      content: messageText,
-    };
-
-    const newMessage = new Message(messageData);
-    const validationError = newMessage.validateSync();
-
-    if (validationError) {
-      console.error('Validation failed:', validationError);
-      return null;
-    }
-
-    await newMessage.save();
-
-    console.log('Facebook message saved successfully:', {
-      id: newMessage._id,
-      senderId: newMessage.senderId,
-      recipientId: newMessage.recipientId,
+      direction: 'inbound', // ✅ Add this line
+      timestamp: new Date()
     });
-
-    return newMessage;
-  } catch (error) {
-    console.error('Error saving Facebook message:', error);
-    return null;
+    await message.save();
+    console.log('✅ Facebook message saved');
+  } catch (err) {
+    console.error('❌ Error saving Facebook message:', err);
   }
 };
