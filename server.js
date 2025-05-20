@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -40,7 +41,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/facebook', facebookRoutes);
 app.use('/whatsapp', whatsappRoutes);
-app.use('/email', emailRoutes); // Use the router directly
+app.use('/email', emailRoutes);
 
 // Health check or root route
 app.get('/', (req, res) => {
@@ -54,12 +55,14 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log(`❌ User disconnected: ${socket.id}`);
   });
+  
+  // You can add more socket event handlers here
 });
 
 // MongoDB connection and server start
 const PORT = process.env.PORT || 5000;
 
-// Updated MongoDB connection without deprecated options
+// Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     console.log('✅ MongoDB connected');
