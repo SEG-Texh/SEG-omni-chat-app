@@ -8,7 +8,17 @@ const Email = require('../models/Email');
 require('dotenv').config();
 
 // SMTP Config
-const transporter = nodemailer.createTransport({ /* ... */ });
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_PASS,
+  },
+  tls: {
+    rejectUnauthorized: true
+  }
+});
+
 
 // IMAP Config
 const imapConfig = { /* ... */ };
