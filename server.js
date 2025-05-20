@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+
 dotenv.config();
 
 const authRoutes = require('./routes/auth');
@@ -39,7 +40,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/facebook', facebookRoutes);
 app.use('/whatsapp', whatsappRoutes);
-app.use('/email', emailRoutes);
+app.use('/email', emailRoutes); // Use the router directly
 
 // Health check or root route
 app.get('/', (req, res) => {
@@ -64,7 +65,6 @@ mongoose.connect(process.env.MONGO_URI)
     console.log('✅ MongoDB connected');
     server.listen(PORT, () => {
       console.log(`🚀 Server running at http://localhost:${PORT}`);
-      
       // Start email polling after server is running
       setupEmailPolling(app);
       console.log('📧 Email polling service started');

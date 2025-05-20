@@ -1,3 +1,4 @@
+// models/Email.js
 const mongoose = require('mongoose');
 
 const emailSchema = new mongoose.Schema({
@@ -15,10 +16,11 @@ const emailSchema = new mongoose.Schema({
   },
   text: {
     type: String,
-    required: true
+    default: ''
   },
   html: {
-    type: String
+    type: String,
+    default: ''
   },
   attachments: [{
     filename: String,
