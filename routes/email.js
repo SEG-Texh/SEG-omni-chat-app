@@ -1,3 +1,5 @@
+//routes/email.js - Replace your existing configurations with these:
+
 const express = require('express');
 const router = express.Router();
 const nodemailer = require('nodemailer');
@@ -13,6 +15,9 @@ const transporter = nodemailer.createTransport({
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_PASS,
   },
+  tls: {
+    rejectUnauthorized: true
+  }
 });
 
 // Configure IMAP for receiving emails
@@ -22,67 +27,12 @@ const imapConfig = {
   host: 'imap.gmail.com',
   port: 993,
   tls: true,
-  tlsOptions: { rejectUnauthorized: false }
+  tlsOptions: { rejectUnauthorized: true },
+  authTimeout: 10000 // Add timeout for authentication
 };
 
-// POST /email/send - Send an email and save to database
-router.post('/send', async (req, res) => {
-  const { to, subject, text, html, userId } = req.body;
-  const io = req.app.get('io');
-  
-  if (!to || !subject || !(text || html)) {
-    return res.status(400).json({ error: 'To, subject, and either text or html are required' });
-  }
-  
-  const mailOptions = {
-    from: process.env.GMAIL_USER,
-    to,
-    subject,
-    text,
-    html
-  };
-  
-  try {
-    console.log('Sending email with:', mailOptions);
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent:', info.response);
-    
-    // Save email to database
-    const newEmail = new Email({
-      from: process.env.GMAIL_USER,
-      to,
-      subject,
-      text: text || '',
-      html: html || '',
-      status: 'sent',
-      userId
-    });
-    
-    const savedEmail = await newEmail.save();
-    
-    // Emit socket event
-    if (io) {
-      io.emit('new_email_sent', {
-        _id: savedEmail._id,
-        from: savedEmail.from,
-        to: savedEmail.to,
-        subject: savedEmail.subject,
-        text: savedEmail.text,
-        status: savedEmail.status,
-        date: savedEmail.date
-      });
-    }
-    
-    res.status(200).json({ 
-      success: true, 
-      message: 'Email sent and saved!', 
-      email: savedEmail 
-    });
-  } catch (error) {
-    console.error('Error sending email:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+// Keep your existing routes (POST /email/send, GET /email/list, GET /email/:id)
+// but replace the GET /email/receive route with the updated one below
 
 // GET /email/receive - Fetch latest emails
 router.get('/receive', async (req, res) => {
@@ -90,34 +40,54 @@ router.get('/receive', async (req, res) => {
   const { userId } = req.query;
   
   const imap = new Imap(imapConfig);
+  const emails = [];
+  
+  // Set up a timeout to prevent hanging requests
+  const timeout = setTimeout(() => {
+    if (imap.state !== 'disconnected') {
+      imap.end();
+    }
+    if (!res.headersSent) {
+      res.status(504).json({ success: false, error: 'Request timeout' });
+    }
+  }, 30000); // 30 seconds timeout
   
   imap.once('ready', () => {
     imap.openBox('INBOX', false, async (err, box) => {
       if (err) {
         console.error('Error opening inbox:', err);
-        return res.status(500).json({ success: false, error: err.message });
+        clearTimeout(timeout);
+        if (!res.headersSent) {
+          return res.status(500).json({ success: false, error: err.message });
+        }
+        return;
       }
       
-      // Search for unread emails from the last day
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      
-      imap.search(['UNSEEN', ['SINCE', yesterday]], (err, results) => {
+      // Search for unread emails
+      imap.search(['UNSEEN'], (err, results) => {
         if (err) {
           console.error('Error searching emails:', err);
-          return res.status(500).json({ success: false, error: err.message });
+          clearTimeout(timeout);
+          if (!res.headersSent) {
+            return res.status(500).json({ success: false, error: err.message });
+          }
+          return;
         }
         
         if (results.length === 0) {
-          return res.status(200).json({ 
-            success: true, 
-            message: 'No new emails found', 
-            emails: [] 
-          });
+          clearTimeout(timeout);
+          if (!res.headersSent) {
+            return res.status(200).json({ 
+              success: true, 
+              message: 'No new emails found', 
+              emails: [] 
+            });
+          }
+          return;
         }
         
-        const fetch = imap.fetch(results, { bodies: '' });
-        const emails = [];
+        console.log(`Found ${results.length} unread emails`);
+        const fetch = imap.fetch(results, { bodies: '', markSeen: true });
         
         fetch.on('message', (msg) => {
           msg.on('body', (stream) => {
@@ -128,9 +98,14 @@ router.get('/receive', async (req, res) => {
               }
               
               try {
+                console.log('Processing email:', {
+                  from: parsed.from?.text,
+                  subject: parsed.subject
+                });
+                
                 // Check if email already exists in database
                 const existingEmail = await Email.findOne({
-                  from: parsed.from.text,
+                  from: parsed.from?.text,
                   subject: parsed.subject,
                   date: parsed.date
                 });
@@ -138,13 +113,13 @@ router.get('/receive', async (req, res) => {
                 if (!existingEmail) {
                   // Save email to database
                   const newEmail = new Email({
-                    from: parsed.from.text,
-                    to: parsed.to.text,
-                    subject: parsed.subject,
+                    from: parsed.from?.text || 'Unknown Sender',
+                    to: parsed.to?.text || process.env.GMAIL_USER,
+                    subject: parsed.subject || '(No Subject)',
                     text: parsed.text || '',
                     html: parsed.html || '',
                     status: 'received',
-                    date: parsed.date,
+                    date: parsed.date || new Date(),
                     userId: userId || null
                   });
                   
@@ -173,6 +148,8 @@ router.get('/receive', async (req, res) => {
                       date: savedEmail.date
                     });
                   }
+                } else {
+                  console.log('Email already exists in database');
                 }
               } catch (error) {
                 console.error('Error saving email to database:', error);
@@ -181,13 +158,13 @@ router.get('/receive', async (req, res) => {
           });
         });
         
+        fetch.once('error', (err) => {
+          console.error('Fetch error:', err);
+        });
+        
         fetch.once('end', () => {
+          console.log('All messages processed');
           imap.end();
-          res.status(200).json({ 
-            success: true, 
-            message: `Retrieved ${emails.length} new emails`, 
-            emails 
-          });
         });
       });
     });
@@ -195,69 +172,74 @@ router.get('/receive', async (req, res) => {
   
   imap.once('error', (err) => {
     console.error('IMAP error:', err);
-    res.status(500).json({ success: false, error: err.message });
+    clearTimeout(timeout);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: err.message });
+    }
   });
   
-  imap.connect();
-});
-
-// GET /email/list - Get all emails for a user
-router.get('/list', async (req, res) => {
-  const { userId, status, limit = 20, skip = 0 } = req.query;
+  imap.once('end', () => {
+    clearTimeout(timeout);
+    if (!res.headersSent) {
+      res.status(200).json({ 
+        success: true, 
+        message: `Retrieved ${emails.length} new emails`, 
+        emails 
+      });
+    }
+  });
   
   try {
-    let query = {};
-    
-    if (userId) {
-      query.userId = userId;
-    }
-    
-    if (status) {
-      query.status = status;
-    }
-    
-    const emails = await Email.find(query)
-      .sort({ date: -1 })
-      .skip(parseInt(skip))
-      .limit(parseInt(limit));
-      
-    const total = await Email.countDocuments(query);
-    
-    res.status(200).json({
-      success: true,
-      emails,
-      pagination: {
-        total,
-        limit: parseInt(limit),
-        skip: parseInt(skip)
-      }
-    });
+    imap.connect();
   } catch (error) {
-    console.error('Error fetching emails:', error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error('Failed to connect to IMAP server:', error);
+    clearTimeout(timeout);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }
 });
 
-// GET /email/:id - Get a specific email by ID
-router.get('/:id', async (req, res) => {
+// New verification endpoint - Add this to your existing routes
+router.get('/verify-connection', async (req, res) => {
   try {
-    const email = await Email.findById(req.params.id);
+    // Verify SMTP connection
+    console.log('Verifying SMTP connection...');
+    await transporter.verify();
+    console.log('SMTP connection successful');
     
-    if (!email) {
-      return res.status(404).json({ success: false, error: 'Email not found' });
-    }
+    // Verify IMAP connection
+    console.log('Verifying IMAP connection...');
+    const imap = new Imap(imapConfig);
     
-    res.status(200).json({
-      success: true,
-      email
+    imap.once('ready', () => {
+      console.log('IMAP connection successful');
+      imap.end();
+      res.status(200).json({ 
+        success: true, 
+        message: 'Email configuration is valid' 
+      });
     });
+    
+    imap.once('error', (err) => {
+      console.error('IMAP verification error:', err);
+      res.status(500).json({ 
+        success: false, 
+        error: `IMAP connection failed: ${err.message}` 
+      });
+    });
+    
+    imap.connect();
   } catch (error) {
-    console.error('Error fetching email:', error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error('Email verification failed:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: `SMTP connection failed: ${error.message}` 
+    });
   }
 });
 
-// Add a function to check for new emails periodically
+// Replace the setupEmailPolling function with this improved version
 function setupEmailPolling(app) {
   const pollInterval = process.env.EMAIL_POLL_INTERVAL || 60000; // Default to 1 minute
   
@@ -266,20 +248,29 @@ function setupEmailPolling(app) {
     const io = app.get('io');
     const imap = new Imap(imapConfig);
     
+    // Handle connection errors properly
+    imap.once('error', (err) => {
+      console.error('IMAP error during polling:', err);
+    });
+    
+    imap.once('end', () => {
+      console.log('IMAP connection ended');
+    });
+    
     imap.once('ready', () => {
       imap.openBox('INBOX', false, (err, box) => {
         if (err) {
           console.error('Error opening inbox during polling:', err);
+          imap.end();
           return;
         }
         
-        // Search for unread emails from the last poll interval
-        const since = new Date();
-        since.setTime(since.getTime() - pollInterval);
-        
-        imap.search(['UNSEEN', ['SINCE', since]], (err, results) => {
+        // Use a more relaxed search criteria - just look for unread messages
+        // Remove the time constraint which might be causing issues
+        imap.search(['UNSEEN'], (err, results) => {
           if (err) {
             console.error('Error searching emails during polling:', err);
+            imap.end();
             return;
           }
           
@@ -291,7 +282,7 @@ function setupEmailPolling(app) {
           
           console.log(`Found ${results.length} new emails during polling`);
           
-          const fetch = imap.fetch(results, { bodies: '' });
+          const fetch = imap.fetch(results, { bodies: '', markSeen: true });
           
           fetch.on('message', (msg) => {
             msg.on('body', (stream) => {
@@ -302,9 +293,15 @@ function setupEmailPolling(app) {
                 }
                 
                 try {
+                  console.log('Received email:', {
+                    from: parsed.from?.text,
+                    subject: parsed.subject,
+                    date: parsed.date
+                  });
+                  
                   // Check if email already exists in database
                   const existingEmail = await Email.findOne({
-                    from: parsed.from.text,
+                    from: parsed.from?.text,
                     subject: parsed.subject,
                     date: parsed.date
                   });
@@ -312,16 +309,17 @@ function setupEmailPolling(app) {
                   if (!existingEmail) {
                     // Save email to database
                     const newEmail = new Email({
-                      from: parsed.from.text,
-                      to: parsed.to.text,
-                      subject: parsed.subject,
+                      from: parsed.from?.text || 'Unknown Sender',
+                      to: parsed.to?.text || process.env.GMAIL_USER,
+                      subject: parsed.subject || '(No Subject)',
                       text: parsed.text || '',
                       html: parsed.html || '',
                       status: 'received',
-                      date: parsed.date
+                      date: parsed.date || new Date()
                     });
                     
                     const savedEmail = await newEmail.save();
+                    console.log('Saved new email to database:', savedEmail._id);
                     
                     // Emit socket event for real-time updates
                     if (io) {
@@ -335,12 +333,19 @@ function setupEmailPolling(app) {
                         date: savedEmail.date
                       });
                     }
+                  } else {
+                    console.log('Email already exists in database, skipping');
                   }
                 } catch (error) {
                   console.error('Error saving email to database during polling:', error);
                 }
               });
             });
+          });
+          
+          fetch.once('error', (err) => {
+            console.error('Fetch error during polling:', err);
+            imap.end();
           });
           
           fetch.once('end', () => {
@@ -351,11 +356,12 @@ function setupEmailPolling(app) {
       });
     });
     
-    imap.once('error', (err) => {
-      console.error('IMAP error during polling:', err);
-    });
-    
-    imap.connect();
+    // Connect to the IMAP server
+    try {
+      imap.connect();
+    } catch (error) {
+      console.error('Failed to connect to IMAP server:', error);
+    }
   }, pollInterval);
 }
 
