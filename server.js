@@ -7,6 +7,9 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const app = express();
+const adminRoutes = require('./routes/admin');
+
+
 
 dotenv.config();
 app.use(express.json());
@@ -44,6 +47,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/facebook', facebookRoutes);
 app.use('/whatsapp', whatsappRoutes);
 app.use('/email', emailRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check or root route
 app.get('/', (req, res) => {
