@@ -6,9 +6,11 @@ const dotenv = require('dotenv');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+app.use(express.json());
 
 dotenv.config();
 
+app.use(express.urlencoded({ extended: true }));
 const authRoutes = require('./routes/auth');
 const messageRoutes = require('./routes/message');
 const facebookRoutes = require('./routes/facebook');
