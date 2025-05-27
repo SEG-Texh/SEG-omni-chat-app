@@ -8,7 +8,7 @@ const Email = require('../models/Email');
 require('dotenv').config();
 
 // Create the nodemailer transporter using Gmail app password
-const transporter = nodemailer.createTransporter({
+const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.GMAIL_USER,
