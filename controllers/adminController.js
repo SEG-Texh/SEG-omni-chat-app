@@ -13,3 +13,6 @@ exports.getStats = (req, res) => {
 exports.createUser = (req, res) => {
   res.json({ message: 'User created' });
 };
+exports.getRecentActivity = (req, res) => {
+  res.json({ message: 'Recent activity data' });
+};
