@@ -22,7 +22,7 @@ router.post('/', authMiddleware, async (req, res) => {
 });
 
 // Get all unclaimed messages (for agents)
-router.get('/', authMiddleware, async (req, res) => {
+router.get('/conversations', authMiddleware, async (req, res) => {
   try {
     const messages = await Message.find({ claimedBy: null });
     res.json(messages);
