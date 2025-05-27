@@ -6,10 +6,10 @@ const dotenv = require('dotenv');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
-app.use(express.json());
+const app = express();
 
 dotenv.config();
-
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 const authRoutes = require('./routes/auth');
 const messageRoutes = require('./routes/message');
@@ -17,7 +17,7 @@ const facebookRoutes = require('./routes/facebook');
 const whatsappRoutes = require('./routes/whatsapp');
 const { router: emailRoutes, setupEmailPolling } = require('./routes/email');
 
-const app = express();
+
 const server = http.createServer(app);
 
 // Socket.IO setup
