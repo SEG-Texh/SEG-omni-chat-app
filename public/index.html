@@ -4,8 +4,364 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Omni Chat - Multi-Channel Support</title>
-    <link rel="stylesheet" href="styles/main.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.error {
+            background: #ef4444;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #1f2937;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+
+        .header p {
+            color: #6b7280;
+            font-size: 1.1rem;
+        }
+
+        .user-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Login */
+        .login-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .logout-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        /* Navigation */
+        .nav-tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-tab {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #6b7280;
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        /* Content */
+        .content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            min-height: 600px;
+        }
+
+        .content:not(.active) {
+            display: none;
+        }
+
+        /* Chat Layout */
+        .chat-layout {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+            height: 600px;
+        }
+
+        .conversation-list {
+            border-right: 2px solid #e5e7eb;
+            padding-right: 20px;
+        }
+
+        .conversation-item {
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .conversation-item:hover {
+            background: #f3f4f6;
+        }
+
+        .conversation-item.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .conversation-source {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .chat-area {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 15px;
+            border-bottom: 2px solid #e5e7eb;
+            margin-bottom: 15px;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            max-height: 400px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+
+        .message.customer {
+            background: #e5e7eb;
+            color: #1f2937;
+            margin-right: auto;
+        }
+
+        .message.agent {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-left: auto;
+        }
+
+        .message-info {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .chat-input {
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            border-top: 2px solid #e5e7eb;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .send-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .claim-btn {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-left: 15px;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #6b7280;
+            padding: 40px;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 10px;
+            color: #374151;
+        }
+
+        /* Admin Panel */
+        .user-list {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .delete-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .chat-layout {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+            
+            .conversation-list {
+                border-right: none;
+                border-bottom: 2px solid #e5e7eb;
+                padding-right: 0;
+                padding-bottom: 20px;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- Notification -->
@@ -35,10 +391,12 @@
     <!-- Main Application -->
     <div id="mainApp" class="container hidden">
         <div class="header">
-            <h1>🎯 Omni Chat Dashboard</h1>
             <div class="user-info">
-                <span id="currentUser">Loading...</span>
-                <button class="logout-btn" onclick="logout()">Logout</button>
+                <h1>🎯 Omni Chat Dashboard</h1>
+                <div>
+                    <span id="currentUser">Loading...</span>
+                    <button class="logout-btn" onclick="logout()">Logout</button>
+                </div>
             </div>
         </div>
 
@@ -53,6 +411,7 @@
             <div class="chat-layout">
                 <div class="conversation-list">
                     <h3 style="margin-bottom: 1rem; color: #374151;">Conversations</h3>
+                    <button class="btn" onclick="loadConversations()" style="width: 100%; margin-bottom: 15px;">🔄 Refresh</button>
                     <div id="conversationsList">
                         <div class="empty-state">
                             <p>No conversations yet</p>
@@ -118,6 +477,7 @@
             <!-- Users List -->
             <div class="user-list">
                 <h3 style="margin-bottom: 1rem; color: #374151;">Current Users</h3>
+                <button class="btn" onclick="loadUsers()" style="margin-bottom: 15px;">🔄 Refresh Users</button>
                 <div id="usersList">
                     <!-- Users will be populated here -->
                 </div>
@@ -125,13 +485,533 @@
         </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="js/config.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/socket.js"></script>
-    <script src="js/chat.js"></script>
-    <script src="js/admin.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/app.js"></script>
+    <script>
+        // Global variables
+        let socket;
+        let currentUser = null;
+        let currentConversationId = null;
+        let conversations = [];
+        const API_BASE = window.location.origin + '/api';
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Omni Chat Frontend Initialized');
+            
+            // Check if user is already logged in
+            const token = localStorage.getItem('token');
+            const userData = localStorage.getItem('userData');
+            
+            if (token && userData) {
+                currentUser = JSON.parse(userData);
+                showMainApp();
+                initializeSocket();
+                loadConversations();
+            }
+
+            // Setup form handlers
+            setupEventHandlers();
+        });
+
+        // Setup event handlers
+        function setupEventHandlers() {
+            // Login form
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            
+            // Add user form
+            document.getElementById('addUserForm').addEventListener('submit', handleAddUser);
+            
+            // Message input enter key
+            document.getElementById('messageInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+        }
+
+        // Authentication functions
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Store authentication data
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('userData', JSON.stringify(data.user));
+                    currentUser = data.user;
+
+                    showNotification('Login successful!', 'success');
+                    showMainApp();
+                    initializeSocket();
+                    loadConversations();
+                } else {
+                    showNotification(data.message || 'Login failed', 'error');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showNotification('Network error. Please try again.', 'error');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('userData');
+            currentUser = null;
+            currentConversationId = null;
+            
+            if (socket) {
+                socket.disconnect();
+            }
+            
+            showLoginScreen();
+            showNotification('Logged out successfully', 'success');
+        }
+
+        // Socket.IO functions
+        function initializeSocket() {
+            socket = io();
+            
+            socket.on('connect', () => {
+                console.log('🔌 Connected to server');
+                socket.emit('user_connected', currentUser);
+            });
+
+            socket.on('disconnect', () => {
+                console.log('❌ Disconnected from server');
+            });
+
+            socket.on('new_message', (data) => {
+                console.log('📨 New message received:', data);
+                handleNewMessage(data);
+            });
+
+            socket.on('conversation_updated', (data) => {
+                console.log('🔄 Conversation updated:', data);
+                loadConversations();
+            });
+        }
+
+        // Message handling
+        function handleNewMessage(messageData) {
+            // Update conversations list
+            loadConversations();
+            
+            // If this message is for the currently active conversation, display it
+            if (currentConversationId && messageData.conversationId === currentConversationId) {
+                displayMessage(messageData);
+            }
+            
+            // Show notification if it's from a customer
+            if (messageData.sender === 'customer') {
+                showNotification(`New message from ${messageData.customerName || 'Customer'}`, 'info');
+            }
+        }
+
+        // Conversation functions
+        async function loadConversations() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_BASE}/messages/conversations`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    conversations = await response.json();
+                    displayConversations();
+                } else {
+                    console.error('Failed to load conversations');
+                }
+            } catch (error) {
+                console.error('Error loading conversations:', error);
+            }
+        }
+
+        function displayConversations() {
+            const container = document.getElementById('conversationsList');
+            
+            if (conversations.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>No conversations yet</p></div>';
+                return;
+            }
+
+            container.innerHTML = conversations.map(conv => `
+                <div class="conversation-item ${currentConversationId === conv._id ? 'active' : ''}" 
+                     onclick="selectConversation('${conv._id}')">
+                    <div>
+                        <strong>${conv.customerName || 'Unknown Customer'}</strong>
+                        <span class="conversation-source">${conv.source}</span>
+                    </div>
+                    <div style="font-size: 12px; color: #6b7280; margin-top: 5px;">
+                        ${conv.lastMessage ? conv.lastMessage.substring(0, 50) + '...' : 'No messages'}
+                    </div>
+                    <div style="font-size: 11px; color: #9ca3af; margin-top: 3px;">
+                        ${conv.assignedAgent ? 'Assigned to: ' + conv.assignedAgent.name : 'Unassigned'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function selectConversation(conversationId) {
+            currentConversationId = conversationId;
+            const conversation = conversations.find(c => c._id === conversationId);
+            
+            if (!conversation) return;
+
+            // Update UI
+            document.getElementById('chatPlaceholder').classList.add('hidden');
+            document.getElementById('activeChatArea').classList.remove('hidden');
+            
+            // Update header info
+            document.getElementById('customerName').textContent = conversation.customerName || 'Unknown Customer';
+            document.getElementById('conversationSource').textContent = conversation.source;
+            
+            // Show/hide claim button
+            const claimButton = document.getElementById('claimButton');
+            if (!conversation.assignedAgent && currentUser.role === 'agent') {
+                claimButton.classList.remove('hidden');
+                claimButton.onclick = () => claimConversation(conversationId);
+            } else {
+                claimButton.classList.add('hidden');
+            }
+            
+            // Enable/disable input based on assignment
+            const canSendMessages = conversation.assignedAgent?.id === currentUser.id || currentUser.role === 'admin';
+            document.getElementById('messageInput').disabled = !canSendMessages;
+            document.getElementById('sendButton').disabled = !canSendMessages;
+            
+            // Load messages
+            await loadMessages(conversationId);
+            
+            // Update conversation list display
+            displayConversations();
+        }
+
+        async function loadMessages(conversationId) {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_BASE}/messages/conversation/${conversationId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const messages = await response.json();
+                    displayMessages(messages);
+                } else {
+                    console.error('Failed to load messages');
+                }
+            } catch (error) {
+                console.error('Error loading messages:', error);
+            }
+        }
+
+        function displayMessages(messages) {
+            const container = document.getElementById('messagesContainer');
+            container.innerHTML = messages.map(msg => `
+                <div class="message ${msg.sender}">
+                    <div>${msg.content}</div>
+                    <div class="message-info">
+                        ${msg.sender === 'agent' ? (msg.agentName || 'Agent') : 'Customer'} • 
+                        ${new Date(msg.timestamp).toLocaleString()}
+                    </div>
+                </div>
+            `).join('');
+            
+            // Scroll to bottom
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function displayMessage(messageData) {
+            const container = document.getElementById('messagesContainer');
+            const messageHtml = `
+                <div class="message ${messageData.sender}">
+                    <div>${messageData.content}</div>
+                    <div class="message-info">
+                        ${messageData.sender === 'agent' ? (messageData.agentName || 'Agent') : 'Customer'} • 
+                        ${new Date(messageData.timestamp).toLocaleString()}
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', messageHtml);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const content = input.value.trim();
+            
+            if (!content || !currentConversationId) return;
+
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_BASE}/messages/send`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        conversationId: currentConversationId,
+                        content: content,
+                        sender: 'agent'
+                    })
+                });
+
+                if (response.ok) {
+                    input.value = '';
+                    // Message will be displayed via socket event
+                } else {
+                    showNotification('Failed to send message', 'error');
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+                showNotification('Network error. Please try again.', 'error');
+            }
+        }
+
+        async function claimConversation(conversationId) {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_BASE}/messages/claim/${conversationId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    showNotification('Conversation claimed successfully!', 'success');
+                    loadConversations();
+                    selectConversation(conversationId);
+                } else {
+                    showNotification('Failed to claim conversation', 'error');
+                }
+            } catch (error) {
+                console.error('Error claiming conversation:', error);
+                showNotification('Network error. Please try again.', 'error');
+            }
+        }
+
+        // Admin functions
+        async function handleAddUser(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const userData = {
+                name: formData.get('name'),
+                email: formData.get('email'),
+                role: formData.get('role')
+            };
+
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(userData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showNotification('User added successfully!', 'success');
+                    e.target.reset();
+                    loadUsers();
+                } else {
+                    showNotification(data.message || 'Failed to add user', 'error');
+                }
+            } catch (error) {
+                console.error('Error adding user:', error);
+                showNotification('Network error. Please try again.', 'error');
+            }
+        }
+
+        async function loadUsers() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_BASE}/auth/users`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const users = await response.json();
+                    displayUsers(users);
+                } else {
+                    console.error('Failed to load users');
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        function displayUsers(users) {
+            const container = document.getElementById('usersList');
+            
+            if (users.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>No users found</p></div>';
+                return;
+            }
+
+            container.innerHTML = users.map(user => `
+                <div class="user-item">
+                    <div>
+                        <strong>${user.name}</strong>
+                        <div style="font-size: 14px; color: #6b7280;">${user.email}</div>
+                        <div style="font-size: 12px; color: #9ca3af;">Role: ${user.role}</div>
+                    </div>
+                    ${currentUser.role === 'admin' && user._id !== currentUser.id ? 
+                        `<button class="delete-btn" onclick="deleteUser('${user._id}')">Delete</button>` : 
+                        ''
+                    }
+                </div>
+            `).join('');
+        }
+
+        async function deleteUser(userId) {
+            if (!confirm('Are you sure you want to delete this user?')) return;
+
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_BASE}/auth/users/${userId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    showNotification('User deleted successfully!', 'success');
+                    loadUsers();
+                } else {
+                    showNotification('Failed to delete user', 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                showNotification('Network error. Please try again.', 'error');
+            }
+        }
+
+        // UI functions
+        function showTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Update content
+            document.querySelectorAll('.content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName + 'Content').classList.add('active');
+
+            // Load data based on tab
+            if (tabName === 'admin' && currentUser.role === 'admin') {
+                loadUsers();
+            } else if (tabName === 'chat') {
+                loadConversations();
+            }
+        }
+
+        function showMainApp() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            document.getElementById('currentUser').textContent = currentUser.name;
+            
+            // Show/hide admin tab based on role
+            const adminTab = document.getElementById('adminTab');
+            if (currentUser.role === 'admin') {
+                adminTab.classList.remove('hidden');
+            } else {
+                adminTab.classList.add('hidden');
+            }
+        }
+
+        function showLoginScreen() {
+            document.getElementById('mainApp').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            
+            // Reset forms
+            document.getElementById('loginForm').reset();
+            
+            // Reset chat area
+            document.getElementById('chatPlaceholder').classList.remove('hidden');
+            document.getElementById('activeChatArea').classList.add('hidden');
+            document.getElementById('conversationsList').innerHTML = '<div class="empty-state"><p>No conversations yet</p></div>';
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Utility functions
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString();
+        }
+
+        function truncateText(text, maxLength = 50) {
+            return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+        }
+
+        // Auto-refresh conversations every 30 seconds
+        setInterval(() => {
+            if (currentUser && document.getElementById('mainApp').style.display !== 'none') {
+                loadConversations();
+            }
+        }, 30000);
+
+        // Handle browser refresh - maintain login state
+        window.addEventListener('beforeunload', function() {
+            // Save current state if needed
+        });
+
+        // Error handling for fetch requests
+        function handleFetchError(error, customMessage = 'An error occurred') {
+            console.error('Fetch error:', error);
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                showNotification('Network error. Please check your connection.', 'error');
+            } else {
+                showNotification(customMessage, 'error');
+            }
+        }
+
+        // Export functions for global access (if needed)
+        window.OmniChat = {
+            loadConversations,
+            sendMessage,
+            logout,
+            showTab,
+            claimConversation,
+            loadUsers,
+            deleteUser
+        };
+    </script>
 </body>
 </html>
