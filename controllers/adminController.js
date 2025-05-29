@@ -1,5 +1,5 @@
 // controllers/adminController.js
-const adminService = require('./adminService');
+const adminService = require('..controllers/adminService');
 
 // Get all users
 const getAllUsers = async (req, res) => {
