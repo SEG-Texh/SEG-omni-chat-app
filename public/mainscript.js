@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
             case 'support':
             case 'user':
             default:
-                window.location.href = '/user.html'; // Regular user dashboard
+                window.location.href = '/dashboard.html'; // Regular user dashboard
                 break;
         }
     }
