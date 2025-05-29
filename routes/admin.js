@@ -1,7 +1,10 @@
-// routes/admin.js
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
+const authenticateAdmin = require('../middleware/authenticateAdmin');
+
+// Protect all admin routes
+router.use(authenticateAdmin);
 
 // Get routes
 router.get('/users', adminController.getAllUsers);
