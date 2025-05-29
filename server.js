@@ -39,7 +39,8 @@ app.use(express.json()); // Parse JSON bodies
 app.use(cors()); // Enable CORS
 
 // Serve static frontend files from /public
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static('public'));
+
 
 // API Routes
 app.use('/api/auth', authRoutes);
