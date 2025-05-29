@@ -165,7 +165,7 @@
                 showNotification('Logging out...');
                 setTimeout(() => {
                     // In real app, this would clear session and redirect to login
-                    window.location.href = '/';
+                    window.location.href = 'index.html';
                 }, 1000);
             }
         }
