@@ -1,265 +1,129 @@
-// routes/email.js
+
+// services/emailService.js - Email integration using Nodemailer
+const nodemailer = require('nodemailer');
+const { simpleParser } = require('mailparser');
 const express = require('express');
 const router = express.Router();
-const nodemailer = require('nodemailer');
-const Imap = require('imap');
-const { simpleParser } = require('mailparser');
-const Email = require('../models/Email');
-require('dotenv').config();
+const { io } = require('../server');
 
-// Create the nodemailer transporter using Gmail app password
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD // Use app password instead of regular password
-  }
-});
-
-// Send email route
-router.post('/send', async (req, res) => {
-  const { to, subject, text, html, userId } = req.body;
-  const io = req.app.get('io');
-
-  if (!to || !subject || !(text || html)) {
-    return res.status(400).json({ error: 'To, subject, and either text or html are required' });
-  }
-
-  const mailOptions = {
-    from: process.env.GMAIL_USER,
-    to,
-    subject,
-    text,
-    html
-  };
-
-  try {
-    console.log('Sending email with:', mailOptions);
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent:', info.response);
-
-    // Save email to database
-    const newEmail = new Email({
-      from: process.env.GMAIL_USER,
-      to,
-      subject,
-      text: text || '',
-      html: html || '',
-      status: 'sent',
-      userId: userId || null // Make userId optional
-    });
-
-    const savedEmail = await newEmail.save();
-    console.log('Email saved to database:', savedEmail._id);
-
-    // Emit socket event
-    if (io) {
-      io.emit('new_email_sent', {
-        id: savedEmail._id,
-        from: savedEmail.from,
-        to: savedEmail.to,
-        subject: savedEmail.subject,
-        text: savedEmail.text,
-        status: savedEmail.status,
-        date: savedEmail.date
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Email sent and saved!',
-      messageId: info.messageId,
-      email: {
-        id: savedEmail._id,
-        from: savedEmail.from,
-        to: savedEmail.to,
-        subject: savedEmail.subject,
-        status: savedEmail.status,
-        date: savedEmail.date
+class EmailService {
+  constructor() {
+    this.transporter = nodemailer.createTransporter({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: process.env.SMTP_PORT || 587,
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
       }
     });
-  } catch (error) {
-    console.error('Error sending email:', error);
-    res.status(500).json({ success: false, error: error.message });
   }
-});
 
-// Get all emails route
-router.get('/', async (req, res) => {
-  try {
-    const emails = await Email.find().sort({ date: -1 });
-    res.status(200).json(emails);
-  } catch (error) {
-    console.error('Error fetching emails:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get email by ID route
-router.get('/:id', async (req, res) => {
-  try {
-    const email = await Email.findById(req.params.id);
-    if (!email) {
-      return res.status(404).json({ error: 'Email not found' });
-    }
-    res.status(200).json(email);
-  } catch (error) {
-    console.error('Error fetching email:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Setup email polling function with improved error handling
-const setupEmailPolling = (app) => {
-  // Configure Email polling with IMAP using Gmail app password
-  const imapConfig = {
-    user: process.env.GMAIL_USER,
-    password: process.env.GMAIL_APP_PASSWORD,
-    host: 'imap.gmail.com',
-    port: 993,
-    tls: true,
-    authTimeout: 10000, // Increase auth timeout
-    tlsOptions: {
-      rejectUnauthorized: false,
-      servername: 'imap.gmail.com' // Explicitly set server name
-    }
-  };
-
-  // Function to check emails with better error handling
-  const checkEmails = () => {
+  async sendEmail(to, subject, text, html = null) {
     try {
-      const imap = new Imap(imapConfig);
+      const mailOptions = {
+        from: process.env.SMTP_FROM || process.env.SMTP_USER,
+        to: to,
+        subject: subject,
+        text: text,
+        html: html || text
+      };
 
-      imap.once('ready', () => {
-        try {
-          imap.openBox('INBOX', false, (err, box) => {
-            if (err) {
-              console.error('Error opening inbox:', err);
-              imap.end();
-              return;
-            }
-
-            // Get emails from the last day
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-
-            imap.search(['UNSEEN', ['SINCE', yesterday]], (err, results) => {
-              if (err) {
-                console.error('Error searching emails:', err);
-                imap.end();
-                return;
-              }
-
-              if (results.length === 0) {
-                console.log('No new emails');
-                imap.end();
-                return;
-              }
-
-              const fetch = imap.fetch(results, { bodies: '' });
-
-              fetch.on('message', (msg) => {
-                msg.on('body', (stream) => {
-                  simpleParser(stream, async (err, parsed) => {
-                    if (err) {
-                      console.error('Error parsing email:', err);
-                      return;
-                    }
-
-                    try {
-                      // Handle missing or undefined fields with fallbacks
-                      const fromText = parsed.from?.text || parsed.from?.value?.[0]?.address || 'Unknown Sender';
-                      const toText = parsed.to?.text || parsed.to?.value?.[0]?.address || process.env.GMAIL_USER;
-                      const subjectText = parsed.subject || '(No Subject)'; // Fallback for missing subject
-                      const emailDate = parsed.date || new Date();
-
-                      // Check if email already exists
-                      const existingEmail = await Email.findOne({
-                        from: fromText,
-                        subject: subjectText,
-                        date: emailDate
-                      });
-
-                      if (!existingEmail) {
-                        const newEmail = new Email({
-                          from: fromText,
-                          to: toText,
-                          subject: subjectText, // Now guaranteed to have a value
-                          text: parsed.text || '',
-                          html: parsed.html || '',
-                          status: 'received',
-                          date: emailDate
-                        });
-
-                        const savedEmail = await newEmail.save();
-                        console.log('Received email saved:', savedEmail._id);
-
-                        // Emit socket event
-                        const io = app.get('io');
-                        if (io) {
-                          io.emit('new_email_received', {
-                            id: savedEmail._id,
-                            from: savedEmail.from,
-                            to: savedEmail.to,
-                            subject: savedEmail.subject,
-                            text: savedEmail.text,
-                            status: savedEmail.status,
-                            date: savedEmail.date
-                          });
-                        }
-                      }
-                    } catch (error) {
-                      console.error('Error saving received email:', error);
-                      console.error('Parsed email data:', {
-                        from: parsed.from,
-                        to: parsed.to,
-                        subject: parsed.subject,
-                        date: parsed.date
-                      });
-                    }
-                  });
-                });
-              });
-
-              fetch.once('end', () => {
-                console.log('Done fetching all messages');
-                imap.end();
-              });
-            });
-          });
-        } catch (boxError) {
-          console.error('Error in IMAP ready handler:', boxError);
-          imap.end();
-        }
-      });
-
-      imap.once('error', (err) => {
-        console.error('IMAP error:', err);
-        // Don't immediately try to reconnect if there's an auth error
-        if (err.source !== 'authentication') {
-          console.log('Will try again in next polling interval');
-        } else {
-          console.log('Authentication error - please check your credentials');
-        }
-      });
-
-      imap.once('end', () => {
-        console.log('IMAP connection ended');
-      });
-
-      imap.connect();
+      const result = await this.transporter.sendMail(mailOptions);
+      return result;
     } catch (error) {
-      console.error('Error creating IMAP connection:', error);
+      console.error('Email send error:', error);
+      throw new Error('Failed to send email');
     }
-  };
+  }
 
-  // Initial check
-  checkEmails();
+  async parseIncomingEmail(emailData) {
+    try {
+      const parsed = await simpleParser(emailData);
+      return {
+        from: parsed.from.text,
+        subject: parsed.subject,
+        text: parsed.text,
+        html: parsed.html,
+        date: parsed.date
+      };
+    } catch (error) {
+      console.error('Email parse error:', error);
+      throw new Error('Failed to parse email');
+    }
+  }
+}
 
-  // Set up polling every 5 minutes
-  const pollingInterval = 5 * 60 * 1000; // 5 minutes
-  setInterval(checkEmails, pollingInterval);
-  console.log(`Email polling set up. Checking for new emails every ${pollingInterval/60000} minutes`);
+const emailService = new EmailService();
+
+// Webhook for receiving emails (configure with your email provider)
+router.post('/', async (req, res) => {
+  try {
+    // This would be configured based on your email service provider
+    // Examples: SendGrid, Mailgun, etc.
+    const emailData = req.body;
+    
+    // Parse the incoming email
+    const parsed = await emailService.parseIncomingEmail(emailData.raw || emailData);
+    
+    // Create or find conversation
+    const Conversation = require('../models/conversation');
+    let conversation = await Conversation.findOne({
+      'contact.identifier': parsed.from,
+      'contact.platform': 'email'
+    });
+
+    if (!conversation) {
+      conversation = new Conversation({
+        contact: {
+          name: parsed.from,
+          identifier: parsed.from,
+          platform: 'email'
+        },
+        lastMessage: {
+          content: parsed.subject,
+          timestamp: parsed.date,
+          sender: parsed.from
+        }
+      });
+      await conversation.save();
+    } else {
+      conversation.lastMessage = {
+        content: parsed.subject,
+        timestamp: parsed.date,
+        sender: parsed.from
+      };
+      conversation.unreadCount += 1;
+      await conversation.save();
+    }
+
+    // Save message
+    const Message = require('../models/Message');
+    const newMessage = new Message({
+      conversationId: conversation._id,
+      sender: parsed.from,
+      content: parsed.text || parsed.html,
+      platform: 'email',
+      isOwn: false,
+      timestamp: parsed.date
+    });
+    await newMessage.save();
+
+    // Emit to all connected clients
+    io.emit('new_message', {
+      conversationId: conversation._id,
+      message: newMessage
+    });
+
+    res.status(200).send('OK');
+  } catch (error) {
+    console.error('Email webhook error:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+module.exports = {
+  sendEmail: emailService.sendEmail.bind(emailService),
+  parseIncomingEmail: emailService.parseIncomingEmail.bind(emailService),
+  webhook: router
 };
-
-module.exports = { router, setupEmailPolling };

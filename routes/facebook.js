@@ -1,109 +1,149 @@
+
+// services/facebookService.js - Facebook Messenger API integration
+const axios = require('axios');
 const express = require('express');
 const router = express.Router();
-const bodyParser = require('body-parser');
-const axios = require('axios');
-require('dotenv').config();
-const { saveFacebookMessage } = require('../controllers/messageController');
+const { io } = require('../server');
 
-// Environment variables
-const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
-const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
+class FacebookService {
+  constructor() {
+    this.accessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+    this.appSecret = process.env.FACEBOOK_APP_SECRET;
+    this.verifyToken = process.env.FACEBOOK_WEBHOOK_VERIFY_TOKEN;
+    this.apiUrl = 'https://graph.facebook.com/v18.0/me/messages';
+  }
 
-router.use(bodyParser.json());
+  async sendMessage(recipientId, message) {
+    try {
+      const response = await axios.post(this.apiUrl, {
+        recipient: { id: recipientId },
+        message: { text: message }
+      }, {
+        headers: {
+          'Authorization': `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-// Facebook Webhook Verification (GET route)
-router.get('/webhook', (req, res) => {
+      return response.data;
+    } catch (error) {
+      console.error('Facebook send error:', error.response?.data || error.message);
+      throw new Error('Failed to send Facebook message');
+    }
+  }
+
+  async getUserProfile(userId) {
+    try {
+      const response = await axios.get(`https://graph.facebook.com/v18.0/${userId}`, {
+        params: {
+          fields: 'first_name,last_name,profile_pic',
+          access_token: this.accessToken
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Facebook profile error:', error);
+      return null;
+    }
+  }
+}
+
+const facebookService = new FacebookService();
+
+// Webhook verification
+router.get('/', (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
 
-  if (mode && token) {
-    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-      console.log('✅ Webhook verified');
-      return res.status(200).send(challenge);
-    }
-    return res.sendStatus(403);
+  if (mode === 'subscribe' && token === facebookService.verifyToken) {
+    console.log('Facebook webhook verified');
+    res.status(200).send(challenge);
+  } else {
+    res.status(403).send('Forbidden');
   }
-  return res.sendStatus(400);
 });
 
-// Handle incoming Facebook messages
-router.post('/webhook', async (req, res) => {
-  console.log('Incoming Facebook Webhook:', JSON.stringify(req.body, null, 2));
-  
-  if (req.body.object !== 'page') {
-    console.error('Invalid webhook object');
-    return res.sendStatus(404);
-  }
-  
+// Webhook for receiving messages
+router.post('/', async (req, res) => {
   try {
-    for (const entry of req.body.entry) {
-      if (!entry.messaging || !Array.isArray(entry.messaging)) {
-        console.log('Entry has no messaging array');
-        continue;
-      }
-      
-      for (const event of entry.messaging) {
-        try {
-          // Process only if there's a message with text
-          if (event.message && event.message.text) {
-            const savedMessage = await saveFacebookMessage(event);
-            
-            if (savedMessage) {
-              // Send a response back to user
-              await sendTextMessage(
-                savedMessage.sender, 
-                `Thanks for your message: "${savedMessage.content}"`
-              );
-              
-              // Notify connected clients via Socket.IO
-              const io = req.app.get('io');
-              if (io) {
-                io.emit('new_message', {
-                  platform: 'facebook',
-                  message: savedMessage
-                });
-              }
+    const body = req.body;
+
+    if (body.object === 'page') {
+      body.entry?.forEach(entry => {
+        entry.messaging?.forEach(async (event) => {
+          if (event.message && !event.message.is_echo) {
+            const senderId = event.sender.id;
+            const messageText = event.message.text;
+
+            // Get user profile
+            const userProfile = await facebookService.getUserProfile(senderId);
+            const userName = userProfile ? 
+              `${userProfile.first_name} ${userProfile.last_name}` : 
+              senderId;
+
+            // Create or find conversation
+            const Conversation = require('../models/conversation');
+            let conversation = await Conversation.findOne({
+              'contact.identifier': senderId,
+              'contact.platform': 'facebook'
+            });
+
+            if (!conversation) {
+              conversation = new Conversation({
+                contact: {
+                  name: userName,
+                  identifier: senderId,
+                  platform: 'facebook'
+                },
+                lastMessage: {
+                  content: messageText,
+                  timestamp: new Date(event.timestamp),
+                  sender: userName
+                }
+              });
+              await conversation.save();
+            } else {
+              conversation.lastMessage = {
+                content: messageText,
+                timestamp: new Date(event.timestamp),
+                sender: userName
+              };
+              conversation.unreadCount += 1;
+              await conversation.save();
             }
+
+            // Save message
+            const Message = require('../models/Message');
+            const newMessage = new Message({
+              conversationId: conversation._id,
+              sender: userName,
+              content: messageText,
+              platform: 'facebook',
+              isOwn: false,
+              timestamp: new Date(event.timestamp)
+            });
+            await newMessage.save();
+
+            // Emit to all connected clients
+            io.emit('new_message', {
+              conversationId: conversation._id,
+              message: newMessage
+            });
           }
-        } catch (error) {
-          console.error('Error processing message:', error.message);
-        }
-      }
+        });
+      });
     }
-    
-    // Always return a 200 OK to Facebook quickly
-    return res.status(200).send('EVENT_RECEIVED');
-  } catch (err) {
-    console.error('Webhook processing error:', err);
-    return res.sendStatus(500);
+
+    res.status(200).send('OK');
+  } catch (error) {
+    console.error('Facebook webhook error:', error);
+    res.status(500).send('Internal Server Error');
   }
 });
 
-/**
- * Send text message to Facebook user
- * @param {String} recipientId - Facebook user ID
- * @param {String} text - Message content
- */
-async function sendTextMessage(recipientId, text) {
-  try {
-    const response = await axios.post(
-      'https://graph.facebook.com/v17.0/me/messages',
-      {
-        recipient: { id: recipientId },
-        message: { text }
-      },
-      {
-        params: { access_token: PAGE_ACCESS_TOKEN }
-      }
-    );
-    
-    console.log('✅ Message sent:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('❌ Error sending message:', error.response?.data || error.message);
-    throw error;
-  }
-}
-
-module.exports = router;
+module.exports = {
+  sendMessage: facebookService.sendMessage.bind(facebookService),
+  getUserProfile: facebookService.getUserProfile.bind(facebookService),
+  webhook: router
+};

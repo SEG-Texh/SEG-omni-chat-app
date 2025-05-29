@@ -1,85 +1,108 @@
-// server.js
+// server.js - Main server file
 const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const dotenv = require('dotenv');
 const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
+const socketIo = require('socket.io');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
+require('dotenv').config();
+
+// Import routes and services
+const whatsappService = require('./services/whatsappService');
+const facebookService = require('./services/facebookService');
+const emailService = require('./services/emailService');
+const conversationRoutes = require('./routes/conversations');
+const messageRoutes = require('./routes/messages');
+const userRoutes = require('./routes/users');
+
+// Initialize Express app
 const app = express();
-const adminRoutes = require('./routes/admin');
-
-
-
-dotenv.config();
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-const authRoutes = require('./routes/auth');
-const messageRoutes = require('./routes/message');
-const facebookRoutes = require('./routes/facebook');
-const whatsappRoutes = require('./routes/whatsapp');
-const { router: emailRoutes, setupEmailPolling } = require('./routes/email');
-
-
 const server = http.createServer(app);
-
-// Socket.IO setup
-const io = new Server(server, {
+const io = socketIo(server, {
   cors: {
-    origin: '*', // In production, use your frontend URL here
-    methods: ['GET', 'POST'],
-  },
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    methods: ["GET", "POST"]
+  }
 });
-
-// Attach io instance to the app for controller access
-app.set('io', io);
 
 // Middleware
-app.use(express.json()); // Parse JSON bodies
-app.use(cors()); // Enable CORS
+app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
-// Serve static frontend files from /public
-app.use(express.static('public'));
-
-
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/messages', messageRoutes);
-app.use('/facebook', facebookRoutes);
-app.use('/whatsapp', whatsappRoutes);
-app.use('/email', emailRoutes);
-app.use('/api/admin', adminRoutes);
-
-// Health check or root route
-app.get('/', (req, res) => {
-  res.send('🎉 Omni Chat Server is Live');
+// MongoDB connection
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/omnichat', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
 });
 
-// Socket.IO events
+// Socket.IO connection handling
 io.on('connection', (socket) => {
-  console.log(`🔌 User connected: ${socket.id}`);
+  console.log('User connected:', socket.id);
   
-  socket.on('disconnect', () => {
-    console.log(`❌ User disconnected: ${socket.id}`);
+  socket.on('join_room', (conversationId) => {
+    socket.join(conversationId);
   });
-  
-  // You can add more socket event handlers here
+
+  socket.on('send_message', async (data) => {
+    try {
+      const { conversationId, message, platform, recipient } = data;
+      
+      // Send message through appropriate service
+      let result;
+      switch (platform) {
+        case 'whatsapp':
+          result = await whatsappService.sendMessage(recipient, message);
+          break;
+        case 'facebook':
+          result = await facebookService.sendMessage(recipient, message);
+          break;
+        case 'email':
+          result = await emailService.sendEmail(recipient, 'Reply', message);
+          break;
+      }
+
+      // Broadcast message to all clients in the conversation room
+      io.to(conversationId).emit('new_message', {
+        id: Date.now(),
+        conversationId,
+        sender: 'Agent',
+        content: message,
+        timestamp: new Date(),
+        platform,
+        isOwn: true
+      });
+
+    } catch (error) {
+      console.error('Error sending message:', error);
+      socket.emit('message_error', { error: error.message });
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
 });
 
-// MongoDB connection and server start
-const PORT = process.env.PORT || 5000;
+// Routes
+app.use('/api/conversations', conversationRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/users', userRoutes);
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log('✅ MongoDB connected');
-    server.listen(PORT, () => {
-      console.log(`🚀 Server running at http://localhost:${PORT}`);
-      // Start email polling after server is running
-      setupEmailPolling(app);
-      console.log('📧 Email polling service started');
-    });
-  })
-  .catch((err) => {
-    console.error('❌ MongoDB connection error:', err);
-  });
+// Webhook endpoints
+app.use('/webhook/whatsapp', whatsappService.webhook);
+app.use('/webhook/facebook', facebookService.webhook);
+app.use('/webhook/email', emailService.webhook);
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date() });
+});
+
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
+// Export io for use in other modules
+module.exports = { app, io };
