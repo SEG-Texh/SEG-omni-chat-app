@@ -13,7 +13,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "axios": "^1.8.4",
+    "axios": "^1.9.0",
     "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
@@ -22,9 +22,9 @@
     "imap": "^0.8.19",
     "imap-simple": "^1.6.3",
     "jsonwebtoken": "^9.0.2",
-    "mailparser": "^3.7.2",
+    "mailparser": "^3.7.3",
     "mongodb": "6.16",
-    "mongoose": "^8.13.2",
+    "mongoose": "^8.15.1",
     "nodemailer": "^6.10.1",
     "request": "^2.88.2",
     "socket.io": "^4.8.1"
