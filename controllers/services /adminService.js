@@ -1,7 +1,7 @@
 // controllers/adminService.js
-const User = require('../models/User');
-const Message = require('../models/message');
-const Email = require('../models/Email');
+const User = require('../../models/User');
+const Message = require('../../models/message');
+const Email = require('../../models/Email');
 
 module.exports = {
   // User-related services
