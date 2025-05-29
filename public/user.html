@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmniChat Dashboard</title>
+    <link rel="stylesheet" href="user.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="header">
+            <h1>OmniChat</h1>
+            <div class="user-info">
+                <div class="avatar" id="userAvatar">U</div>
+                <div>
+                    <div id="userName">John Doe</div>
+                    <div style="opacity: 0.8; font-size: 0.9rem;">Support Agent</div>
+                </div>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="stats-container">
+                <div class="stat-card">
+                    <div class="stat-number" id="unclaimedCount">0</div>
+                    <div class="stat-label">Unclaimed Messages</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="activeChats">0</div>
+                    <div class="stat-label">Active Chats</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="resolvedToday">0</div>
+                    <div class="stat-label">Resolved Today</div>
+                </div>
+            </div>
+
+            <div class="messages-section">
+                <div class="section-header">
+                    <h2 class="section-title">Unclaimed Messages</h2>
+                    <button class="refresh-btn" onclick="refreshMessages()">
+                        <span>🔄</span>
+                        Refresh
+                    </button>
+                </div>
+                <div class="messages-list" id="messagesList">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading messages...
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script src="userscript.js"></script>
+</body>
+</html>
