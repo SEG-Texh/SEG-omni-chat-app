@@ -10,11 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (token && userRole) {
         // Redirect based on role
-        if (userRole === 'admin') {
-            window.location.href = '/admin.html';
-        } else {
-            window.location.href = '/dashboard.html'; // or wherever regular users go
-        }
+        redirectByRole(userRole);
         return;
     }
 
@@ -45,18 +41,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 localStorage.setItem('userId', data.user.id);
                 localStorage.setItem('userRole', data.user.role);
                 localStorage.setItem('userName', data.user.name);
+                localStorage.setItem('userEmail', data.user.email || email);
                 
                 showMessage('Login successful! Redirecting...', 'success');
                 
                 // Redirect based on user role
                 setTimeout(() => {
-                    if (data.user.role === 'admin') {
-                        window.location.href = '/admin.html';
-                    } else if (data.user.role === 'moderator') {
-                        window.location.href = '/moderator.html'; // if you have a moderator dashboard
-                    } else {
-                        window.location.href = '/dashboard.html'; // regular user dashboard
-                    }
+                    redirectByRole(data.user.role);
                 }, 1000);
                 
             } else {
@@ -72,6 +63,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    // Function to handle role-based redirects
+    function redirectByRole(role) {
+        switch(role.toLowerCase()) {
+            case 'admin':
+                window.location.href = '/admin.html';
+                break;
+            case 'moderator':
+                window.location.href = '/moderator.html';
+                break;
+            case 'agent':
+            case 'support':
+            case 'user':
+            default:
+                window.location.href = '/user.html'; // Regular user dashboard
+                break;
+        }
+    }
+    
     function showMessage(message, type) {
         messageDiv.textContent = message;
         messageDiv.className = `message ${type}`;
@@ -82,4 +91,4 @@ document.addEventListener('DOMContentLoaded', function() {
             messageDiv.style.display = 'none';
         }, 5000);
     }
-}); 
+});
