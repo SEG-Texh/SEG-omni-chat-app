@@ -1,90 +1,145 @@
 // controllers/adminController.js
-const User = require('../models/User'); // Assuming you have a User model
-const Message = require('../models/message'); // Assuming you have a Message model
+const User = require('../models/User');
+const Message = require('../models/message'); // You'll need to create this model
+const Email = require('../models/Email'); // You'll need to create this model
 
 // Get all users
-exports.getAllUsers = async (req, res) => {
+const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find({}, '-password') // Exclude password field
+    const users = await User.find({})
+      .select('-password') // Exclude password field
       .sort({ createdAt: -1 }); // Sort by newest first
     
     res.json({
       success: true,
-      users: users
+      data: users,
+      count: users.length
     });
   } catch (error) {
     console.error('Error fetching users:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching users',
+      message: 'Failed to fetch users',
       error: error.message
     });
   }
 };
 
-// Get all messages
-exports.getAllMessages = async (req, res) => {
+// Get all messages (from both Message and Email collections)
+const getAllMessages = async (req, res) => {
   try {
-    const { filter } = req.query;
-    let dateFilter = {};
+    const { filter = 'all', search = '' } = req.query;
     
-    // Apply date filters
-    if (filter === 'today') {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      dateFilter = { createdAt: { $gte: today } };
-    } else if (filter === 'week') {
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      dateFilter = { createdAt: { $gte: weekAgo } };
-    } else if (filter === 'month') {
-      const monthAgo = new Date();
-      monthAgo.setMonth(monthAgo.getMonth() - 1);
-      dateFilter = { createdAt: { $gte: monthAgo } };
+    // Date filtering
+    let dateFilter = {};
+    const now = new Date();
+    
+    switch (filter) {
+      case 'today':
+        dateFilter = {
+          createdAt: {
+            $gte: new Date(now.getFullYear(), now.getMonth(), now.getDate())
+          }
+        };
+        break;
+      case 'week':
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        dateFilter = { createdAt: { $gte: weekAgo } };
+        break;
+      case 'month':
+        const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        dateFilter = { createdAt: { $gte: monthAgo } };
+        break;
     }
 
-    const messages = await Message.find(dateFilter)
-      .populate('sender', 'name email') // Populate sender info
+    // Search filter
+    let searchFilter = {};
+    if (search) {
+      searchFilter = {
+        $or: [
+          { content: { $regex: search, $options: 'i' } },
+          { sender: { $regex: search, $options: 'i' } },
+          { subject: { $regex: search, $options: 'i' } }
+        ]
+      };
+    }
+
+    const combinedFilter = { ...dateFilter, ...searchFilter };
+
+    // Fetch messages from Message collection
+    const messages = await Message.find(combinedFilter)
+      .populate('sender', 'username email')
       .sort({ createdAt: -1 })
-      .limit(100); // Limit to prevent overwhelming the frontend
+      .limit(100); // Limit to prevent overwhelming
+
+    // Fetch emails from Email collection
+    const emails = await Email.find(combinedFilter)
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    // Combine and format messages
+    const allMessages = [
+      ...messages.map(msg => ({
+        _id: msg._id,
+        type: 'message',
+        content: msg.content,
+        sender: msg.sender?.username || msg.sender?.email || 'Unknown',
+        senderEmail: msg.sender?.email || '',
+        recipient: msg.recipient,
+        platform: msg.platform || 'chat',
+        createdAt: msg.createdAt,
+        status: msg.status || 'sent'
+      })),
+      ...emails.map(email => ({
+        _id: email._id,
+        type: 'email',
+        content: email.body || email.text || email.html,
+        sender: email.from,
+        senderEmail: email.from,
+        recipient: email.to,
+        subject: email.subject,
+        platform: 'email',
+        createdAt: email.createdAt || email.date,
+        status: email.status || 'received'
+      }))
+    ];
+
+    // Sort combined messages by date
+    allMessages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     res.json({
       success: true,
-      messages: messages
+      data: allMessages,
+      count: allMessages.length
     });
   } catch (error) {
     console.error('Error fetching messages:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching messages',
+      message: 'Failed to fetch messages',
       error: error.message
     });
   }
 };
 
 // Get dashboard statistics
-exports.getStats = async (req, res) => {
+const getStats = async (req, res) => {
   try {
-    const totalUsers = await User.countDocuments();
-    const totalMessages = await Message.countDocuments();
-    
-    // Count active users (logged in within last 24 hours)
-    const oneDayAgo = new Date();
-    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-    const activeUsers = await User.countDocuments({
-      lastLogin: { $gte: oneDayAgo }
-    });
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    // Count today's messages
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayMessages = await Message.countDocuments({
-      createdAt: { $gte: today }
-    });
+    // Count users
+    const totalUsers = await User.countDocuments();
+    const activeUsers = await User.countDocuments({ status: 'active' });
+
+    // Count messages from both collections
+    const totalMessages = await Message.countDocuments() + await Email.countDocuments();
+    const todayMessages = await Message.countDocuments({ createdAt: { $gte: todayStart } }) +
+                         await Email.countDocuments({ createdAt: { $gte: todayStart } });
 
     res.json({
       success: true,
-      stats: {
+      data: {
         totalUsers,
         activeUsers,
         totalMessages,
@@ -95,19 +150,89 @@ exports.getStats = async (req, res) => {
     console.error('Error fetching stats:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching statistics',
+      message: 'Failed to fetch statistics',
+      error: error.message
+    });
+  }
+};
+
+// Get recent activity
+const getRecentActivity = async (req, res) => {
+  try {
+    // Get recent users (last 10)
+    const recentUsers = await User.find({})
+      .select('username email createdAt')
+      .sort({ createdAt: -1 })
+      .limit(5);
+
+    // Get recent messages (last 10)
+    const recentMessages = await Message.find({})
+      .populate('sender', 'username email')
+      .sort({ createdAt: -1 })
+      .limit(5);
+
+    // Get recent emails (last 5)
+    const recentEmails = await Email.find({})
+      .sort({ createdAt: -1 })
+      .limit(5);
+
+    const activities = [
+      ...recentUsers.map(user => ({
+        type: 'user_joined',
+        description: `${user.username} joined the platform`,
+        timestamp: user.createdAt,
+        icon: 'fa-user-plus',
+        color: 'text-green-600'
+      })),
+      ...recentMessages.map(msg => ({
+        type: 'message_sent',
+        description: `${msg.sender?.username || 'Unknown'} sent a message`,
+        timestamp: msg.createdAt,
+        icon: 'fa-comment',
+        color: 'text-blue-600'
+      })),
+      ...recentEmails.map(email => ({
+        type: 'email_received',
+        description: `Email received from ${email.from}`,
+        timestamp: email.createdAt || email.date,
+        icon: 'fa-envelope',
+        color: 'text-purple-600'
+      }))
+    ];
+
+    // Sort by timestamp and limit to 10 most recent
+    activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const recentActivity = activities.slice(0, 10);
+
+    res.json({
+      success: true,
+      data: recentActivity
+    });
+  } catch (error) {
+    console.error('Error fetching recent activity:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch recent activity',
       error: error.message
     });
   }
 };
 
 // Create new user
-exports.createUser = async (req, res) => {
+const createUser = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role = 'user' } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name, email, and password are required'
+      });
+    }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -117,89 +242,46 @@ exports.createUser = async (req, res) => {
 
     // Create new user
     const newUser = new User({
-      name,
-      email,
-      password, // Make sure to hash this in your User model pre-save hook
-      role: role || 'user'
+      username: name,
+      email: email.toLowerCase(),
+      password: password,
+      role: role,
+      status: 'active'
     });
 
     await newUser.save();
 
-    // Remove password from response
-    const userResponse = newUser.toObject();
-    delete userResponse.password;
-
+    // Send success response (password will be automatically excluded)
     res.status(201).json({
       success: true,
       message: 'User created successfully',
-      user: userResponse
+      data: newUser
     });
+
+    // Emit socket event for real-time updates
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('userCreated', {
+        user: newUser,
+        message: `New user ${newUser.username} has been created`
+      });
+    }
+
   } catch (error) {
     console.error('Error creating user:', error);
     res.status(500).json({
       success: false,
-      message: 'Error creating user',
-      error: error.message
-    });
-  }
-};
-
-// Get recent activity
-exports.getRecentActivity = async (req, res) => {
-  try {
-    // Get recent messages and user registrations
-    const recentMessages = await Message.find()
-      .populate('sender', 'name')
-      .sort({ createdAt: -1 })
-      .limit(5);
-
-    const recentUsers = await User.find()
-      .sort({ createdAt: -1 })
-      .limit(5);
-
-    // Combine and format activities
-    const activities = [];
-
-    recentMessages.forEach(message => {
-      activities.push({
-        type: 'message',
-        description: `${message.sender?.name || 'Unknown'} sent a message`,
-        timestamp: message.createdAt,
-        icon: 'fas fa-comment'
-      });
-    });
-
-    recentUsers.forEach(user => {
-      activities.push({
-        type: 'user',
-        description: `${user.name} joined the platform`,
-        timestamp: user.createdAt,
-        icon: 'fas fa-user-plus'
-      });
-    });
-
-    // Sort by timestamp
-    activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    res.json({
-      success: true,
-      activities: activities.slice(0, 10) // Return top 10 activities
-    });
-  } catch (error) {
-    console.error('Error fetching recent activity:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching recent activity',
+      message: 'Failed to create user',
       error: error.message
     });
   }
 };
 
 // Delete user
-exports.deleteUser = async (req, res) => {
+const deleteUser = async (req, res) => {
   try {
     const { userId } = req.params;
-    
+
     const deletedUser = await User.findByIdAndDelete(userId);
     if (!deletedUser) {
       return res.status(404).json({
@@ -210,31 +292,49 @@ exports.deleteUser = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'User deleted successfully'
+      message: 'User deleted successfully',
+      data: deletedUser
     });
+
+    // Emit socket event for real-time updates
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('userDeleted', {
+        userId: userId,
+        message: `User ${deletedUser.username} has been deleted`
+      });
+    }
+
   } catch (error) {
     console.error('Error deleting user:', error);
     res.status(500).json({
       success: false,
-      message: 'Error deleting user',
+      message: 'Failed to delete user',
       error: error.message
     });
   }
 };
 
-// Update user status (ban/unban)
-exports.updateUserStatus = async (req, res) => {
+// Update user status
+const updateUserStatus = async (req, res) => {
   try {
     const { userId } = req.params;
     const { status } = req.body;
 
-    const user = await User.findByIdAndUpdate(
+    if (!['active', 'banned', 'suspended'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be active, banned, or suspended'
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { status },
+      { status: status },
       { new: true, select: '-password' }
     );
 
-    if (!user) {
+    if (!updatedUser) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
@@ -244,24 +344,43 @@ exports.updateUserStatus = async (req, res) => {
     res.json({
       success: true,
       message: 'User status updated successfully',
-      user
+      data: updatedUser
     });
+
+    // Emit socket event for real-time updates
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('userStatusUpdated', {
+        user: updatedUser,
+        message: `User ${updatedUser.username} status changed to ${status}`
+      });
+    }
+
   } catch (error) {
     console.error('Error updating user status:', error);
     res.status(500).json({
       success: false,
-      message: 'Error updating user status',
+      message: 'Failed to update user status',
       error: error.message
     });
   }
 };
 
 // Delete message
-exports.deleteMessage = async (req, res) => {
+const deleteMessage = async (req, res) => {
   try {
     const { messageId } = req.params;
-    
-    const deletedMessage = await Message.findByIdAndDelete(messageId);
+
+    // Try to delete from Message collection first
+    let deletedMessage = await Message.findByIdAndDelete(messageId);
+    let messageType = 'message';
+
+    // If not found in Message collection, try Email collection
+    if (!deletedMessage) {
+      deletedMessage = await Email.findByIdAndDelete(messageId);
+      messageType = 'email';
+    }
+
     if (!deletedMessage) {
       return res.status(404).json({
         success: false,
@@ -271,33 +390,73 @@ exports.deleteMessage = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Message deleted successfully'
+      message: `${messageType} deleted successfully`,
+      data: { id: messageId, type: messageType }
     });
+
+    // Emit socket event for real-time updates
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('messageDeleted', {
+        messageId: messageId,
+        messageType: messageType,
+        message: `${messageType} has been deleted`
+      });
+    }
+
   } catch (error) {
     console.error('Error deleting message:', error);
     res.status(500).json({
       success: false,
-      message: 'Error deleting message',
+      message: 'Failed to delete message',
       error: error.message
     });
   }
 };
 
 // Clear all messages
-exports.clearAllMessages = async (req, res) => {
+const clearAllMessages = async (req, res) => {
   try {
-    await Message.deleteMany({});
-    
+    const messagesDeleted = await Message.deleteMany({});
+    const emailsDeleted = await Email.deleteMany({});
+
     res.json({
       success: true,
-      message: 'All messages cleared successfully'
+      message: 'All messages cleared successfully',
+      data: {
+        messagesDeleted: messagesDeleted.deletedCount,
+        emailsDeleted: emailsDeleted.deletedCount,
+        totalDeleted: messagesDeleted.deletedCount + emailsDeleted.deletedCount
+      }
     });
+
+    // Emit socket event for real-time updates
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('allMessagesCleared', {
+        message: 'All messages have been cleared',
+        count: messagesDeleted.deletedCount + emailsDeleted.deletedCount
+      });
+    }
+
   } catch (error) {
     console.error('Error clearing messages:', error);
     res.status(500).json({
       success: false,
-      message: 'Error clearing messages',
+      message: 'Failed to clear messages',
       error: error.message
     });
   }
+};
+
+module.exports = {
+  getAllUsers,
+  getAllMessages,
+  getStats,
+  getRecentActivity,
+  createUser,
+  deleteUser,
+  updateUserStatus,
+  deleteMessage,
+  clearAllMessages
 };
