@@ -559,6 +559,6 @@ function logout() {
     localStorage.removeItem('userName');
     
     // Redirect to login page
-    window.location.href = '/index.html';
+    window.location.href = '/';
   }
 }
