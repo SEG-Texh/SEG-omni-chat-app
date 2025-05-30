@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Omni Chat Interface</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    #chatLog {
+      border: 1px solid #ccc;
+      height: 300px;
+      overflow-y: scroll;
+      padding: 10px;
+      margin-bottom: 10px;
+      background: #f9f9f9;
+    }
+    #chatLog div {
+      margin-bottom: 10px;
+    }
+    #chatLog .sent {
+      color: green;
+    }
+    #chatLog .error {
+      color: red;
+    }
+    label, select, input, textarea, button {
+      display: block;
+      width: 100%;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    button {
+      padding: 10px;
+      background-color: #007bff;
+      border: none;
+      color: white;
+      cursor: pointer;
+    }
+    button:disabled {
+      background-color: #999;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Omni Chat</h1>
+
+  <div id="chatLog"></div>
+
+  <label for="platform">Select Platform</label>
+  <select id="platform">
+    <option value="whatsapp">WhatsApp</option>
+    <option value="facebook">Facebook Messenger</option>
+    <option value="email">Email</option>
+  </select>
+
+  <label for="recipient">Recipient (Phone Number or Email)</label>
+  <input type="text" id="recipient" placeholder="e.g. +1234567890 or email@example.com" />
+
+  <label for="message">Message</label>
+  <textarea id="message" rows="4" placeholder="Type your message here..."></textarea>
+
+  <button id="sendBtn">Send Message</button>
+
+  <script>
+    const chatLog = document.getElementById('chatLog');
+    const platformSelect = document.getElementById('platform');
+    const recipientInput = document.getElementById('recipient');
+    const messageInput = document.getElementById('message');
+    const sendBtn = document.getElementById('sendBtn');
+
+    const API_BASE_URL = 'http://localhost:5000'; // Change if your backend runs elsewhere
+
+    function appendLog(text, type = 'sent') {
+      const div = document.createElement('div');
+      div.className = type;
+      div.textContent = text;
+      chatLog.appendChild(div);
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const platform = platformSelect.value;
+      const recipient = recipientInput.value.trim();
+      const message = messageInput.value.trim();
+
+      if (!recipient || !message) {
+        alert('Please enter both recipient and message.');
+        return;
+      }
+
+      let endpoint = '';
+      let body = {};
+
+      if (platform === 'whatsapp') {
+        endpoint = '/whatsapp/send'; // You'll need to create this POST endpoint in your backend
+        body = {
+          to: recipient,
+          message: message
+        };
+      } else if (platform === 'facebook') {
+        endpoint = '/facebook/send'; // You'll need to create this POST endpoint in your backend
+        body = {
+          recipient_id: recipient,
+          message: message
+        };
+      } else if (platform === 'email') {
+        endpoint = '/email/send';
+        body = {
+          to: recipient,
+          subject: 'Message from Omni Chat',
+          text: message
+        };
+      }
+
+      sendBtn.disabled = true;
+      appendLog(`Sending to ${platform}: "${message}"`, 'sent');
+
+      try {
+        const res = await fetch(API_BASE_URL + endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+
+        if (!res.ok) {
+          throw new Error(`Server error: ${res.statusText}`);
+        }
+
+        const data = await res.json();
+        appendLog(`✅ Message sent successfully!`, 'sent');
+        messageInput.value = '';
+      } catch (err) {
+        appendLog(`❌ Failed to send message: ${err.message}`, 'error');
+      } finally {
+        sendBtn.disabled = false;
+      }
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+  </script>
+
+</body>
+</html>

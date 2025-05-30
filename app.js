@@ -1,6 +1,8 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const app = express();
+const path = require('path');
+
 
 // Middleware
 app.use(bodyParser.json());
@@ -14,5 +16,7 @@ app.use('/email', require('./routes/email'));
 app.get('/', (req, res) => {
   res.send('🌐 Omni Chat API is running');
 });
+// Serve static files from 'public' folder
+app.use(express.static(path.join(__dirname, 'public')));
 
 module.exports = app;
