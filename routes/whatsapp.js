@@ -94,7 +94,7 @@ router.post('/', async (req, res) => {
               const contact = contacts?.find(c => c.wa_id === message.from);
               
               // Create or find conversation
-              const Conversation = require('../models/Conversation');
+              const Conversation = require('../models/conversation');
               let conversation = await Conversation.findOne({
                 'contact.identifier': message.from,
                 'contact.platform': 'whatsapp'
