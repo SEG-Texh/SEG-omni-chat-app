@@ -40,16 +40,16 @@ app.get('/api/status', (req, res) => {
     res.send('🌐 Omni Chat API is running');
 });
 
-// Catch-all route for SPA
-app.get('/*', (req, res) => {
-    // If you have an index.html in public folder
-    const indexPath = path.join(__dirname, 'public', 'index.html');
-    res.sendFile(indexPath, (err) => {
-        if (err) {
-            // Fallback to API status if no frontend
-            res.status(404).send('🌐 Omni Chat API is running - No frontend found');
-        }
-    });
+// Catch-all route for SPA (FIXED)
+app.get('*', (req, res) => {
+  // If you have an index.html in public folder
+  const indexPath = path.join(__dirname, 'public', 'index.html');
+  res.sendFile(indexPath, (err) => {
+    if (err) {
+      // Fallback to API status if no frontend
+      res.status(404).send('🌐 Omni Chat API is running - No frontend found');
+    }
+  });
 });
 
 module.exports = app;
