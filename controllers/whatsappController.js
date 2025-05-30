@@ -169,4 +169,4 @@ exports.getConversationState = (req, res) => {
   const { userId } = req.params;
   const state = BotService.getConversationState(userId);
   res.json({ userId, state });
-};  
+};
