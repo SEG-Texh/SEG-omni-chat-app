@@ -1,4 +1,3 @@
-//app.js
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -24,8 +23,8 @@ app.get('/api/status', (req, res) => {
     res.send('🌐 Omni Chat API is running');
 });
 
-// Catch-all route for SPA (if you have a frontend)
-app.get('*', (req, res) => {
+// Catch-all route for SPA (FIXED - removed the problematic * pattern)
+app.get('/*', (req, res) => {
     // If you have an index.html in public folder
     const indexPath = path.join(__dirname, 'public', 'index.html');
     res.sendFile(indexPath, (err) => {
