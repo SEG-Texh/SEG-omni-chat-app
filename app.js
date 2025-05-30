@@ -18,6 +18,6 @@ app.get('/', (req, res) => {
   res.send('🌐 Omni Chat API is running');
 });
 // Serve static files from 'public' folder
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public1')));
 
 module.exports = app;
