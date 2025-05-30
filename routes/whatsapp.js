@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { verifyWebhook, receiveMessage } = require('../controllers/whatsAppController');
+
+// Make sure this matches the actual file name exactly (case-sensitive)
+const { verifyWebhook, receiveMessage } = require('../controllers/whatsappController');
 
 // GET route for webhook verification (Facebook/Meta requirement)
 router.get('/', verifyWebhook);
