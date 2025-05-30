@@ -13,17 +13,34 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Serve static files from 'public' folder FIRST
 app.use(express.static(path.join(__dirname, 'public')));
 
-// API Routes
-app.use('/whatsapp', require('./routes/whatsapp'));
-app.use('/facebook', require('./routes/facebook'));
-app.use('/email', require('./routes/email'));
+// API Routes - Comment out one by one to find the problematic one
+try {
+    app.use('/whatsapp', require('./routes/whatsapp'));
+    console.log('✅ WhatsApp routes loaded');
+} catch (error) {
+    console.error('❌ Error loading WhatsApp routes:', error.message);
+}
+
+try {
+    app.use('/facebook', require('./routes/facebook'));
+    console.log('✅ Facebook routes loaded');
+} catch (error) {
+    console.error('❌ Error loading Facebook routes:', error.message);
+}
+
+try {
+    app.use('/email', require('./routes/email'));
+    console.log('✅ Email routes loaded');
+} catch (error) {
+    console.error('❌ Error loading Email routes:', error.message);
+}
 
 // API status route (fallback)
 app.get('/api/status', (req, res) => {
     res.send('🌐 Omni Chat API is running');
 });
 
-// Catch-all route for SPA (FIXED - removed the problematic * pattern)
+// Catch-all route for SPA
 app.get('/*', (req, res) => {
     // If you have an index.html in public folder
     const indexPath = path.join(__dirname, 'public', 'index.html');
