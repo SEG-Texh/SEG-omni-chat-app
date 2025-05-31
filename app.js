@@ -39,9 +39,16 @@ app.post = function(path, ...handlers) {
     return originalPost.call(this, path, ...handlers);
 };
 
-// API Routes - Load one by one to isolate the issue
-// REMOVED: User routes section - uncomment when routes/users.js is created
-/*
+// Authentication Routes - Add this FIRST
+try {
+    console.log('📂 Loading Authentication routes...');
+    app.use('/api/auth', require('./routes/auth'));
+    console.log('✅ Authentication routes loaded');
+} catch (error) {
+    console.error('❌ Error loading Authentication routes:', error.message);
+}
+
+// User Management Routes
 try {
     console.log('📂 Loading User routes...');
     app.use('/api/users', require('./routes/users'));
@@ -49,8 +56,8 @@ try {
 } catch (error) {
     console.error('❌ Error loading User routes:', error.message);
 }
-*/
 
+// API Routes - Load one by one to isolate the issue
 try {
     console.log('📂 Loading WhatsApp routes...');
     app.use('/whatsapp', require('./routes/whatsapp'));
@@ -116,6 +123,8 @@ try {
                     note: 'Login page not found - API only mode',
                     loginUrl: '/login.html',
                     endpoints: {
+                        auth: '/api/auth/*',
+                        users: '/api/users/*',
                         status: '/api/status',
                         health: '/health',
                         whatsapp: '/whatsapp/*',
@@ -165,6 +174,8 @@ try {
                     status: 'success',
                     note: 'No frontend configured - API only mode',
                     endpoints: {
+                        auth: '/api/auth/*',
+                        users: '/api/users/*',
                         status: '/api/status',
                         health: '/health',
                         whatsapp: '/whatsapp/*',
