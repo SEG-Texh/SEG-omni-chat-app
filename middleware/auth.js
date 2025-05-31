@@ -1,56 +1,95 @@
-// middleware/auth.js
 const jwt = require('jsonwebtoken');
-require('dotenv').config();
+const User = require('../models/User');
 
-const authMiddleware = (req, res, next) => {
-  // Get token from multiple possible headers
-  let token = req.header('x-auth-token') || 
-              req.header('Authorization') ||
-              req.headers.authorization;
-  
-  // Handle Bearer token format
-  if (token && token.startsWith('Bearer ')) {
-    token = token.slice(7); // Remove 'Bearer ' prefix
-  }
-  
-  // Check if no token
-  if (!token) {
-    console.log('No token found in headers:', {
-      'x-auth-token': req.header('x-auth-token'),
-      'Authorization': req.header('Authorization'),
-      'authorization': req.headers.authorization
-    });
-    return res.status(401).json({ error: 'No token, authorization denied' });
-  }
-  
+// Authenticate user token
+const authenticate = async (req, res, next) => {
   try {
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const token = req.header('Authorization')?.replace('Bearer ', '');
     
-    // Add user info to request
-    req.user = decoded;
-    console.log('Token verified successfully for user:', decoded.id || decoded.userId);
+    if (!token) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Access denied. No token provided.' 
+      });
+    }
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select('-password');
+    
+    if (!user) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Token is not valid.' 
+      });
+    }
+    
+    if (!user.isActive) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Account is deactivated.' 
+      });
+    }
+    
+    req.user = user;
     next();
   } catch (error) {
-    console.error('JWT verification failed:', error.message);
-    console.log('Token that failed:', token.substring(0, 20) + '...');
-    res.status(401).json({ error: 'Token is not valid' });
+    console.error('Authentication error:', error);
+    res.status(401).json({ 
+      success: false, 
+      message: 'Token is not valid.' 
+    });
   }
 };
 
-const adminMiddleware = (req, res, next) => {
-  // Check if user exists and has admin role
-  if (!req.user) {
-    return res.status(401).json({ error: 'User not authenticated' });
-  }
-  
+// Check if user is admin
+const requireAdmin = (req, res, next) => {
   if (req.user.role !== 'admin') {
-    console.log('Access denied for user:', req.user.id || req.user.userId, 'Role:', req.user.role);
-    return res.status(403).json({ error: 'Access denied. Admin role required.' });
+    return res.status(403).json({ 
+      success: false, 
+      message: 'Access denied. Admin privileges required.' 
+    });
   }
-  
-  console.log('Admin access granted for user:', req.user.id || req.user.userId);
   next();
 };
 
-module.exports = { authMiddleware, adminMiddleware };
+// Check if user is admin or moderator
+const requireModerator = (req, res, next) => {
+  if (!['admin', 'moderator'].includes(req.user.role)) {
+    return res.status(403).json({ 
+      success: false, 
+      message: 'Access denied. Moderator privileges required.' 
+    });
+  }
+  next();
+};
+
+// Check if user can access resource (self or admin)
+const requireOwnershipOrAdmin = (req, res, next) => {
+  const targetUserId = req.params.id || req.params.userId;
+  
+  if (req.user.role === 'admin' || req.user._id.toString() === targetUserId) {
+    return next();
+  }
+  
+  return res.status(403).json({ 
+    success: false, 
+    message: 'Access denied. You can only access your own resources.' 
+  });
+};
+
+// Generate JWT token
+const generateToken = (userId) => {
+  return jwt.sign(
+    { id: userId }, 
+    process.env.JWT_SECRET, 
+    { expiresIn: '7d' }
+  );
+};
+
+module.exports = {
+  authenticate,
+  requireAdmin,
+  requireModerator,
+  requireOwnershipOrAdmin,
+  generateToken
+};

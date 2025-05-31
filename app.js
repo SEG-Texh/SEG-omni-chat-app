@@ -41,6 +41,14 @@ app.post = function(path, ...handlers) {
 
 // API Routes - Load one by one to isolate the issue
 try {
+  console.log('📂 Loading User routes...');
+  app.use('/api/users', require('./routes/users'));
+  console.log('✅ User routes loaded');
+} catch (error) {
+  console.error('❌ Error loading User routes:', error.message);
+}
+
+try {
   console.log('📂 Loading WhatsApp routes...');
   app.use('/whatsapp', require('./routes/whatsapp'));
   console.log('✅ WhatsApp routes loaded');
@@ -94,7 +102,6 @@ try {
 // Catch-all route for SPA - FIXED
 try {
   console.log('📂 Adding catch-all route...');
-  
   // Use a more specific pattern to avoid conflicts
   app.get(/^(?!\/api|\/whatsapp|\/facebook|\/email|\/health).*$/, (req, res) => {
     // Serve frontend for non-API routes
@@ -109,6 +116,7 @@ try {
           endpoints: {
             status: '/api/status',
             health: '/health',
+            users: '/api/users/*',
             whatsapp: '/whatsapp/*',
             facebook: '/facebook/*',
             email: '/email/*'
@@ -117,7 +125,6 @@ try {
       }
     });
   });
-  
   console.log('✅ Catch-all route added');
 } catch (error) {
   console.error('❌ Error adding catch-all route:', error.message);
