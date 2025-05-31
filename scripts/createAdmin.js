@@ -8,51 +8,79 @@ async function createAdminUser() {
     // Connect to database
     await mongoose.connect(process.env.DATABASE_URL || process.env.MONGODB_URI);
     console.log('Connected to database');
-    
-    // Check if admin already exists
-    const existingAdmin = await User.findOne({ 
+
+    // Check if admin already exists (check both possible emails)
+    const existingAdmin = await User.findOne({
       $or: [
-        { email: 'admin@admin.com' }, 
-        { username: 'admin' }
-      ] 
+        { email: 'admin@example.com' },
+        { email: 'admin@admin.com' }
+      ]
     });
-    
+
     if (existingAdmin) {
       console.log('Admin user already exists');
       console.log('Email:', existingAdmin.email);
+      console.log('Name:', existingAdmin.name);
+      console.log('Role:', existingAdmin.role);
       return;
     }
 
-    // Create admin user
+    // Create admin user - UPDATED to match frontend
     const adminUser = new User({
-      username: 'admin',
-      email: 'admin@admin.com',
-      password: 'admin123', // Will be hashed automatically by User model
+      name: 'System Administrator',
+      email: 'admin@example.com', // Changed to match frontend
+      password: 'admin123',
       role: 'admin',
-      profile: {
-        firstName: 'System',
-        lastName: 'Administrator',
-        phone: '+1234567890'
-      }
+      isActive: true
     });
 
     await adminUser.save();
-    console.log('Admin user created successfully!');
-    console.log('Email: admin@admin.com');
+    console.log('✅ Admin user created successfully!');
+    console.log('Email: admin@example.com');
     console.log('Password: admin123');
-    console.log('⚠️  IMPORTANT: Change the admin password after first login!');
-    
+    console.log('Name:', adminUser.name);
+    console.log('Role:', adminUser.role);
+    console.log('⚠️ IMPORTANT: Change the admin password after first login!');
+
   } catch (error) {
-    console.error('Error creating admin user:', error);
+    console.error('❌ Error creating admin user:', error);
   } finally {
     await mongoose.connection.close();
     console.log('Database connection closed');
   }
 }
 
-// Run the function if this script is executed directly
-if (require.main === module) {
-  createAdminUser();
+// Helper function to update admin email
+async function updateAdminEmail() {
+  try {
+    await mongoose.connect(process.env.DATABASE_URL || process.env.MONGODB_URI);
+    console.log('Connected to database');
+
+    const oldAdmin = await User.findOne({ email: 'admin@admin.com' });
+    if (oldAdmin) {
+      oldAdmin.email = 'admin@example.com';
+      await oldAdmin.save();
+      console.log('✅ Admin email updated from admin@admin.com to admin@example.com');
+    } else {
+      console.log('❌ No admin found with email admin@admin.com');
+    }
+
+  } catch (error) {
+    console.error('❌ Error updating admin email:', error);
+  } finally {
+    await mongoose.connection.close();
+  }
 }
 
-module.exports = createAdminUser;
+// Run the function if this script is executed directly
+if (require.main === module) {
+  const action = process.argv[2];
+  
+  if (action === 'update-email') {
+    updateAdminEmail();
+  } else {
+    createAdminUser();
+  }
+}
+
+module.exports = { createAdminUser, updateAdminEmail };
