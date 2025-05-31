@@ -1,268 +1,297 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Omni Messenger</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #333;
-        }
-
-        .login-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-        }
-
-        .logo {
-            font-size: 3rem;
-            margin-bottom: 10px;
-        }
-
-        .login-container h1 {
-            color: #4a5568;
-            font-size: 2rem;
-            margin-bottom: 10px;
-        }
-
-        .login-container p {
-            color: #718096;
-            margin-bottom: 30px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #4a5568;
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            background: rgba(255, 255, 255, 0.8);
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-            background: white;
-        }
-
-        .btn {
-            width: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 14px 24px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 20px;
-        }
-
-        .btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-        }
-
-        .btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .alert {
-            padding: 12px 16px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            font-weight: 500;
-            text-align: center;
-        }
-
-        .alert-error {
-            background: #fed7d7;
-            color: #742a2a;
-            border: 1px solid #fc8181;
-        }
-
-        .alert-success {
-            background: #c6f6d5;
-            color: #22543d;
-            border: 1px solid #9ae6b4;
-        }
-
-        .demo-credentials {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 15px;
-            margin-top: 20px;
-            text-align: left;
-        }
-
-        .demo-credentials h3 {
-            color: #4a5568;
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
-
-        .demo-credentials p {
-            font-size: 12px;
-            color: #718096;
-            margin: 5px 0;
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            color: #667eea;
-            margin: 10px 0;
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 10px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login - Omni Messenger</title>
+<style>
+* {
+margin: 0;
+padding: 0;
+box-sizing: border-box;
+ }
+body {
+font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+min-height: 100vh;
+display: flex;
+align-items: center;
+justify-content: center;
+color: #333;
+ }
+.login-container {
+background: rgba(255, 255, 255, 0.95);
+backdrop-filter: blur(10px);
+border-radius: 20px;
+padding: 40px;
+box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+width: 100%;
+max-width: 400px;
+text-align: center;
+ }
+.logo {
+font-size: 3rem;
+margin-bottom: 10px;
+ }
+.login-container h1 {
+color: #4a5568;
+font-size: 2rem;
+margin-bottom: 10px;
+ }
+.login-container p {
+color: #718096;
+margin-bottom: 30px;
+ }
+.form-group {
+margin-bottom: 20px;
+text-align: left;
+ }
+.form-group label {
+display: block;
+margin-bottom: 8px;
+font-weight: 600;
+color: #4a5568;
+ }
+.form-group input {
+width: 100%;
+padding: 12px 16px;
+border: 2px solid #e2e8f0;
+border-radius: 12px;
+font-size: 16px;
+transition: all 0.3s ease;
+background: rgba(255, 255, 255, 0.8);
+ }
+.form-group input:focus {
+outline: none;
+border-color: #667eea;
+box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+background: white;
+ }
+.btn {
+width: 100%;
+background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+color: white;
+border: none;
+padding: 14px 24px;
+border-radius: 12px;
+font-size: 16px;
+font-weight: 600;
+cursor: pointer;
+transition: all 0.3s ease;
+margin-bottom: 20px;
+ }
+.btn:hover:not(:disabled) {
+transform: translateY(-2px);
+box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+ }
+.btn:disabled {
+background: #ccc;
+cursor: not-allowed;
+transform: none;
+ }
+.alert {
+padding: 12px 16px;
+border-radius: 12px;
+margin-bottom: 20px;
+font-weight: 500;
+text-align: center;
+ }
+.alert-error {
+background: #fed7d7;
+color: #742a2a;
+border: 1px solid #fc8181;
+ }
+.alert-success {
+background: #c6f6d5;
+color: #22543d;
+border: 1px solid #9ae6b4;
+ }
+.demo-credentials {
+background: rgba(255, 255, 255, 0.1);
+border-radius: 12px;
+padding: 15px;
+margin-top: 20px;
+text-align: left;
+ }
+.demo-credentials h3 {
+color: #4a5568;
+margin-bottom: 10px;
+font-size: 14px;
+ }
+.demo-credentials p {
+font-size: 12px;
+color: #718096;
+margin: 5px 0;
+ }
+.demo-credentials .admin-section {
+background: rgba(102, 126, 234, 0.1);
+padding: 10px;
+border-radius: 8px;
+margin-top: 10px;
+ }
+.demo-credentials .admin-section h4 {
+color: #667eea;
+font-size: 12px;
+margin-bottom: 5px;
+ }
+.loading {
+display: none;
+text-align: center;
+color: #667eea;
+margin: 10px 0;
+ }
+.spinner {
+display: inline-block;
+width: 20px;
+height: 20px;
+border: 3px solid #f3f3f3;
+border-top: 3px solid #667eea;
+border-radius: 50%;
+animation: spin 1s linear infinite;
+margin-right: 10px;
+ }
+@keyframes spin {
+ 0% { transform: rotate(0deg); }
+ 100% { transform: rotate(360deg); }
+ }
+</style>
 </head>
 <body>
-    <div class="login-container">
-        <div class="logo">💬</div>
-        <h1>Omni Messenger</h1>
-        <p>Please login to access the messenger</p>
-        
-        <div id="alertContainer"></div>
-        <div id="loadingIndicator" class="loading">
-            <div class="spinner"></div>
-            Logging in...
-        </div>
-        
-        <form id="loginForm">
-            <div class="form-group">
-                <label for="email">Email:</label>
-                <input type="email" id="email" required placeholder="Enter your email">
-            </div>
-            <div class="form-group">
-                <label for="password">Password:</label>
-                <input type="password" id="password" required placeholder="Enter your password">
-            </div>
-            <button type="submit" id="loginBtn" class="btn">Login</button>
-        </form>
+<div class="login-container">
+<div class="logo">💬</div>
+<h1>Omni Messenger</h1>
+<p>Please login to access the messenger</p>
+<div id="alertContainer"></div>
+<div id="loadingIndicator" class="loading">
+<div class="spinner"></div>
+ Logging in...
+</div>
+<form id="loginForm">
+<div class="form-group">
+<label for="email">Email:</label>
+<input type="email" id="email" required placeholder="Enter your email">
+</div>
+<div class="form-group">
+<label for="password">Password:</label>
+<input type="password" id="password" required placeholder="Enter your password">
+</div>
+<button type="submit" id="loginBtn" class="btn">Login</button>
+</form>
+<div class="demo-credentials">
+<h3>Demo Credentials:</h3>
+<p><strong>Email:</strong> demo@example.com</p>
+<p><strong>Password:</strong> demo123</p>
+<div class="admin-section">
+<h4>Admin Access:</h4>
+<p><strong>Email:</strong> admin@example.com</p>
+<p><strong>Password:</strong> admin123</p>
+</div>
+<p><em>Or use any email/password for demo purposes</em></p>
+</div>
+</div>
+<script>
+// Predefined users with roles
+const predefinedUsers = {
+'admin@example.com': {
+password: 'admin123',
+role: 'admin',
+name: 'Admin User'
+},
+'demo@example.com': {
+password: 'demo123',
+role: 'user',
+name: 'Demo User'
+},
+'user@example.com': {
+password: 'user123',
+role: 'user',
+name: 'Regular User'
+}
+};
 
-        <div class="demo-credentials">
-            <h3>Demo Credentials:</h3>
-            <p><strong>Email:</strong> demo@example.com</p>
-            <p><strong>Password:</strong> demo123</p>
-            <p><em>Or use any email/password for demo purposes</em></p>
-        </div>
-    </div>
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+e.preventDefault();
+const email = document.getElementById('email').value.trim();
+const password = document.getElementById('password').value.trim();
 
-    <script>
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value.trim();
+if (!email || !password) {
+showAlert('Please enter both email and password', 'error');
+return;
+}
 
-            if (!email || !password) {
-                showAlert('Please enter both email and password', 'error');
-                return;
-            }
+showLoading(true);
+document.getElementById('loginBtn').disabled = true;
 
-            showLoading(true);
-            document.getElementById('loginBtn').disabled = true;
+try {
+// Simulate API call
+await delay(1500);
 
-            try {
-                // Simulate API call
-                await delay(1500);
+// Check if user exists in predefined users
+let userData;
+if (predefinedUsers[email] && predefinedUsers[email].password === password) {
+// Use predefined user data
+const user = predefinedUsers[email];
+userData = {
+id: Date.now(),
+email: email,
+name: user.name,
+role: user.role,
+loginTime: new Date().toISOString()
+};
+} else {
+// For demo purposes, accept any other email/password as regular user
+userData = {
+id: Date.now(),
+email: email,
+name: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
+role: 'user', // Default to user role
+loginTime: new Date().toISOString()
+};
+}
 
-                // For demo purposes, accept any email/password
-                const userData = {
-                    id: Date.now(),
-                    email: email,
-                    name: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
-                    loginTime: new Date().toISOString()
-                };
+// Store user data for the respective pages
+sessionStorage.setItem('omniUser', JSON.stringify(userData));
 
-                // Store user data for the messenger page
-                sessionStorage.setItem('omniUser', JSON.stringify(userData));
+// Show success message with role indication
+const roleText = userData.role === 'admin' ? 'Admin' : 'User';
+showAlert(`Login successful! Welcome ${roleText}. Redirecting...`, 'success');
 
-                showAlert('Login successful! Redirecting...', 'success');
-                
-                // Redirect to messenger page
-                setTimeout(() => {
-                    window.location.href = 'index.html';
-                }, 1000);
+// Redirect based on user role
+setTimeout(() => {
+if (userData.role === 'admin') {
+window.location.href = 'adminDashboard.html';
+} else {
+window.location.href = 'index.html';
+}
+}, 1000);
 
-            } catch (error) {
-                console.error('Login error:', error);
-                showAlert('Login failed. Please try again.', 'error');
-            } finally {
-                showLoading(false);
-                document.getElementById('loginBtn').disabled = false;
-            }
-        });
+} catch (error) {
+console.error('Login error:', error);
+showAlert('Login failed. Please try again.', 'error');
+} finally {
+showLoading(false);
+document.getElementById('loginBtn').disabled = false;
+}
+});
 
-        function showAlert(message, type) {
-            const alertContainer = document.getElementById('alertContainer');
-            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
-            
-            if (type === 'success') {
-                setTimeout(() => {
-                    alertContainer.innerHTML = '';
-                }, 3000);
-            }
-        }
+function showAlert(message, type) {
+const alertContainer = document.getElementById('alertContainer');
+alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+if (type === 'success') {
+setTimeout(() => {
+alertContainer.innerHTML = '';
+}, 3000);
+}
+}
 
-        function showLoading(show) {
-            const loadingIndicator = document.getElementById('loadingIndicator');
-            loadingIndicator.style.display = show ? 'block' : 'none';
-        }
+function showLoading(show) {
+const loadingIndicator = document.getElementById('loadingIndicator');
+loadingIndicator.style.display = show ? 'block' : 'none';
+}
 
-        function delay(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
-    </script>
+function delay(ms) {
+return new Promise(resolve => setTimeout(resolve, ms));
+}
+</script>
 </body>
 </html>
