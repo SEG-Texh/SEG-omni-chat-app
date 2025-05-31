@@ -27,7 +27,7 @@ const createTransporter = () => {
     pass: config.auth.pass ? '***masked***' : 'NOT SET'
   });
   
-  return nodemailer.createTransporter(config);
+  return nodemailer.createTransport(config);
 };
 
 // Add email validation function
