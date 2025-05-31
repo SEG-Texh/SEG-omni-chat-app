@@ -40,6 +40,8 @@ app.post = function(path, ...handlers) {
 };
 
 // API Routes - Load one by one to isolate the issue
+// REMOVED: User routes section - uncomment when routes/users.js is created
+/*
 try {
     console.log('📂 Loading User routes...');
     app.use('/api/users', require('./routes/users'));
@@ -47,6 +49,7 @@ try {
 } catch (error) {
     console.error('❌ Error loading User routes:', error.message);
 }
+*/
 
 try {
     console.log('📂 Loading WhatsApp routes...');
@@ -115,7 +118,6 @@ try {
                     endpoints: {
                         status: '/api/status',
                         health: '/health',
-                        users: '/api/users/*',
                         whatsapp: '/whatsapp/*',
                         facebook: '/facebook/*',
                         email: '/email/*'
@@ -165,7 +167,6 @@ try {
                     endpoints: {
                         status: '/api/status',
                         health: '/health',
-                        users: '/api/users/*',
                         whatsapp: '/whatsapp/*',
                         facebook: '/facebook/*',
                         email: '/email/*'
