@@ -1,9 +1,11 @@
-// Enhanced email controller with comprehensive tracking
+// Enhanced email controller with comprehensive tracking and email receiving
 const nodemailer = require('nodemailer');
+const { simpleParser } = require('mailparser');
 const BotService = require('../services/botService');
 
 // Email tracking store (in production, use a database)
 const emailLog = new Map();
+const receivedEmails = new Map(); // Store for received emails
 
 // Create email transporter with enhanced configuration
 const createTransporter = () => {
@@ -31,6 +33,30 @@ const createTransporter = () => {
   });
   
   return nodemailer.createTransporter(config);
+};
+
+// Create IMAP connection for receiving emails
+const createImapConnection = () => {
+  const Imap = require('imap');
+  
+  const config = {
+    user: process.env.IMAP_USER || process.env.SMTP_USER,
+    password: process.env.IMAP_PASS || process.env.SMTP_PASS,
+    host: process.env.IMAP_HOST || (process.env.SMTP_HOST === 'smtp.gmail.com' ? 'imap.gmail.com' : process.env.SMTP_HOST),
+    port: parseInt(process.env.IMAP_PORT) || 993,
+    tls: true,
+    tlsOptions: {
+      rejectUnauthorized: false
+    }
+  };
+  
+  console.log('📥 IMAP config:', {
+    host: config.host,
+    port: config.port,
+    user: config.user ? '***masked***' : 'NOT SET'
+  });
+  
+  return new Imap(config);
 };
 
 // Enhanced email validation
@@ -80,6 +106,26 @@ const logEmailEvent = (eventType, emailData, result = null, error = null) => {
   return logId;
 };
 
+// Store received email
+const storeReceivedEmail = (emailData) => {
+  const emailId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const entry = {
+    id: emailId,
+    timestamp: new Date().toISOString(),
+    ...emailData
+  };
+  
+  receivedEmails.set(emailId, entry);
+  console.log('📨 Email received and stored:', {
+    id: emailId,
+    from: emailData.from,
+    subject: emailData.subject,
+    timestamp: entry.timestamp
+  });
+  
+  return emailId;
+};
+
 // Get email logs with filtering
 const getEmailLogs = (filterToSmtpUser = false) => {
   const logs = Array.from(emailLog.values());
@@ -91,6 +137,120 @@ const getEmailLogs = (filterToSmtpUser = false) => {
   return logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 };
 
+// Get received emails
+const getReceivedEmails = (limit = 50) => {
+  const emails = Array.from(receivedEmails.values());
+  return emails
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+    .slice(0, limit);
+};
+
+// IMAP email fetching function
+const fetchEmails = () => {
+  return new Promise((resolve, reject) => {
+    const imap = createImapConnection();
+    const emails = [];
+    
+    imap.once('ready', () => {
+      console.log('📥 IMAP connection ready');
+      
+      imap.openBox('INBOX', false, (err, box) => {
+        if (err) {
+          console.error('❌ Failed to open INBOX:', err);
+          return reject(err);
+        }
+        
+        console.log(`📮 INBOX opened, ${box.messages.total} total messages`);
+        
+        // Search for recent unseen emails
+        imap.search(['UNSEEN'], (err, results) => {
+          if (err) {
+            console.error('❌ Search failed:', err);
+            return reject(err);
+          }
+          
+          if (!results || results.length === 0) {
+            console.log('📪 No new emails found');
+            imap.end();
+            return resolve([]);
+          }
+          
+          console.log(`📬 Found ${results.length} new emails`);
+          
+          const fetch = imap.fetch(results, {
+            bodies: '',
+            markSeen: true
+          });
+          
+          fetch.on('message', (msg, seqno) => {
+            console.log(`📨 Processing email #${seqno}`);
+            let emailData = {};
+            
+            msg.on('body', (stream, info) => {
+              let buffer = '';
+              stream.on('data', (chunk) => {
+                buffer += chunk.toString('utf8');
+              });
+              
+              stream.once('end', () => {
+                simpleParser(buffer)
+                  .then(parsed => {
+                    emailData = {
+                      seqno,
+                      messageId: parsed.messageId,
+                      from: parsed.from?.text || 'Unknown',
+                      to: parsed.to?.text || '',
+                      subject: parsed.subject || 'No Subject',
+                      text: parsed.text || '',
+                      html: parsed.html || '',
+                      date: parsed.date || new Date(),
+                      attachments: parsed.attachments || []
+                    };
+                    
+                    // Store the received email
+                    const emailId = storeReceivedEmail(emailData);
+                    emailData.id = emailId;
+                    emails.push(emailData);
+                  })
+                  .catch(parseErr => {
+                    console.error('❌ Email parsing failed:', parseErr);
+                  });
+              });
+            });
+            
+            msg.once('end', () => {
+              console.log(`✅ Finished processing email #${seqno}`);
+            });
+          });
+          
+          fetch.once('error', (fetchErr) => {
+            console.error('❌ Fetch error:', fetchErr);
+            reject(fetchErr);
+          });
+          
+          fetch.once('end', () => {
+            console.log('📥 Finished fetching all emails');
+            imap.end();
+          });
+        });
+      });
+    });
+    
+    imap.once('error', (err) => {
+      console.error('❌ IMAP connection error:', err);
+      reject(err);
+    });
+    
+    imap.once('end', () => {
+      console.log('📥 IMAP connection ended');
+      resolve(emails);
+    });
+    
+    imap.connect();
+  });
+};
+
+// Send Email Function
 exports.sendEmail = async (req, res) => {
   let logId = null;
   
@@ -157,7 +317,7 @@ exports.sendEmail = async (req, res) => {
       headers: {
         'X-Mailer': 'Omni Chat App',
         'Reply-To': fromAddress,
-        'X-Email-Log-ID': logId // Custom header for tracking
+        'X-Email-Log-ID': logId
       }
     };
     
@@ -295,6 +455,161 @@ exports.sendEmail = async (req, res) => {
   }
 };
 
+// Receive Emails Function
+exports.receiveEmails = async (req, res) => {
+  try {
+    console.log('📥 Checking for new emails...');
+    
+    const emails = await fetchEmails();
+    
+    console.log(`📬 Retrieved ${emails.length} new emails`);
+    
+    res.status(200).json({
+      success: true,
+      message: `Retrieved ${emails.length} new emails`,
+      data: {
+        emailCount: emails.length,
+        emails: emails.map(email => ({
+          id: email.id,
+          from: email.from,
+          subject: email.subject,
+          date: email.date,
+          hasAttachments: email.attachments.length > 0
+        })),
+        timestamp: new Date().toISOString()
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Failed to receive emails:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to receive emails',
+      details: error.message,
+      code: error.code
+    });
+  }
+};
+
+// Get received emails
+exports.getReceivedEmails = async (req, res) => {
+  try {
+    const { limit = 50, detailed = false } = req.query;
+    const emails = getReceivedEmails(parseInt(limit));
+    
+    const responseData = detailed === 'true' 
+      ? emails 
+      : emails.map(email => ({
+          id: email.id,
+          from: email.from,
+          subject: email.subject,
+          date: email.date,
+          timestamp: email.timestamp,
+          hasAttachments: email.attachments?.length > 0
+        }));
+    
+    res.status(200).json({
+      success: true,
+      message: `Retrieved ${emails.length} received emails`,
+      data: {
+        emailCount: emails.length,
+        emails: responseData,
+        filters: {
+          limit: parseInt(limit),
+          detailed: detailed === 'true'
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Failed to get received emails:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get received emails',
+      details: error.message
+    });
+  }
+};
+
+// Get specific received email
+exports.getReceivedEmail = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const email = receivedEmails.get(id);
+    
+    if (!email) {
+      return res.status(404).json({
+        success: false,
+        error: 'Email not found'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: 'Email retrieved successfully',
+      data: email
+    });
+    
+  } catch (error) {
+    console.error('❌ Failed to get email:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get email',
+      details: error.message
+    });
+  }
+};
+
+// Test IMAP connection
+exports.testImapConnection = async (req, res) => {
+  try {
+    console.log('🔍 Testing IMAP connection...');
+    
+    const imap = createImapConnection();
+    
+    const testConnection = new Promise((resolve, reject) => {
+      imap.once('ready', () => {
+        console.log('✅ IMAP connection test successful');
+        imap.end();
+        resolve(true);
+      });
+      
+      imap.once('error', (err) => {
+        console.error('❌ IMAP connection test failed:', err);
+        reject(err);
+      });
+      
+      imap.connect();
+    });
+    
+    await testConnection;
+    
+    res.status(200).json({
+      success: true,
+      message: 'IMAP connection successful',
+      config: {
+        host: process.env.IMAP_HOST || 'auto-detected',
+        port: process.env.IMAP_PORT || '993',
+        user: process.env.IMAP_USER || process.env.SMTP_USER ? 'configured' : 'not configured'
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ IMAP connection test failed:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'IMAP connection failed',
+      details: error.message,
+      code: error.code
+    });
+  }
+};
+
+// Auto-reply only function (unchanged)
 exports.sendAutoReplyOnly = async (req, res) => {
   try {
     console.log('🤖 Auto-reply only request:', req.body);
@@ -396,7 +711,7 @@ exports.sendAutoReplyOnly = async (req, res) => {
   }
 };
 
-// Test SMTP connection
+// Test SMTP connection (unchanged)
 exports.testSmtpConnection = async (req, res) => {
   try {
     console.log('🔍 Testing SMTP connection...');
@@ -429,7 +744,7 @@ exports.testSmtpConnection = async (req, res) => {
   }
 };
 
-// New endpoint to get email logs
+// Get email logs (unchanged)
 exports.getEmailLogs = async (req, res) => {
   try {
     const { toSmtpUser, limit = 100 } = req.query;
@@ -469,7 +784,7 @@ exports.getEmailLogs = async (req, res) => {
   }
 };
 
-// New endpoint to get SMTP user specific emails
+// Get SMTP user emails (unchanged)
 exports.getSmtpUserEmails = async (req, res) => {
   try {
     const smtpUserEmails = getEmailLogs(true);
@@ -498,10 +813,18 @@ exports.getSmtpUserEmails = async (req, res) => {
   }
 };
 
+// Export the emailLog for stats route
+exports.emailLog = emailLog;
+
 module.exports = {
   sendEmail: exports.sendEmail,
   sendAutoReplyOnly: exports.sendAutoReplyOnly,
   testSmtpConnection: exports.testSmtpConnection,
+  testImapConnection: exports.testImapConnection,
   getEmailLogs: exports.getEmailLogs,
-  getSmtpUserEmails: exports.getSmtpUserEmails
+  getSmtpUserEmails: exports.getSmtpUserEmails,
+  receiveEmails: exports.receiveEmails,
+  getReceivedEmails: exports.getReceivedEmails,
+  getReceivedEmail: exports.getReceivedEmail,
+  emailLog
 };

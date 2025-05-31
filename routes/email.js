@@ -1,12 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const { 
-  sendEmail, 
-  sendAutoReplyOnly, 
+const {
+  sendEmail,
+  sendAutoReplyOnly,
   testSmtpConnection,
+  testImapConnection,
   getEmailLogs,
-  getSmtpUserEmails 
+  getSmtpUserEmails,
+  receiveEmails,
+  getReceivedEmails,
+  getReceivedEmail,
+  emailLog
 } = require('../controllers/emailController');
+
+// =====================================================================
+// SENDING EMAILS
+// =====================================================================
 
 // POST /email/send - Send email with optional auto-reply
 router.post('/send', sendEmail);
@@ -14,82 +23,112 @@ router.post('/send', sendEmail);
 // POST /email/auto-reply - Send auto-reply only
 router.post('/auto-reply', sendAutoReplyOnly);
 
-// GET /email/test - Test SMTP connection
-router.get('/test', testSmtpConnection);
+// =====================================================================
+// RECEIVING EMAILS
+// =====================================================================
 
-// GET /email/logs - Get all email logs with optional filtering
-// Query params: ?toSmtpUser=true&limit=50
-router.get('/logs', getEmailLogs);
+// GET /email/receive - Fetch new emails from IMAP server
+router.get('/receive', receiveEmails);
 
-// GET /email/smtp-user - Get emails sent specifically to SMTP_USER
-router.get('/smtp-user', getSmtpUserEmails);
+// GET /email/received - Get all received emails (stored locally)
+// Query params: ?limit=50&detailed=true
+router.get('/received', getReceivedEmails);
 
-// GET /email/status - Check email service status
-router.get('/status', (req, res) => {
-  const requiredEnvVars = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'];
-  const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-  
-  res.json({
-    success: true,
-    message: 'Email service status',
-    data: {
-      configured: missingVars.length === 0,
-      missingEnvVars: missingVars,
-      smtpUser: process.env.SMTP_USER || 'not set',
-      config: {
-        host: process.env.SMTP_HOST || 'not set',
-        port: process.env.SMTP_PORT || 'not set',
-        secure: process.env.SMTP_SECURE || 'not set',
-        user: process.env.SMTP_USER ? 'configured' : 'not set',
-        pass: process.env.SMTP_PASS ? 'configured' : 'not set',
-        from: process.env.SMTP_FROM || 'not set'
-      }
-    }
-  });
-});
+// GET /email/received/:id - Get specific received email by ID
+router.get('/received/:id', getReceivedEmail);
 
-// GET /email/stats - Get email statistics
-router.get('/stats', (req, res) => {
+// =====================================================================
+// CONNECTION TESTING
+// =====================================================================
+
+// GET /email/test-smtp - Test SMTP connection (for sending)
+router.get('/test-smtp', testSmtpConnection);
+
+// GET /email/test-imap - Test IMAP connection (for receiving)
+router.get('/test-imap', testImapConnection);
+
+// GET /email/test - Test both SMTP and IMAP connections
+router.get('/test', async (req, res) => {
   try {
-    // This would use the same logging system from the controller
-    const emailLog = require('../controllers/emailController').emailLog || new Map();
-    const logs = Array.from(emailLog.values());
-    
-    const stats = {
-      totalEmails: logs.length,
-      successfulSends: logs.filter(log => log.eventType === 'EMAIL_SENT').length,
-      failedSends: logs.filter(log => log.eventType === 'EMAIL_FAILED').length,
-      autoReplies: logs.filter(log => log.eventType.includes('AUTO_REPLY')).length,
-      emailsToSmtpUser: logs.filter(log => log.isToSmtpUser).length,
-      lastHourEmails: logs.filter(log => {
-        const logTime = new Date(log.timestamp);
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-        return logTime > oneHourAgo;
-      }).length,
-      todayEmails: logs.filter(log => {
-        const logTime = new Date(log.timestamp);
-        const today = new Date();
-        return logTime.toDateString() === today.toDateString();
-      }).length
+    const results = {
+      smtp: { success: false, error: null },
+      imap: { success: false, error: null }
     };
     
-    res.json({
-      success: true,
-      message: 'Email statistics',
+    // Test SMTP
+    try {
+      const nodemailer = require('nodemailer');
+      const transporter = nodemailer.createTransporter({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT) || 587,
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+        tls: { rejectUnauthorized: false }
+      });
+      
+      await transporter.verify();
+      results.smtp.success = true;
+      console.log('✅ SMTP test passed');
+    } catch (smtpError) {
+      results.smtp.error = smtpError.message;
+      console.error('❌ SMTP test failed:', smtpError.message);
+    }
+    
+    // Test IMAP
+    try {
+      const Imap = require('imap');
+      const imap = new Imap({
+        user: process.env.IMAP_USER || process.env.SMTP_USER,
+        password: process.env.IMAP_PASS || process.env.SMTP_PASS,
+        host: process.env.IMAP_HOST || (process.env.SMTP_HOST === 'smtp.gmail.com' ? 'imap.gmail.com' : process.env.SMTP_HOST),
+        port: parseInt(process.env.IMAP_PORT) || 993,
+        tls: true,
+        tlsOptions: { rejectUnauthorized: false }
+      });
+      
+      await new Promise((resolve, reject) => {
+        imap.once('ready', () => {
+          imap.end();
+          resolve();
+        });
+        imap.once('error', reject);
+        imap.connect();
+      });
+      
+      results.imap.success = true;
+      console.log('✅ IMAP test passed');
+    } catch (imapError) {
+      results.imap.error = imapError.message;
+      console.error('❌ IMAP test failed:', imapError.message);
+    }
+    
+    const overallSuccess = results.smtp.success && results.imap.success;
+    
+    res.status(overallSuccess ? 200 : 500).json({
+      success: overallSuccess,
+      message: overallSuccess ? 'All email services working' : 'Some email services failed',
       data: {
-        statistics: stats,
-        smtpUser: process.env.SMTP_USER,
-        timestamp: new Date().toISOString()
+        smtp: results.smtp,
+        imap: results.imap,
+        config: {
+          smtpHost: process.env.SMTP_HOST,
+          smtpPort: process.env.SMTP_PORT,
+          imapHost: process.env.IMAP_HOST || 'auto-detected',
+          imapPort: process.env.IMAP_PORT || '993',
+          user: process.env.SMTP_USER ? 'configured' : 'not configured'
+        }
       }
     });
     
   } catch (error) {
+    console.error('❌ Connection test failed:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to retrieve email statistics',
+      error: 'Connection test failed',
       details: error.message
     });
   }
 });
-
-module.exports = router;
