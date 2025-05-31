@@ -1,4 +1,5 @@
-<!DOCTYPE html>
+<!-- login.html -->
+ <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -447,397 +448,399 @@
 
     <script>
         class AdminPanel {
-            constructor() {
-                this.token = localStorage.getItem('adminToken');
-                this.baseURL = 'http://localhost:3000/api'; // Adjust this to your API URL
-                this.currentUser = null;
-                this.users = [];
-                this.init();
+    constructor() {
+        this.token = localStorage.getItem('adminToken');
+        // Dynamic API URL based on current location
+        this.baseURL = `${window.location.origin}/api`;
+        this.currentUser = null;
+        this.users = [];
+        this.init();
+    }
+
+    init() {
+        this.bindEvents();
+        if (this.token) {
+            this.showAdminPanel();
+            this.loadUserStats();
+            this.loadUsers();
+        }
+    }
+
+    bindEvents() {
+        // Login form
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.login();
+        });
+
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            this.logout();
+        });
+
+        // Add user button
+        document.getElementById('addUserBtn').addEventListener('click', () => {
+            this.openUserModal();
+        });
+
+        // User form
+        document.getElementById('userForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.saveUser();
+        });
+
+        // Modal close buttons
+        document.getElementById('closeModal').addEventListener('click', () => {
+            this.closeUserModal();
+        });
+        document.getElementById('cancelBtn').addEventListener('click', () => {
+            this.closeUserModal();
+        });
+
+        // Search functionality
+        document.getElementById('searchBtn').addEventListener('click', () => {
+            this.loadUsers();
+        });
+
+        // Enter key search
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.loadUsers();
             }
+        });
+    }
 
-            init() {
-                this.bindEvents();
-                if (this.token) {
-                    this.showAdminPanel();
-                    this.loadUserStats();
-                    this.loadUsers();
-                }
-            }
+    async login() {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
 
-            bindEvents() {
-                // Login form
-                document.getElementById('loginForm').addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    this.login();
-                });
+        try {
+            const response = await fetch(`${this.baseURL}/users/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, password })
+            });
 
-                // Logout
-                document.getElementById('logoutBtn').addEventListener('click', () => {
-                    this.logout();
-                });
+            const data = await response.json();
 
-                // Add user button
-                document.getElementById('addUserBtn').addEventListener('click', () => {
-                    this.openUserModal();
-                });
-
-                // User form
-                document.getElementById('userForm').addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    this.saveUser();
-                });
-
-                // Modal close buttons
-                document.getElementById('closeModal').addEventListener('click', () => {
-                    this.closeUserModal();
-                });
-                document.getElementById('cancelBtn').addEventListener('click', () => {
-                    this.closeUserModal();
-                });
-
-                // Search functionality
-                document.getElementById('searchBtn').addEventListener('click', () => {
-                    this.loadUsers();
-                });
-
-                // Enter key search
-                document.getElementById('searchInput').addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        this.loadUsers();
-                    }
-                });
-            }
-
-            async login() {
-                const email = document.getElementById('loginEmail').value;
-                const password = document.getElementById('loginPassword').value;
-
-                try {
-                    const response = await fetch(`${this.baseURL}/users/login`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ email, password })
-                    });
-
-                    const data = await response.json();
-
-                    if (data.success) {
-                        if (data.data.user.role !== 'admin') {
-                            this.showAlert('loginAlert', 'Access denied. Admin privileges required.', 'error');
-                            return;
-                        }
-
-                        this.token = data.data.token;
-                        this.currentUser = data.data.user;
-                        localStorage.setItem('adminToken', this.token);
-                        
-                        this.showAdminPanel();
-                        this.loadUserStats();
-                        this.loadUsers();
-                    } else {
-                        this.showAlert('loginAlert', data.message, 'error');
-                    }
-                } catch (error) {
-                    this.showAlert('loginAlert', 'Login failed. Please try again.', 'error');
-                }
-            }
-
-            logout() {
-                this.token = null;
-                this.currentUser = null;
-                localStorage.removeItem('adminToken');
-                document.getElementById('loginSection').style.display = 'block';
-                document.getElementById('adminPanel').style.display = 'none';
-                document.getElementById('loginForm').reset();
-            }
-
-            showAdminPanel() {
-                document.getElementById('loginSection').style.display = 'none';
-                document.getElementById('adminPanel').style.display = 'block';
-            }
-
-            async loadUserStats() {
-                try {
-                    const response = await fetch(`${this.baseURL}/users/stats/overview`, {
-                        headers: {
-                            'Authorization': `Bearer ${this.token}`
-                        }
-                    });
-
-                    const data = await response.json();
-                    if (data.success) {
-                        this.displayStats(data.data);
-                    }
-                } catch (error) {
-                    console.error('Failed to load stats:', error);
-                }
-            }
-
-            displayStats(stats) {
-                const statsGrid = document.getElementById('statsGrid');
-                statsGrid.innerHTML = `
-                    <div class="stat-card">
-                        <div class="stat-number">${stats.totalUsers}</div>
-                        <div class="stat-label">Total Users</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number">${stats.activeUsers}</div>
-                        <div class="stat-label">Active Users</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number">${stats.adminUsers}</div>
-                        <div class="stat-label">Admin Users</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number">${stats.recentUsers}</div>
-                        <div class="stat-label">Recent Users (30 days)</div>
-                    </div>
-                `;
-            }
-
-            async loadUsers() {
-                const search = document.getElementById('searchInput').value;
-                const role = document.getElementById('roleFilter').value;
-                const isActive = document.getElementById('statusFilter').value;
-
-                let url = `${this.baseURL}/users?`;
-                const params = new URLSearchParams();
-                
-                if (search) params.append('search', search);
-                if (role) params.append('role', role);
-                if (isActive !== '') params.append('isActive', isActive);
-                
-                url += params.toString();
-
-                try {
-                    const response = await fetch(url, {
-                        headers: {
-                            'Authorization': `Bearer ${this.token}`
-                        }
-                    });
-
-                    const data = await response.json();
-                    if (data.success) {
-                        this.users = data.data.users;
-                        this.displayUsers();
-                    }
-                } catch (error) {
-                    console.error('Failed to load users:', error);
-                }
-            }
-
-            displayUsers() {
-                const usersGrid = document.getElementById('usersGrid');
-                if (this.users.length === 0) {
-                    usersGrid.innerHTML = '<p style="text-align: center; color: #718096;">No users found.</p>';
+            if (data.success) {
+                if (data.data.user.role !== 'admin') {
+                    this.showAlert('loginAlert', 'Access denied. Admin privileges required.', 'error');
                     return;
                 }
 
-                usersGrid.innerHTML = this.users.map(user => `
-                    <div class="user-card">
-                        <div class="user-info">
-                            <h3>${user.profile.firstName} ${user.profile.lastName} (@${user.username})</h3>
-                            <p><strong>Email:</strong> ${user.email}</p>
-                            <p><strong>Role:</strong> ${user.role}</p>
-                            <p><strong>Phone:</strong> ${user.profile.phone || 'N/A'}</p>
-                            <p><strong>Last Login:</strong> ${user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}</p>
-                            <span class="user-status ${user.isActive ? 'status-active' : 'status-inactive'}">
-                                ${user.isActive ? 'Active' : 'Inactive'}
-                            </span>
-                        </div>
-                        <div class="user-actions">
-                            <button class="btn" onclick="adminPanel.editUser('${user.id}')">✏️ Edit</button>
-                            <button class="btn ${user.isActive ? 'btn-secondary' : 'btn-success'}" 
-                                    onclick="adminPanel.toggleUserStatus('${user.id}')">
-                                ${user.isActive ? '🚫 Deactivate' : '✅ Activate'}
-                            </button>
-                            <button class="btn btn-secondary" onclick="adminPanel.resetPassword('${user.id}')">🔑 Reset Password</button>
-                            ${user.id !== this.currentUser.id ? `<button class="btn btn-danger" onclick="adminPanel.deleteUser('${user.id}')">🗑️ Delete</button>` : ''}
-                        </div>
-                    </div>
-                `).join('');
-            }
-
-            openUserModal(user = null) {
-                const modal = document.getElementById('userModal');
-                const modalTitle = document.getElementById('modalTitle');
-                const form = document.getElementById('userForm');
-                const passwordGroup = document.getElementById('passwordGroup');
-
-                if (user) {
-                    modalTitle.textContent = 'Edit User';
-                    this.fillUserForm(user);
-                    passwordGroup.style.display = 'none';
-                    document.getElementById('password').required = false;
-                } else {
-                    modalTitle.textContent = 'Add New User';
-                    form.reset();
-                    document.getElementById('isActive').checked = true;
-                    passwordGroup.style.display = 'block';
-                    document.getElementById('password').required = true;
-                }
-
-                modal.style.display = 'block';
-            }
-
-            fillUserForm(user) {
-                document.getElementById('userId').value = user.id;
-                document.getElementById('username').value = user.username;
-                document.getElementById('email').value = user.email;
-                document.getElementById('firstName').value = user.profile.firstName || '';
-                document.getElementById('lastName').value = user.profile.lastName || '';
-                document.getElementById('phone').value = user.profile.phone || '';
-                document.getElementById('role').value = user.role;
-                document.getElementById('isActive').checked = user.isActive;
-            }
-
-            closeUserModal() {
-                document.getElementById('userModal').style.display = 'none';
-                document.getElementById('modalAlert').innerHTML = '';
-            }
-
-            async saveUser() {
-                const userId = document.getElementById('userId').value;
-                const userData = {
-                    username: document.getElementById('username').value,
-                    email: document.getElementById('email').value,
-                    role: document.getElementById('role').value,
-                    isActive: document.getElementById('isActive').checked,
-                    profile: {
-                        firstName: document.getElementById('firstName').value,
-                        lastName: document.getElementById('lastName').value,
-                        phone: document.getElementById('phone').value
-                    }
-                };
-
-                if (!userId) {
-                    userData.password = document.getElementById('password').value;
-                }
-
-                try {
-                    const url = userId ? `${this.baseURL}/users/${userId}` : `${this.baseURL}/users`;
-                    const method = userId ? 'PUT' : 'POST';
-
-                    const response = await fetch(url, {
-                        method,
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${this.token}`
-                        },
-                        body: JSON.stringify(userData)
-                    });
-
-                    const data = await response.json();
-                    if (data.success) {
-                        this.showAlert('modalAlert', data.message, 'success');
-                        setTimeout(() => {
-                            this.closeUserModal();
-                            this.loadUsers();
-                            this.loadUserStats();
-                        }, 1500);
-                    } else {
-                        this.showAlert('modalAlert', data.message, 'error');
-                    }
-                } catch (error) {
-                    this.showAlert('modalAlert', 'Failed to save user. Please try again.', 'error');
-                }
-            }
-
-            editUser(userId) {
-                const user = this.users.find(u => u.id === userId);
-                if (user) {
-                    this.openUserModal(user);
-                }
-            }
-
-            async toggleUserStatus(userId) {
-                try {
-                    const response = await fetch(`${this.baseURL}/users/${userId}/toggle-status`, {
-                        method: 'PATCH',
-                        headers: {
-                            'Authorization': `Bearer ${this.token}`
-                        }
-                    });
-
-                    const data = await response.json();
-                    if (data.success) {
-                        this.loadUsers();
-                        this.loadUserStats();
-                    }
-                } catch (error) {
-                    console.error('Failed to toggle user status:', error);
-                }
-            }
-
-            async resetPassword(userId) {
-                const newPassword = prompt('Enter new password (minimum 6 characters):');
-                if (!newPassword || newPassword.length < 6) {
-                    alert('Password must be at least 6 characters long.');
-                    return;
-                }
-
-                try {
-                    const response = await fetch(`${this.baseURL}/users/${userId}/reset-password`, {
-                        method: 'PATCH',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${this.token}`
-                        },
-                        body: JSON.stringify({ newPassword })
-                    });
-
-                    const data = await response.json();
-                    if (data.success) {
-                        alert('Password reset successfully!');
-                    } else {
-                        alert(data.message);
-                    }
-                } catch (error) {
-                    alert('Failed to reset password. Please try again.');
-                }
-            }
-
-            async deleteUser(userId) {
-                if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-                    return;
-                }
-
-                try {
-                    const response = await fetch(`${this.baseURL}/users/${userId}`, {
-                        method: 'DELETE',
-                        headers: {
-                            'Authorization': `Bearer ${this.token}`
-                        }
-                    });
-
-                    const data = await response.json();
-                    if (data.success) {
-                        this.loadUsers();
-                        this.loadUserStats();
-                    } else {
-                        alert(data.message);
-                    }
-                } catch (error) {
-                    alert('Failed to delete user. Please try again.');
-                }
-            }
-
-            showAlert(containerId, message, type) {
-                const container = document.getElementById(containerId);
-                container.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+                this.token = data.data.token;
+                this.currentUser = data.data.user;
+                localStorage.setItem('adminToken', this.token);
                 
-                if (type === 'success') {
-                    setTimeout(() => {
-                        container.innerHTML = '';
-                    }, 3000);
-                }
+                this.showAdminPanel();
+                this.loadUserStats();
+                this.loadUsers();
+            } else {
+                this.showAlert('loginAlert', data.message, 'error');
             }
+        } catch (error) {
+            console.error('Login error:', error);
+            this.showAlert('loginAlert', 'Login failed. Please check your connection and try again.', 'error');
+        }
+    }
+
+    logout() {
+        this.token = null;
+        this.currentUser = null;
+        localStorage.removeItem('adminToken');
+        document.getElementById('loginSection').style.display = 'block';
+        document.getElementById('adminPanel').style.display = 'none';
+        document.getElementById('loginForm').reset();
+    }
+
+    showAdminPanel() {
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('adminPanel').style.display = 'block';
+    }
+
+    async loadUserStats() {
+        try {
+            const response = await fetch(`${this.baseURL}/users/stats/overview`, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                this.displayStats(data.data);
+            }
+        } catch (error) {
+            console.error('Failed to load stats:', error);
+        }
+    }
+
+    displayStats(stats) {
+        const statsGrid = document.getElementById('statsGrid');
+        statsGrid.innerHTML = `
+            <div class="stat-card">
+                <div class="stat-number">${stats.totalUsers}</div>
+                <div class="stat-label">Total Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">${stats.activeUsers}</div>
+                <div class="stat-label">Active Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">${stats.adminUsers}</div>
+                <div class="stat-label">Admin Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">${stats.recentUsers}</div>
+                <div class="stat-label">Recent Users (30 days)</div>
+            </div>
+        `;
+    }
+
+    async loadUsers() {
+        const search = document.getElementById('searchInput').value;
+        const role = document.getElementById('roleFilter').value;
+        const isActive = document.getElementById('statusFilter').value;
+
+        let url = `${this.baseURL}/users?`;
+        const params = new URLSearchParams();
+        
+        if (search) params.append('search', search);
+        if (role) params.append('role', role);
+        if (isActive !== '') params.append('isActive', isActive);
+        
+        url += params.toString();
+
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                this.users = data.data.users;
+                this.displayUsers();
+            }
+        } catch (error) {
+            console.error('Failed to load users:', error);
+        }
+    }
+
+    displayUsers() {
+        const usersGrid = document.getElementById('usersGrid');
+        if (this.users.length === 0) {
+            usersGrid.innerHTML = '<p style="text-align: center; color: #718096;">No users found.</p>';
+            return;
         }
 
-        // Initialize the admin panel
-        const adminPanel = new AdminPanel();
+        usersGrid.innerHTML = this.users.map(user => `
+            <div class="user-card">
+                <div class="user-info">
+                    <h3>${user.profile.firstName} ${user.profile.lastName} (@${user.username})</h3>
+                    <p><strong>Email:</strong> ${user.email}</p>
+                    <p><strong>Role:</strong> ${user.role}</p>
+                    <p><strong>Phone:</strong> ${user.profile.phone || 'N/A'}</p>
+                    <p><strong>Last Login:</strong> ${user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}</p>
+                    <span class="user-status ${user.isActive ? 'status-active' : 'status-inactive'}">
+                        ${user.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                </div>
+                <div class="user-actions">
+                    <button class="btn" onclick="adminPanel.editUser('${user.id}')">✏️ Edit</button>
+                    <button class="btn ${user.isActive ? 'btn-secondary' : 'btn-success'}" 
+                            onclick="adminPanel.toggleUserStatus('${user.id}')">
+                        ${user.isActive ? '🚫 Deactivate' : '✅ Activate'}
+                    </button>
+                    <button class="btn btn-secondary" onclick="adminPanel.resetPassword('${user.id}')">🔑 Reset Password</button>
+                    ${user.id !== this.currentUser.id ? `<button class="btn btn-danger" onclick="adminPanel.deleteUser('${user.id}')">🗑️ Delete</button>` : ''}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    openUserModal(user = null) {
+        const modal = document.getElementById('userModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const form = document.getElementById('userForm');
+        const passwordGroup = document.getElementById('passwordGroup');
+
+        if (user) {
+            modalTitle.textContent = 'Edit User';
+            this.fillUserForm(user);
+            passwordGroup.style.display = 'none';
+            document.getElementById('password').required = false;
+        } else {
+            modalTitle.textContent = 'Add New User';
+            form.reset();
+            document.getElementById('isActive').checked = true;
+            passwordGroup.style.display = 'block';
+            document.getElementById('password').required = true;
+        }
+
+        modal.style.display = 'block';
+    }
+
+    fillUserForm(user) {
+        document.getElementById('userId').value = user.id;
+        document.getElementById('username').value = user.username;
+        document.getElementById('email').value = user.email;
+        document.getElementById('firstName').value = user.profile.firstName || '';
+        document.getElementById('lastName').value = user.profile.lastName || '';
+        document.getElementById('phone').value = user.profile.phone || '';
+        document.getElementById('role').value = user.role;
+        document.getElementById('isActive').checked = user.isActive;
+    }
+
+    closeUserModal() {
+        document.getElementById('userModal').style.display = 'none';
+        document.getElementById('modalAlert').innerHTML = '';
+    }
+
+    async saveUser() {
+        const userId = document.getElementById('userId').value;
+        const userData = {
+            username: document.getElementById('username').value,
+            email: document.getElementById('email').value,
+            role: document.getElementById('role').value,
+            isActive: document.getElementById('isActive').checked,
+            profile: {
+                firstName: document.getElementById('firstName').value,
+                lastName: document.getElementById('lastName').value,
+                phone: document.getElementById('phone').value
+            }
+        };
+
+        if (!userId) {
+            userData.password = document.getElementById('password').value;
+        }
+
+        try {
+            const url = userId ? `${this.baseURL}/users/${userId}` : `${this.baseURL}/users`;
+            const method = userId ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.token}`
+                },
+                body: JSON.stringify(userData)
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                this.showAlert('modalAlert', data.message, 'success');
+                setTimeout(() => {
+                    this.closeUserModal();
+                    this.loadUsers();
+                    this.loadUserStats();
+                }, 1500);
+            } else {
+                this.showAlert('modalAlert', data.message, 'error');
+            }
+        } catch (error) {
+            this.showAlert('modalAlert', 'Failed to save user. Please try again.', 'error');
+        }
+    }
+
+    editUser(userId) {
+        const user = this.users.find(u => u.id === userId);
+        if (user) {
+            this.openUserModal(user);
+        }
+    }
+
+    async toggleUserStatus(userId) {
+        try {
+            const response = await fetch(`${this.baseURL}/users/${userId}/toggle-status`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                this.loadUsers();
+                this.loadUserStats();
+            }
+        } catch (error) {
+            console.error('Failed to toggle user status:', error);
+        }
+    }
+
+    async resetPassword(userId) {
+        const newPassword = prompt('Enter new password (minimum 6 characters):');
+        if (!newPassword || newPassword.length < 6) {
+            alert('Password must be at least 6 characters long.');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${this.baseURL}/users/${userId}/reset-password`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.token}`
+                },
+                body: JSON.stringify({ newPassword })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                alert('Password reset successfully!');
+            } else {
+                alert(data.message);
+            }
+        } catch (error) {
+            alert('Failed to reset password. Please try again.');
+        }
+    }
+
+    async deleteUser(userId) {
+        if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${this.baseURL}/users/${userId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                this.loadUsers();
+                this.loadUserStats();
+            } else {
+                alert(data.message);
+            }
+        } catch (error) {
+            alert('Failed to delete user. Please try again.');
+        }
+    }
+
+    showAlert(containerId, message, type) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+        
+        if (type === 'success') {
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 3000);
+        }
+    }
+}
+
+// Initialize the admin panel
+const adminPanel = new AdminPanel();
     </script>
 </body>
 </html>
