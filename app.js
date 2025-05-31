@@ -13,10 +13,17 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Serve static files from 'public' folder FIRST
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Debug: Log all route registrations
+// Debug: Log all route registrations - FIXED
 const originalUse = app.use;
 app.use = function(path, ...middleware) {
-  console.log('🔍 Registering route/middleware:', typeof path === 'string' ? path : '[middleware]');
+  if (typeof path === 'string') {
+    console.log('🔍 Registering route/middleware:', path);
+  } else {
+    console.log('🔍 Registering middleware');
+    // If path is actually middleware, shift arguments
+    middleware.unshift(path);
+    path = '/';
+  }
   return originalUse.call(this, path, ...middleware);
 };
 
@@ -61,26 +68,69 @@ try {
 try {
   console.log('📂 Adding API status route...');
   app.get('/api/status', (req, res) => {
-    res.send('🌐 Omni Chat API is running');
+    res.json({
+      status: 'success',
+      message: '🌐 Omni Chat API is running',
+      timestamp: new Date().toISOString(),
+      version: '1.0.0'
+    });
   });
   console.log('✅ API status route added');
 } catch (error) {
   console.error('❌ Error adding API status route:', error.message);
 }
 
-// Catch-all route for SPA - FIXED SYNTAX
+// Health check endpoint
+try {
+  console.log('📂 Adding health check route...');
+  app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'healthy', uptime: process.uptime() });
+  });
+  console.log('✅ Health check route added');
+} catch (error) {
+  console.error('❌ Error adding health check route:', error.message);
+}
+
+// Catch-all route for SPA - FIXED
 try {
   console.log('📂 Adding catch-all route...');
-  app.get('*', (req, res) => {
-    // If you have an index.html in public folder
+  
+  // Use a more specific pattern to avoid conflicts
+  app.get('/*', (req, res) => {
+    // Skip API routes
+    if (req.path.startsWith('/api/') || 
+        req.path.startsWith('/whatsapp/') || 
+        req.path.startsWith('/facebook/') || 
+        req.path.startsWith('/email/') ||
+        req.path.startsWith('/health')) {
+      return res.status(404).json({
+        success: false,
+        error: 'API endpoint not found',
+        path: req.path
+      });
+    }
+
+    // Serve frontend for non-API routes
     const indexPath = path.join(__dirname, 'public', 'index.html');
     res.sendFile(indexPath, (err) => {
       if (err) {
-        // Fallback to API status if no frontend
-        res.status(404).send('🌐 Omni Chat API is running - No frontend found');
+        // Fallback response if no frontend
+        res.status(200).json({
+          message: '🌐 Omni Chat API is running',
+          status: 'success',
+          note: 'No frontend configured - API only mode',
+          endpoints: {
+            status: '/api/status',
+            health: '/health',
+            whatsapp: '/whatsapp/*',
+            facebook: '/facebook/*',
+            email: '/email/*'
+          }
+        });
       }
     });
   });
+  
   console.log('✅ Catch-all route added');
 } catch (error) {
   console.error('❌ Error adding catch-all route:', error.message);
