@@ -226,81 +226,12 @@ display: none;
 </div>
 
 <script>
-const API_BASE_URL = '/api/auth';
-let isLoginMode = true;
-
-// DOM Elements
-const loginForm = document.getElementById('loginForm');
-const registerForm = document.getElementById('registerForm');
-const toggleForm = document.getElementById('toggleForm');
-const formDescription = document.getElementById('formDescription');
-const loadingIndicator = document.getElementById('loadingIndicator');
-const alertContainer = document.getElementById('alertContainer');
-
-// Toggle between login and register forms
-toggleForm.addEventListener('click', (e) => {
-    e.preventDefault();
-    isLoginMode = !isLoginMode;
-    
-    if (isLoginMode) {
-        loginForm.style.display = 'block';
-        registerForm.style.display = 'none';
-        toggleForm.textContent = "Don't have an account? Register here";
-        formDescription.textContent = 'Please login to access the messenger';
-    } else {
-        loginForm.style.display = 'none';
-        registerForm.style.display = 'block';
-        toggleForm.textContent = 'Already have an account? Login here';
-        formDescription.textContent = 'Create a new account to get started';
-    }
-    
-    clearAlert();
-});
-
-// Login Form Handler
-loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value.trim();
-    
-    if (!email || !password) {
-        showAlert('Please enter both email and password', 'error');
-        return;
-    }
-    
-    await handleLogin(email, password);
-});
-
-// Register Form Handler
-registerForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const name = document.getElementById('registerName').value.trim();
-    const email = document.getElementById('registerEmail').value.trim();
-    const password = document.getElementById('registerPassword').value.trim();
-    
-    if (!name || !email || !password) {
-        showAlert('Please fill in all fields', 'error');
-        return;
-    }
-    
-    if (password.length < 6) {
-        showAlert('Password must be at least 6 characters', 'error');
-        return;
-    }
-    
-    await handleRegister(name, email, password);
-});
-
-// Handle Login
+// In your login.html (updated handleLogin function)
 async function handleLogin(email, password) {
     showLoading(true, 'Logging in...');
     document.getElementById('loginBtn').disabled = true;
     
     try {
-        console.log('Attempting login with:', { email, password: '***' });
-        
         const response = await fetch(`${API_BASE_URL}/login`, {
             method: 'POST',
             headers: {
@@ -309,12 +240,14 @@ async function handleLogin(email, password) {
             body: JSON.stringify({ email, password })
         });
         
-        console.log('Login response status:', response.status);
         const data = await response.json();
-        console.log('Login response data:', data);
         
+        if (!response.ok) {
+            throw new Error(data.message || 'Login failed');
+        }
+
         if (data.success) {
-            // Store user data and token
+            // Store user data
             const userData = {
                 ...data.data.user,
                 token: data.data.token,
@@ -325,137 +258,30 @@ async function handleLogin(email, password) {
             localStorage.setItem('omniToken', data.data.token);
             
             // Show success message
-            const roleText = userData.role === 'admin' ? 'Admin' : 
-                           userData.role === 'moderator' ? 'Moderator' : 'User';
-            showAlert(`Login successful! Welcome ${roleText}. Redirecting...`, 'success');
+            showAlert(`Welcome back, ${userData.name}! Redirecting...`, 'success');
             
-            // Redirect based on user role
+            // Redirect based on role
             setTimeout(() => {
                 if (userData.role === 'admin') {
-                    window.location.href = 'adminDashboard.html';
+                    window.location.href = '/admin/dashboard.html';
                 } else if (userData.role === 'moderator') {
-                    window.location.href = 'moderatorDashboard.html';
+                    window.location.href = '/moderator/dashboard.html';
                 } else {
-                    window.location.href = 'index.html';
+                    window.location.href = '/dashboard.html';
                 }
             }, 1500);
-            
         } else {
             showAlert(data.message || 'Login failed', 'error');
         }
         
     } catch (error) {
         console.error('Login error:', error);
-        showAlert('Network error. Please check your connection and try again.', 'error');
+        showAlert(error.message || 'Login failed. Please try again.', 'error');
     } finally {
         showLoading(false);
         document.getElementById('loginBtn').disabled = false;
     }
 }
-
-// Handle Register
-async function handleRegister(name, email, password) {
-    showLoading(true, 'Creating account...');
-    document.getElementById('registerBtn').disabled = true;
-    
-    try {
-        const response = await fetch(`${API_BASE_URL}/register`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ name, email, password })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showAlert('Account created successfully! You can now login.', 'success');
-            
-            // Clear form
-            document.getElementById('registerForm').reset();
-            
-            // Switch to login form after 2 seconds
-            setTimeout(() => {
-                toggleForm.click();
-                // Pre-fill email in login form
-                document.getElementById('loginEmail').value = email;
-            }, 2000);
-            
-        } else {
-            showAlert(data.message || 'Registration failed', 'error');
-        }
-        
-    } catch (error) {
-        console.error('Registration error:', error);
-        showAlert('Network error. Please check your connection and try again.', 'error');
-    } finally {
-        showLoading(false);
-        document.getElementById('registerBtn').disabled = false;
-    }
-}
-
-// Utility Functions
-function showAlert(message, type) {
-    alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
-    
-    if (type === 'success') {
-        setTimeout(() => {
-            clearAlert();
-        }, 5000);
-    }
-}
-
-function clearAlert() {
-    alertContainer.innerHTML = '';
-}
-
-function showLoading(show, text = 'Loading...') {
-    const loadingText = document.getElementById('loadingText');
-    loadingText.textContent = text;
-    loadingIndicator.style.display = show ? 'block' : 'none';
-}
-
-// Check if user is already logged in
-function checkExistingLogin() {
-    const userData = sessionStorage.getItem('omniUser');
-    const token = localStorage.getItem('omniToken');
-    
-    if (userData && token) {
-        const user = JSON.parse(userData);
-        // Redirect to appropriate dashboard
-        if (user.role === 'admin') {
-            window.location.href = 'adminDashboard.html';
-        } else if (user.role === 'moderator') {
-            window.location.href = 'moderatorDashboard.html';
-        } else {
-            window.location.href = 'index.html';
-        }
-    }
-}
-
-// Check for existing login on page load
-window.addEventListener('load', checkExistingLogin);
-
-// Demo credentials auto-fill functionality
-document.addEventListener('click', (e) => {
-    if (e.target.closest('.demo-credentials')) {
-        const isAdminSection = e.target.closest('.admin-section');
-        
-        if (isAdminSection) {
-            document.getElementById('loginEmail').value = 'admin@admin.com';
-            document.getElementById('loginPassword').value = 'admin123';
-        } else {
-            document.getElementById('loginEmail').value = 'demo@example.com';
-            document.getElementById('loginPassword').value = 'demo123';
-        }
-        
-        // Switch to login form if in register mode
-        if (!isLoginMode) {
-            toggleForm.click();
-        }
-    }
-});
 </script>
 </body>
 </html>
