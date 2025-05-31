@@ -1,9 +1,9 @@
 const nodemailer = require('nodemailer');
 const BotService = require('../services/botService');
 
-// Create email transporter
+// Create email transporter - FIXED: createTransport (not createTransporter)
 const createTransporter = () => {
-  return nodemailer.createTransporter({
+  return nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT) || 587,
     secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
