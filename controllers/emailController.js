@@ -1,20 +1,23 @@
+// Enhanced email controller with comprehensive tracking
 const nodemailer = require('nodemailer');
 const BotService = require('../services/botService');
+
+// Email tracking store (in production, use a database)
+const emailLog = new Map();
 
 // Create email transporter with enhanced configuration
 const createTransporter = () => {
   const config = {
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT) || 587,
-    secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+    secure: process.env.SMTP_SECURE === 'true',
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
     tls: {
-      rejectUnauthorized: false // For development only
+      rejectUnauthorized: false
     },
-    // Add debug logging
     debug: process.env.NODE_ENV === 'development',
     logger: process.env.NODE_ENV === 'development'
   };
@@ -27,16 +30,70 @@ const createTransporter = () => {
     pass: config.auth.pass ? '***masked***' : 'NOT SET'
   });
   
-  return nodemailer.createTransport(config);
+  return nodemailer.createTransporter(config);
 };
 
-// Add email validation function
+// Enhanced email validation
 const validateEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 };
 
+// Email tracking functions
+const logEmailEvent = (eventType, emailData, result = null, error = null) => {
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    eventType,
+    emailData: {
+      to: emailData.to,
+      from: emailData.from,
+      subject: emailData.subject,
+      messageId: result?.messageId || emailData.messageId
+    },
+    result,
+    error: error?.message || null,
+    isToSmtpUser: emailData.to === process.env.SMTP_USER
+  };
+  
+  // Store in memory (use database in production)
+  const logId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  emailLog.set(logId, logEntry);
+  
+  // Enhanced console logging with special marking for SMTP_USER emails
+  const userIndicator = logEntry.isToSmtpUser ? '🎯 [TO SMTP_USER]' : '';
+  console.log(`📧 ${eventType} ${userIndicator}:`, {
+    timestamp: logEntry.timestamp,
+    to: emailData.to,
+    subject: emailData.subject,
+    messageId: result?.messageId,
+    isToSmtpUser: logEntry.isToSmtpUser
+  });
+  
+  // Special notification for emails sent to SMTP_USER
+  if (logEntry.isToSmtpUser) {
+    console.log(`🎯 ALERT: Email sent to SMTP_USER (${process.env.SMTP_USER})`);
+    console.log(`   Subject: ${emailData.subject}`);
+    console.log(`   Time: ${logEntry.timestamp}`);
+    console.log(`   Message ID: ${result?.messageId || 'N/A'}`);
+  }
+  
+  return logId;
+};
+
+// Get email logs with filtering
+const getEmailLogs = (filterToSmtpUser = false) => {
+  const logs = Array.from(emailLog.values());
+  
+  if (filterToSmtpUser) {
+    return logs.filter(log => log.isToSmtpUser);
+  }
+  
+  return logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+};
+
 exports.sendEmail = async (req, res) => {
+  let logId = null;
+  
   try {
     console.log('📨 Incoming email request:', {
       body: req.body,
@@ -67,7 +124,7 @@ exports.sendEmail = async (req, res) => {
     
     const transporter = createTransporter();
     
-    // Verify transporter configuration with better error handling
+    // Verify transporter configuration
     try {
       console.log('🔍 Verifying SMTP connection...');
       await transporter.verify();
@@ -85,6 +142,9 @@ exports.sendEmail = async (req, res) => {
       ? `${fromName} <${process.env.SMTP_FROM || process.env.SMTP_USER}>`
       : process.env.SMTP_FROM || process.env.SMTP_USER;
     
+    // Log email attempt
+    logId = logEmailEvent('EMAIL_ATTEMPT', { to, from: fromAddress, subject });
+    
     console.log('📤 Preparing to send email from:', fromAddress, 'to:', to);
     
     // Send the original email
@@ -94,10 +154,10 @@ exports.sendEmail = async (req, res) => {
       subject,
       text,
       html,
-      // Add additional headers for better deliverability
       headers: {
         'X-Mailer': 'Omni Chat App',
-        'Reply-To': fromAddress
+        'Reply-To': fromAddress,
+        'X-Email-Log-ID': logId // Custom header for tracking
       }
     };
     
@@ -110,6 +170,10 @@ exports.sendEmail = async (req, res) => {
     });
     
     const result = await transporter.sendMail(mailOptions);
+    
+    // Log successful send
+    logEmailEvent('EMAIL_SENT', { to, from: fromAddress, subject }, result);
+    
     console.log('✅ Email sent successfully!');
     console.log('📤 Email details:', {
       to: to,
@@ -135,12 +199,28 @@ exports.sendEmail = async (req, res) => {
         references: result.messageId,
         headers: {
           'X-Mailer': 'Omni Chat App Auto-Reply',
-          'Auto-Submitted': 'auto-replied'
+          'Auto-Submitted': 'auto-replied',
+          'X-Email-Log-ID': logId
         }
       };
       
+      // Log auto-reply attempt
+      logEmailEvent('AUTO_REPLY_ATTEMPT', { 
+        to, 
+        from: fromAddress, 
+        subject: autoReply.subject 
+      });
+      
       // Send auto-reply
       autoReplyResult = await transporter.sendMail(autoReplyOptions);
+      
+      // Log auto-reply success
+      logEmailEvent('AUTO_REPLY_SENT', { 
+        to, 
+        from: fromAddress, 
+        subject: autoReply.subject 
+      }, autoReplyResult);
+      
       console.log('🤖 Auto-reply sent successfully:', {
         to: to,
         messageId: autoReplyResult.messageId,
@@ -148,19 +228,25 @@ exports.sendEmail = async (req, res) => {
       });
     } catch (autoReplyError) {
       console.error('⚠️ Auto-reply failed (but original email sent):', autoReplyError);
-      // Don't fail the main request if auto-reply fails
+      logEmailEvent('AUTO_REPLY_FAILED', { 
+        to, 
+        from: fromAddress, 
+        subject: 'Auto-reply' 
+      }, null, autoReplyError);
     }
     
     res.status(200).json({
       success: true,
       message: autoReplyResult ? 'Email sent successfully with auto-reply' : 'Email sent successfully (auto-reply failed)',
       data: {
+        logId,
         originalEmail: {
           messageId: result.messageId,
           to,
           subject,
           accepted: result.accepted,
-          rejected: result.rejected
+          rejected: result.rejected,
+          sentToSmtpUser: to === process.env.SMTP_USER
         },
         autoReply: autoReplyResult ? {
           messageId: autoReplyResult.messageId,
@@ -178,6 +264,11 @@ exports.sendEmail = async (req, res) => {
       responseCode: error.responseCode,
       stack: error.stack
     });
+    
+    // Log the failure
+    if (logId) {
+      logEmailEvent('EMAIL_FAILED', req.body, null, error);
+    }
     
     // Provide more specific error messages
     let errorMessage = 'Failed to send email';
@@ -198,7 +289,8 @@ exports.sendEmail = async (req, res) => {
       error: errorMessage,
       details: error.message,
       code: error.code,
-      responseCode: error.responseCode
+      responseCode: error.responseCode,
+      logId
     });
   }
 };
@@ -224,25 +316,40 @@ exports.sendAutoReplyOnly = async (req, res) => {
     }
     
     const transporter = createTransporter();
-    
-    // Verify connection
     await transporter.verify();
     console.log('✅ SMTP connection verified for auto-reply');
     
     const autoReply = BotService.generateEmailAutoReply(originalSubject, to);
+    const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER;
+    
+    // Log auto-reply attempt
+    const logId = logEmailEvent('AUTO_REPLY_ONLY_ATTEMPT', { 
+      to, 
+      from: fromAddress, 
+      subject: autoReply.subject 
+    });
     
     const mailOptions = {
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      from: fromAddress,
       to,
       subject: autoReply.subject,
       text: autoReply.message,
       headers: {
         'X-Mailer': 'Omni Chat App Auto-Reply',
-        'Auto-Submitted': 'auto-replied'
+        'Auto-Submitted': 'auto-replied',
+        'X-Email-Log-ID': logId
       }
     };
     
     const result = await transporter.sendMail(mailOptions);
+    
+    // Log success
+    logEmailEvent('AUTO_REPLY_ONLY_SENT', { 
+      to, 
+      from: fromAddress, 
+      subject: autoReply.subject 
+    }, result);
+    
     console.log('🤖 Auto-reply sent successfully:', {
       to: to,
       messageId: result.messageId,
@@ -253,11 +360,13 @@ exports.sendAutoReplyOnly = async (req, res) => {
       success: true,
       message: 'Auto-reply sent successfully',
       data: {
+        logId,
         messageId: result.messageId,
         to,
         subject: autoReply.subject,
         accepted: result.accepted,
-        rejected: result.rejected
+        rejected: result.rejected,
+        sentToSmtpUser: to === process.env.SMTP_USER
       }
     });
     
@@ -268,7 +377,6 @@ exports.sendAutoReplyOnly = async (req, res) => {
       responseCode: error.responseCode
     });
     
-    // Provide more specific error messages
     let errorMessage = 'Failed to send auto-reply';
     if (error.code === 'EAUTH') {
       errorMessage = 'Email authentication failed. Check your SMTP credentials.';
@@ -288,7 +396,7 @@ exports.sendAutoReplyOnly = async (req, res) => {
   }
 };
 
-// Add a new endpoint to test SMTP configuration
+// Test SMTP connection
 exports.testSmtpConnection = async (req, res) => {
   try {
     console.log('🔍 Testing SMTP connection...');
@@ -319,4 +427,81 @@ exports.testSmtpConnection = async (req, res) => {
       code: error.code
     });
   }
+};
+
+// New endpoint to get email logs
+exports.getEmailLogs = async (req, res) => {
+  try {
+    const { toSmtpUser, limit = 100 } = req.query;
+    const filterToSmtpUser = toSmtpUser === 'true';
+    
+    let logs = getEmailLogs(filterToSmtpUser);
+    
+    // Apply limit
+    if (limit && parseInt(limit) > 0) {
+      logs = logs.slice(0, parseInt(limit));
+    }
+    
+    const smtpUserEmails = logs.filter(log => log.isToSmtpUser);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Email logs retrieved successfully',
+      data: {
+        totalLogs: logs.length,
+        smtpUserEmailCount: smtpUserEmails.length,
+        logs,
+        filters: {
+          toSmtpUser: filterToSmtpUser,
+          limit: parseInt(limit) || 100
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Failed to retrieve email logs:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve email logs',
+      details: error.message
+    });
+  }
+};
+
+// New endpoint to get SMTP user specific emails
+exports.getSmtpUserEmails = async (req, res) => {
+  try {
+    const smtpUserEmails = getEmailLogs(true);
+    
+    console.log(`📊 Found ${smtpUserEmails.length} emails sent to SMTP_USER (${process.env.SMTP_USER})`);
+    
+    res.status(200).json({
+      success: true,
+      message: `Found ${smtpUserEmails.length} emails sent to SMTP_USER`,
+      data: {
+        smtpUser: process.env.SMTP_USER,
+        emailCount: smtpUserEmails.length,
+        emails: smtpUserEmails,
+        lastEmailTime: smtpUserEmails[0]?.timestamp || null
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Failed to retrieve SMTP user emails:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve SMTP user emails',
+      details: error.message
+    });
+  }
+};
+
+module.exports = {
+  sendEmail: exports.sendEmail,
+  sendAutoReplyOnly: exports.sendAutoReplyOnly,
+  testSmtpConnection: exports.testSmtpConnection,
+  getEmailLogs: exports.getEmailLogs,
+  getSmtpUserEmails: exports.getSmtpUserEmails
 };
