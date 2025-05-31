@@ -51,7 +51,7 @@ try {
 // User Management Routes
 try {
     console.log('📂 Loading User routes...');
-    app.use('/api/users', require('./routes/users'));
+    app.use('/api/users', require('./routes/user'));
     console.log('✅ User routes loaded');
 } catch (error) {
     console.error('❌ Error loading User routes:', error.message);
