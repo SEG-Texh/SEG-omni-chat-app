@@ -45,6 +45,30 @@
       margin-bottom: 10px;
     }
 
+    .user-info {
+      font-size: 12px;
+      opacity: 0.9;
+      margin-bottom: 10px;
+    }
+
+    .logout-btn {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 15px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .logout-btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
     .platform-selector {
       display: flex;
       gap: 5px;
@@ -79,6 +103,7 @@
       margin-bottom: 15px;
       display: flex;
       align-items: flex-end;
+      animation: fadeInUp 0.3s ease;
     }
 
     .message.sent {
@@ -230,10 +255,6 @@
       }
     }
 
-    .message {
-      animation: fadeInUp 0.3s ease;
-    }
-
     /* Custom scrollbar */
     .chat-messages::-webkit-scrollbar {
       width: 6px;
@@ -257,7 +278,9 @@
 
   <div class="messenger-container">
     <div class="chat-header">
+      <button id="logoutBtn" class="logout-btn">Logout</button>
       <h1>Omni Messenger</h1>
+      <div id="userInfo" class="user-info"></div>
       <div class="platform-selector">
         <button class="platform-btn active" data-platform="whatsapp">WhatsApp</button>
         <button class="platform-btn" data-platform="facebook">Messenger</button>
@@ -300,6 +323,15 @@
   </div>
 
   <script>
+    // Check if user is logged in
+    const userData = JSON.parse(sessionStorage.getItem('omniUser') || 'null');
+    if (!userData) {
+      window.location.href = 'login.html';
+    }
+
+    // Display user info
+    document.getElementById('userInfo').textContent = `Logged in as: ${userData.name}`;
+
     const chatMessages = document.getElementById('chatMessages');
     const recipientInput = document.getElementById('recipientInput');
     const messageInput = document.getElementById('messageInput');
@@ -309,6 +341,12 @@
 
     let currentPlatform = 'whatsapp';
     const API_BASE_URL = 'https://omni-chat-app-dbd9c00cc9c4.herokuapp.com';
+
+    // Logout functionality
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      sessionStorage.removeItem('omniUser');
+      window.location.href = 'index.html';
+    });
 
     // Platform selection
     platformBtns.forEach(btn => {
@@ -435,7 +473,7 @@
 
     // Welcome message
     setTimeout(() => {
-      addSystemMessage('Ready to send messages via WhatsApp, Facebook Messenger, or Email!');
+      addSystemMessage(`Welcome back, ${userData.name}! Ready to send messages via WhatsApp, Facebook Messenger, or Email!`);
     }, 1000);
   </script>
 
