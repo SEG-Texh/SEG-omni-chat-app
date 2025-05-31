@@ -96,20 +96,7 @@ try {
   console.log('📂 Adding catch-all route...');
   
   // Use a more specific pattern to avoid conflicts
-  app.get('/*', (req, res) => {
-    // Skip API routes
-    if (req.path.startsWith('/api/') || 
-        req.path.startsWith('/whatsapp/') || 
-        req.path.startsWith('/facebook/') || 
-        req.path.startsWith('/email/') ||
-        req.path.startsWith('/health')) {
-      return res.status(404).json({
-        success: false,
-        error: 'API endpoint not found',
-        path: req.path
-      });
-    }
-
+  app.get(/^(?!\/api|\/whatsapp|\/facebook|\/email|\/health).*$/, (req, res) => {
     // Serve frontend for non-API routes
     const indexPath = path.join(__dirname, 'public', 'index.html');
     res.sendFile(indexPath, (err) => {
