@@ -259,7 +259,7 @@ showAlert(`Login successful! Welcome ${roleText}. Redirecting...`, 'success');
 // Redirect based on user role
 setTimeout(() => {
 if (userData.role === 'admin') {
-window.location.href = 'adminDashboard.html';
+window.location.href = '/adminDashboard';
 } else {
 window.location.href = 'index.html';
 }
