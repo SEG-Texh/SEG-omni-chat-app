@@ -1,3 +1,4 @@
+const axios = require('axios'); // Add this missing import
 const BotService = require('../services/botService');
 
 exports.verifyWebhook = (req, res) => {
