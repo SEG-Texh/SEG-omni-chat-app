@@ -1,58 +1,37 @@
-// middleware/auth.js (updated)
+// SERVER/MIDDLEWARE/AUTH.JS
+// ============================================================================
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-const authenticate = async (req, res, next) => {
+const auth = async (req, res, next) => {
   try {
-    // Check for token in headers or cookies
-    const token = req.header('Authorization')?.replace('Bearer ', '') || 
-                  req.cookies?.token;
+    const token = req.header('Authorization')?.replace('Bearer ', '') || req.cookies?.token;
     
     if (!token) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Access denied. No token provided.' 
-      });
+      return res.status(401).json({ error: 'Access denied. No token provided.' });
     }
-    
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Find user and exclude password
-    const user = await User.findById(decoded.id).select('-password');
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+    const user = await User.findById(decoded.userId).select('-password');
     
     if (!user) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Invalid token - user not found.' 
-      });
+      return res.status(401).json({ error: 'Invalid token.' });
     }
-    
-    if (!user.isActive) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Account is deactivated.' 
-      });
-    }
-    
-    // Attach user to request
+
     req.user = user;
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
-    
-    let message = 'Invalid token';
-    if (error.name === 'TokenExpiredError') {
-      message = 'Token expired';
-    } else if (error.name === 'JsonWebTokenError') {
-      message = 'Invalid token';
-    }
-    
-    res.status(401).json({ 
-      success: false, 
-      message 
-    });
+    res.status(401).json({ error: 'Invalid token.' });
   }
 };
 
-// ... rest of the middleware functions remain the same ...
+const authorize = (...roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ error: 'Access denied. Insufficient permissions.' });
+    }
+    next();
+  };
+};
+
+module.exports = { auth, authorize };

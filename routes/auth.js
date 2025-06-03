@@ -1,80 +1,125 @@
-// routes/auth.js (updated login handler)
+// ============================================================================
+// SERVER/ROUTES/AUTH.JS
+// ============================================================================
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+const { auth } = require('../middleware/auth');
+
+const router = express.Router();
+
+// Register (Admin can create users)
+router.post('/register', auth, async (req, res) => {
+  try {
+    const { name, email, password, role, supervisor_id } = req.body;
+
+    // Only admin can create users, or supervisor can create users under them
+    if (req.user.role !== 'admin' && req.user.role !== 'supervisor') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: 'User already exists' });
+    }
+
+    // Create new user
+    const userData = { name, email, password, role: role || 'user' };
+    
+    // If supervisor is creating user, set supervisor_id
+    if (req.user.role === 'supervisor') {
+      userData.supervisor_id = req.user._id;
+      userData.role = 'user'; // Supervisors can only create users
+    } else if (supervisor_id && role !== 'admin') {
+      userData.supervisor_id = supervisor_id;
+    }
+
+    const user = new User(userData);
+    await user.save();
+
+    res.status(201).json({
+      message: 'User created successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        supervisor_id: user.supervisor_id
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Login
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide email and password'
-      });
-    }
-
-    // Find user with password
-    const user = await User.findByEmailWithPassword(email);
+    // Find user
+    const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials' // Generic message for security
-      });
+      return res.status(400).json({ error: 'Invalid credentials' });
     }
 
-    // Check account status
-    if (!user.isActive) {
-      return res.status(403).json({
-        success: false,
-        message: 'Account is deactivated. Please contact support.'
-      });
+    // Check password
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Invalid credentials' });
     }
 
-    // Verify password
-    const isPasswordValid = await user.comparePassword(password);
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials' // Generic message for security
-      });
-    }
-
-    // Update last login
-    user.lastLogin = new Date();
+    // Update online status
+    user.isOnline = true;
     await user.save();
 
-    // Generate token with 7 day expiry
+    // Generate token
     const token = jwt.sign(
-      { id: user._id }, 
-      process.env.JWT_SECRET, 
+      { userId: user._id },
+      process.env.JWT_SECRET || 'fallback_secret',
       { expiresIn: '7d' }
     );
 
-    // Set cookie if needed
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-    });
-
     res.json({
-      success: true,
-      message: 'Login successful',
-      data: {
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          isActive: user.isActive,
-          profileImage: user.profileImage
-        },
-        token
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        supervisor_id: user.supervisor_id
       }
     });
-
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error during login'
-    });
+    res.status(500).json({ error: error.message });
   }
 });
+
+// Logout
+router.post('/logout', auth, async (req, res) => {
+  try {
+    req.user.isOnline = false;
+    req.user.lastSeen = new Date();
+    await req.user.save();
+    res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get current user
+router.get('/me', auth, (req, res) => {
+  res.json({
+    user: {
+      id: req.user._id,
+      name: req.user.name,
+      email: req.user.email,
+      role: req.user.role,
+      supervisor_id: req.user.supervisor_id,
+      isOnline: req.user.isOnline
+    }
+  });
+});
+
+module.exports = router;
