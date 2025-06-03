@@ -11,21 +11,15 @@ const demoMessages = [
     { id: '2', sender: demoUsers[0], receiver: demoUsers[1], content: 'Hi there! How can I help?', createdAt: new Date() }
 ];
 
-function initializeSocket() {
-    // ... (socket initialization code from original) ...
-}
-
-function loadChatUsers() {
-    // ... (chat users loading code from original) ...
-}
-
-// ... (all other chat functions from the original code) ...
-
 function showChat() {
-    document.getElementById('loginContainer').style.display = 'none';
-    document.getElementById('dashboardContainer').style.display = 'none';
-    document.getElementById('chatContainer').style.display = 'flex';
-    
+    // For multi-page, this is handled by the page load
     initializeSocket();
     loadChatUsers();
+    
+    // Show back button for admins
+    if (currentUser.role === 'admin') {
+        document.getElementById('backToDashboard').style.display = 'block';
+    }
 }
+
+// ... (rest of the chat functions remain the same as before) ...

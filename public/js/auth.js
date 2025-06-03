@@ -10,7 +10,6 @@ const demoUsers = [
 ];
 
 async function login(email, password) {
-    // Demo login logic
     const demoCredentials = {
         'admin@example.com': { password: 'admin123', user: demoUsers[0] },
         'user@example.com': { password: 'user123', user: demoUsers[1] },
@@ -18,12 +17,10 @@ async function login(email, password) {
     };
 
     if (demoCredentials[email] && demoCredentials[email].password === password) {
-        const user = demoCredentials[email].user;
-        currentUser = user;
-        
-        // Store in memory (not localStorage as per restrictions)
-        window.currentUserToken = 'demo-token-' + user.id;
-        return user;
+        currentUser = demoCredentials[email].user;
+        // Store user in sessionStorage for page navigation
+        sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+        return currentUser;
     } else {
         throw new Error('Invalid credentials');
     }
@@ -31,21 +28,37 @@ async function login(email, password) {
 
 function logout() {
     currentUser = null;
-    window.currentUserToken = null;
+    sessionStorage.removeItem('currentUser');
     if (window.socket) {
-        window.socket = null;
+        window.socket.disconnect();
     }
-    showLogin();
+    window.location.href = 'index.html';
 }
 
 function checkAuth() {
-    // For demo purposes, no persistent auth
+    const user = sessionStorage.getItem('currentUser');
+    if (user) {
+        currentUser = JSON.parse(user);
+        return true;
+    }
     return false;
 }
 
-// UI Navigation functions that are auth-related
-function showLogin() {
-    document.getElementById('loginContainer').style.display = 'flex';
-    document.getElementById('dashboardContainer').style.display = 'none';
-    document.getElementById('chatContainer').style.display = 'none';
+// Navigation functions
+function showDashboard() {
+    window.location.href = 'dashboard.html';
+}
+
+function showChat() {
+    window.location.href = 'chat.html';
+}
+
+function goToDashboard() {
+    if (currentUser && currentUser.role === 'admin') {
+        showDashboard();
+    }
+}
+
+function openChat() {
+    showChat();
 }
