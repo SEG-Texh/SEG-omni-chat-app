@@ -126,7 +126,50 @@ async function loadDashboardData() {
     }
 }
 
+const API_URL = 'https://omni-chat-app-dbd9c00cc9c4.herokuapp.com/api/users';
+const TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ODNlY2E5ZTM1ZjE1NDBhZjhkN2E0OWUiLCJpYXQiOjE3NDg5NjYzMDMsImV4cCI6MTc0OTU3MTEwM30.2RUSGmyUgBb7rQTewn1XxZ7f57z6sqv03ZmIwydJkyQ'; // Replace with your actual token
 
+async function loadUsers() {
+  try {
+    const res = await fetch(API_URL, {
+      headers: {
+        'Authorization': `Bearer ${TOKEN}`
+      }
+    });
+
+    if (!res.ok) {
+      throw new Error('Failed to fetch users');
+    }
+
+    const users = await res.json();
+    const tbody = document.getElementById('usersTableBody');
+    tbody.innerHTML = ''; // Clear existing rows
+
+    users.forEach(user => {
+      const row = document.createElement('tr');
+
+      row.innerHTML = `
+        <td>${user.name}</td>
+        <td>${user.email}</td>
+        <td>${user.role}</td>
+        <td>${user.supervisor_id ? user.supervisor_id.name : '-'}</td>
+        <td>${user.isOnline ? '🟢 Online' : '⚪ Offline'}</td>
+        <td>
+          <button onclick="editUser('${user._id}')">Edit</button>
+          <button onclick="deleteUser('${user._id}')">Delete</button>
+        </td>
+      `;
+
+      tbody.appendChild(row);
+    });
+  } catch (err) {
+    console.error('Error loading users:', err);
+    alert('Could not load users.');
+  }
+}
+
+// Call it when the page loads
+window.addEventListener('DOMContentLoaded', loadUsers);
 function loadUsersTable() {
     const tbody = document.getElementById('usersTableBody');
     tbody.innerHTML = '';
