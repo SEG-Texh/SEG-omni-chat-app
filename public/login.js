@@ -143,38 +143,57 @@ function updateUserInfo() {
 // ============================================================================
 function initializeLoginForm() {
     const loginForm = document.getElementById('loginForm');
-    if (!loginForm) return;
+    if (!loginForm) {
+        console.log('Login form not found');
+        return;
+    }
+    
+    console.log('Initializing login form...');
     
     loginForm.addEventListener('submit', async function(e) {
         e.preventDefault();
+        e.stopPropagation();
         
-        const email = document.getElementById('email').value;
+        console.log('Form submitted');
+        
+        const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
         const loginBtn = document.getElementById('loginBtn');
         const loginText = document.getElementById('loginText');
         const loginSpinner = document.getElementById('loginSpinner');
         const loginError = document.getElementById('loginError');
         
+        console.log('Login attempt for:', email);
+        
         // Validate form
         const errors = validateLoginForm(email, password);
         if (errors.length > 0) {
+            console.log('Validation errors:', errors);
             if (loginError) {
                 loginError.textContent = errors[0];
+                loginError.style.display = 'block';
+            } else {
+                alert('Error: ' + errors[0]);
             }
             return;
         }
         
         // Show loading state
         setLoadingState(true, loginBtn, loginText, loginSpinner);
-        if (loginError) loginError.textContent = '';
+        if (loginError) {
+            loginError.textContent = '';
+            loginError.style.display = 'none';
+        }
         
         try {
-            await login(email, password);
+            const user = await login(email, password);
+            console.log('Login successful for user:', user);
         } catch (error) {
+            console.error('Login error:', error.message);
             if (loginError) {
                 loginError.textContent = error.message;
+                loginError.style.display = 'block';
             } else {
-                console.error('Login error:', error.message);
                 alert('Login failed: ' + error.message);
             }
         } finally {
