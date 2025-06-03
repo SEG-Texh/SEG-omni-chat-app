@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat - Chat App</title>
-    <link rel="stylesheet" href="main.css">
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
     <div class="chat-container" id="chatContainer">
@@ -24,7 +24,6 @@
                     <div class="typing-indicator" id="typingIndicator" style="display: none;"></div>
                 </div>
                 <div class="admin-controls">
-                    <!-- Add this back button - it will only show for admins -->
                     <button id="backToDashboard" class="back-btn" onclick="goToDashboard()" style="display: none;">
                         ← Back to Dashboard
                     </button>
@@ -45,10 +44,19 @@
         </div>
     </div>
 
-    <script src="socket.io.js"></script>
-    <script src="config.js"></script>
-    <script src="auth.js"></script>
-    <script src="utils.js"></script>
-    <script src="chat.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/chat.js"></script>
+    <script>
+        // Initialize chat when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.currentUser) {
+                showChat();
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
 </body>
 </html>
