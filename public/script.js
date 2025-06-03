@@ -177,21 +177,42 @@ function closeAddUserModal() {
     document.getElementById('addUserError').textContent = '';
 }
 
-function addUser(userData) {
-    const newUser = {
-        id: Date.now().toString(),
-        name: userData.name,
-        email: userData.email,
-        role: userData.role,
-        supervisor: userData.supervisor,
-        isOnline: false
-    };
-    
-    users.push(newUser);
-    loadUsersTable();
-    closeAddUserModal();
-    alert('User added successfully!');
-}
+document.getElementById('addUserForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const name = document.getElementById('newUserName').value;
+    const email = document.getElementById('newUserEmail').value;
+    const password = document.getElementById('newUserPassword').value;
+    const role = document.getElementById('newUserRole').value;
+    const supervisor_id = document.getElementById('newUserSupervisor').value || null;
+
+    const newUser = { name, email, password, role, supervisor_id };
+
+    try {
+        const token = localStorage.getItem('token'); // assuming you store JWT this way
+
+        const res = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` // if required
+            },
+            body: JSON.stringify(newUser)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.error || 'Failed to add user');
+        }
+
+        alert('User added successfully!');
+        closeAddUserModal();
+        loadUsersTable(); // reloads table
+    } catch (err) {
+        document.getElementById('addUserError').textContent = err.message;
+    }
+});
 
 function editUser(userId) {
     alert('Edit functionality would open a modal with user details');
