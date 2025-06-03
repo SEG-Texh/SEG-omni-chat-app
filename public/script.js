@@ -24,39 +24,46 @@ const demoMessages = [
 // AUTHENTICATION FUNCTIONS
 // ============================================================================
 async function login(email, password) {
-    // Demo login logic
-    const demoCredentials = {
-        'admin@example.com': { password: 'admin123', user: demoUsers[0] },
-        'user@example.com': { password: 'user123', user: demoUsers[1] },
-        'supervisor@example.com': { password: 'super123', user: demoUsers[2] }
-    };
+    try {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password })
+        });
 
-    if (demoCredentials[email] && demoCredentials[email].password === password) {
-        const user = demoCredentials[email].user;
-        currentUser = user;
-        
-        // Store in memory (not localStorage as per restrictions)
-        window.currentUserToken = 'demo-token-' + user.id;
-        
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.error || 'Login failed');
+        }
+
+        // Save the JWT token to localStorage
+        localStorage.setItem('token', data.token);
+
+        // Save user info in memory
+        currentUser = data.user;
+
         // Redirect based on role
-        if (user.role === 'admin') {
+        if (currentUser.role === 'admin') {
             showDashboard();
         } else {
             showChat();
         }
-    } else {
-        throw new Error('Invalid credentials');
+    } catch (err) {
+        throw new Error(err.message || 'Login error');
     }
 }
 
+
 function logout() {
     currentUser = null;
-    window.currentUserToken = null;
-    if (socket) {
-        socket = null;
-    }
+    localStorage.removeItem('token');
+    if (socket) socket = null;
     showLogin();
 }
+
 
 function checkAuth() {
     // For demo purposes, no persistent auth
