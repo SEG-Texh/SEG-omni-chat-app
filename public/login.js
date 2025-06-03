@@ -32,6 +32,9 @@ async function login(email, password) {
         // Store in memory (not localStorage as per restrictions)
         window.currentUserToken = 'demo-token-' + user.id;
         
+        // Add a small delay to simulate real authentication
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         // Redirect based on role
         if (user.role === 'admin') {
             redirectToDashboard();
@@ -48,7 +51,9 @@ async function login(email, password) {
 function logout() {
     currentUser = null;
     window.currentUserToken = null;
-    showLogin();
+    
+    // Redirect to login page
+    window.location.href = 'index.html';
 }
 
 function checkAuth() {
@@ -84,29 +89,22 @@ function hideOtherContainers() {
 }
 
 function redirectToDashboard() {
-    // If dashboard page exists, redirect there
-    if (document.getElementById('dashboardContainer')) {
-        showDashboard();
-    } else {
-        // Otherwise redirect to dashboard.html
-        window.location.href = 'dashboard.html';
-    }
+    console.log('Redirecting admin to dashboard...');
+    // Always redirect to dashboard.html for admins
+    window.location.href = 'dashboard.html';
 }
 
 function redirectToChat() {
-    // If chat page exists, redirect there
-    if (document.getElementById('chatContainer')) {
-        showChat();
-    } else {
-        // Otherwise redirect to chat.html
-        window.location.href = 'chat.html';
-    }
+    console.log('Redirecting user to chat...');
+    // Always redirect to chat.html for users and supervisors
+    window.location.href = 'chat.html';
 }
 
 function showDashboard() {
     const dashboardContainer = document.getElementById('dashboardContainer');
     if (dashboardContainer) {
-        document.getElementById('loginContainer').style.display = 'none';
+        const loginContainer = document.getElementById('loginContainer');
+        if (loginContainer) loginContainer.style.display = 'none';
         dashboardContainer.style.display = 'block';
         
         // Update user info if elements exist
@@ -117,7 +115,8 @@ function showDashboard() {
 function showChat() {
     const chatContainer = document.getElementById('chatContainer');
     if (chatContainer) {
-        document.getElementById('loginContainer').style.display = 'none';
+        const loginContainer = document.getElementById('loginContainer');
+        if (loginContainer) loginContainer.style.display = 'none';
         chatContainer.style.display = 'flex';
     }
 }
@@ -155,6 +154,15 @@ function initializeLoginForm() {
         const loginText = document.getElementById('loginText');
         const loginSpinner = document.getElementById('loginSpinner');
         const loginError = document.getElementById('loginError');
+        
+        // Validate form
+        const errors = validateLoginForm(email, password);
+        if (errors.length > 0) {
+            if (loginError) {
+                loginError.textContent = errors[0];
+            }
+            return;
+        }
         
         // Show loading state
         setLoadingState(true, loginBtn, loginText, loginSpinner);
@@ -227,6 +235,7 @@ function validateLoginForm(email, password) {
 function initializeLogin() {
     // Check for existing auth
     if (checkAuth() && currentUser) {
+        console.log('User already authenticated:', currentUser);
         // Auto-redirect based on role
         if (currentUser.role === 'admin') {
             redirectToDashboard();
