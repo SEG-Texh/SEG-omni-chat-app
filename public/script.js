@@ -115,11 +115,17 @@ function goToDashboard() {
 // ============================================================================
 // DASHBOARD FUNCTIONS
 // ============================================================================
-function loadDashboardData() {
-    users = [...demoUsers];
-    loadUsersTable();
-    loadSupervisors();
+async function loadDashboardData() {
+    try {
+        const response = await fetch('/api/users');
+        users = await response.json();
+        loadUsersTable();
+        loadSupervisors();
+    } catch (error) {
+        console.error('Failed to load users:', error);
+    }
 }
+
 
 function loadUsersTable() {
     const tbody = document.getElementById('usersTableBody');
