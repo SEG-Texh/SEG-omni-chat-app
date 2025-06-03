@@ -41,6 +41,12 @@ app.use('/js', express.static(path.join(__dirname, 'js')));
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/messages', messageRoutes);
+// Example in Node.js/Express
+app.get('/api/users', async (req, res) => {
+  const users = await User.find();  // fetch all users from DB
+  res.json(users);
+});
+
 
 // Serve static files
 app.get('/', (req, res) => {

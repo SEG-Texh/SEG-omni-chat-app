@@ -170,28 +170,37 @@ async function loadUsers() {
 
 // Call it when the page loads
 window.addEventListener('DOMContentLoaded', loadUsers);
-function loadUsersTable() {
+async function loadUsers() {
+  try {
+    const response = await fetch('/api/users');
+    if (!response.ok) throw new Error('Network error');
+    const users = await response.json();
+
     const tbody = document.getElementById('usersTableBody');
-    tbody.innerHTML = '';
-    
+    tbody.innerHTML = '';  // Clear any existing rows
+
     users.forEach(user => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${user.name}</td>
-            <td>${user.email}</td>
-            <td><span class="badge ${user.role}">${user.role}</span></td>
-            <td>${user.supervisor || 'None'}</td>
-            <td><span class="badge ${user.isOnline ? 'online' : 'offline'}">${user.isOnline ? 'Online' : 'Offline'}</span></td>
-            <td>
-                <div class="actions">
-                    <button class="btn-small btn-edit" onclick="editUser('${user.id}')">Edit</button>
-                    ${currentUser.role === 'admin' ? `<button class="btn-small btn-delete" onclick="deleteUser('${user.id}')">Delete</button>` : ''}
-                </div>
-            </td>
-        `;
-        tbody.appendChild(row);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${user.name}</td>
+        <td>${user.email}</td>
+        <td>${user.role}</td>
+        <td>${user.supervisor || '-'}</td>
+        <td>${user.status}</td>
+        <td>
+          <button onclick="editUser('${user._id}')">Edit</button>
+          <button onclick="deleteUser('${user._id}')">Delete</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
     });
+  } catch (error) {
+    console.error('Failed to load users:', error);
+  }
 }
+
+// Call loadUsers() when the page or users tab loads
+loadUsers();
 
 function loadSupervisors() {
     const select = document.getElementById('newUserSupervisor');
