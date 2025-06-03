@@ -7,6 +7,15 @@ const { auth, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
+const token = localStorage.getItem('token'); // or wherever you store it
+
+const response = await fetch('/api/users', {
+  headers: {
+    'Authorization': `Bearer ${token}`
+  }
+});
+
+
 // Get all users (Admin sees all, Supervisor sees only their users)
 router.get('/', auth, async (req, res) => {
   try {
