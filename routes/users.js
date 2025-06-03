@@ -126,5 +126,36 @@ router.get('/supervisors', auth, authorize('admin'), async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// Add user (Admin or Supervisor)
+router.post('/', auth, authorize('admin', 'supervisor'), async (req, res) => {
+  try {
+    const { name, email, password, role, supervisor_id } = req.body;
+
+    // Prevent supervisors from creating other supervisors/admins
+    if (req.user.role === 'supervisor' && (role === 'admin' || role === 'supervisor')) {
+      return res.status(403).json({ error: 'Supervisors cannot create admins or other supervisors' });
+    }
+
+    // Supervisors can only assign users to themselves
+    const assignedSupervisorId = req.user.role === 'supervisor' ? req.user._id : supervisor_id;
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) return res.status(400).json({ error: 'Email already in use' });
+
+    const newUser = new User({
+      name,
+      email,
+      password,
+      role: role || 'user',
+      supervisor_id: assignedSupervisorId || null
+    });
+
+    await newUser.save();
+    res.status(201).json({ message: 'User created', user: newUser });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 module.exports = router;
