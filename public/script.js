@@ -126,9 +126,6 @@ async function loadDashboardData() {
     }
 }
 
-const API_URL = 'https://omni-chat-app-dbd9c00cc9c4.herokuapp.com/api/users';
-const TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ODNlY2E5ZTM1ZjE1NDBhZjhkN2E0OWUiLCJpYXQiOjE3NDg5NjYzMDMsImV4cCI6MTc0OTU3MTEwM30.2RUSGmyUgBb7rQTewn1XxZ7f57z6sqv03ZmIwydJkyQ'; // Replace with your actual token
-
 async function loadUsers() {
     try {
         const token = localStorage.getItem('token');
