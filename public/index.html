@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Chat App</title>
-    <link rel="stylesheet" href="main.css">
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+    <!-- LOGIN PAGE -->
     <div class="container" id="loginContainer">
         <div class="logo">
             <h1>💬 ChatApp</h1>
@@ -31,10 +32,26 @@
         </p>
     </div>
 
-    <script src="socket.io.js"></script>
-    <script src="config.js"></script>
-    <script src="auth.js"></script>
-    <script src="utils.js"></script>
-    <script src="login.js"></script>
+    <!-- DASHBOARD PAGE (Hidden initially) -->
+    <div class="dashboard" id="dashboardContainer" style="display: none;">
+        <!-- ... (same dashboard HTML as before) ... -->
+    </div>
+
+    <!-- CHAT PAGE (Hidden initially) -->
+    <div class="chat-container" id="chatContainer" style="display: none;">
+        <!-- ... (same chat HTML as before) ... -->
+    </div>
+
+    <!-- ADD USER MODAL -->
+    <div class="modal" id="addUserModal">
+        <!-- ... (same modal HTML as before) ... -->
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/chat.js"></script>
+    <script src="js/main.js"></script>
 </body>
 </html>
