@@ -4,35 +4,48 @@
 const express = require('express');
 const Message = require('../models/message');
 const { auth } = require('../middleware/auth');
-
 const router = express.Router();
 
-// Get messages between users
-router.get('/:receiverId?', auth, async (req, res) => {
+// Get messages between users (without receiverId)
+router.get('/', auth, async (req, res) => {
+  try {
+    const { page = 1, limit = 50 } = req.query;
+    
+    // All messages for current user
+    const query = {
+      $or: [
+        { sender: req.user._id },
+        { receiver: req.user._id },
+        { receiver: null } // Broadcast messages
+      ]
+    };
+
+    const messages = await Message.find(query)
+      .populate('sender', 'name email role')
+      .populate('receiver', 'name email role')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    res.json(messages.reverse());
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get messages between users (with receiverId)
+router.get('/:receiverId', auth, async (req, res) => {
   try {
     const { receiverId } = req.params;
     const { page = 1, limit = 50 } = req.query;
-
-    let query = {};
-
-    if (receiverId) {
-      // Direct messages between two users
-      query = {
-        $or: [
-          { sender: req.user._id, receiver: receiverId },
-          { sender: receiverId, receiver: req.user._id }
-        ]
-      };
-    } else {
-      // All messages for current user
-      query = {
-        $or: [
-          { sender: req.user._id },
-          { receiver: req.user._id },
-          { receiver: null } // Broadcast messages
-        ]
-      };
-    }
+    
+    // Direct messages between two users
+    const query = {
+      $or: [
+        { sender: req.user._id, receiver: receiverId },
+        { sender: receiverId, receiver: req.user._id }
+      ]
+    };
 
     const messages = await Message.find(query)
       .populate('sender', 'name email role')
@@ -51,7 +64,7 @@ router.get('/:receiverId?', auth, async (req, res) => {
 router.post('/', auth, async (req, res) => {
   try {
     const { receiverId, content, messageType = 'direct' } = req.body;
-
+    
     const messageData = {
       sender: req.user._id,
       content,
@@ -64,10 +77,10 @@ router.post('/', auth, async (req, res) => {
 
     const message = new Message(messageData);
     await message.save();
-
+    
     await message.populate('sender', 'name email role');
     await message.populate('receiver', 'name email role');
-
+    
     res.status(201).json(message);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -91,7 +104,6 @@ router.get('/search/:query', auth, async (req, res) => {
       const User = require('../models/User');
       const supervisedUsers = await User.find({ supervisor_id: req.user._id }).select('_id');
       const userIds = supervisedUsers.map(user => user._id);
-      
       searchQuery.$or = [
         { sender: { $in: userIds } },
         { receiver: { $in: userIds } }
