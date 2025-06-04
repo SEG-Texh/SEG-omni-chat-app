@@ -115,77 +115,58 @@ function goToDashboard() {
 // ============================================================================
 // DASHBOARD FUNCTIONS
 // ============================================================================
-async function loadDashboardData() {
-    try {
-        const response = await fetch('/api/users');
-        users = await response.json();
-        loadUsersTable();
-        loadSupervisors();
-    } catch (error) {
-        console.error('Failed to load users:', error);
-    }
-}
+// Fetch data from server
+fetch('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com/api/users')
+    .then(response => response.json())
+    .then(data => {
+        const usersTableBody = document.getElementById('usersTableBody');
+        data.forEach(user => {
+            // Create a new table row
+            const tr = document.createElement('tr');
 
-async function loadUsers() {
-    try {
-        const token = localStorage.getItem('token');
-        const res = await fetch('/api/users', {
-            headers: { Authorization: `Bearer ${token}` },
+            // Create a new table data for each user property
+            const nameTd = document.createElement('td');
+            nameTd.textContent = user.name;
+            tr.appendChild(nameTd);
+
+            const emailTd = document.createElement('td');
+            emailTd.textContent = user.email;
+            tr.appendChild(emailTd);
+
+            const roleTd = document.createElement('td');
+            roleTd.textContent = user.role;
+            tr.appendChild(roleTd);
+
+            const supervisorTd = document.createElement('td');
+            supervisorTd.textContent = user.supervisor;
+            tr.appendChild(supervisorTd);
+
+            const statusTd = document.createElement('td');
+            statusTd.textContent = user.status;
+            tr.appendChild(statusTd);
+
+            // Add action buttons
+            const actionsTd = document.createElement('td');
+            const editButton = document.createElement('button');
+            editButton.textContent = 'Edit';
+            editButton.onclick = function() { editUser(user._id); };
+            actionsTd.appendChild(editButton);
+            tr.appendChild(actionsTd);
+
+            // Add the row to the table body
+            usersTableBody.appendChild(tr);
         });
+    })
+    .catch(error => console.error('Error:', error));
 
-        if (!res.ok) throw new Error('Failed to fetch users');
-
-        users = await res.json();
-
-        const tbody = document.getElementById('usersTableBody');
-        tbody.innerHTML = '';
-
-        users.forEach(user => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${user.name}</td>
-                <td>${user.email}</td>
-                <td>${user.role}</td>
-                <td>${user.supervisor ? user.supervisor.name || user.supervisor : '-'}</td>
-                <td>${user.isOnline ? '🟢 Online' : '⚪ Offline'}</td>
-                <td>
-                    <button onclick="editUser('${user._id}')">Edit</button>
-                    <button onclick="deleteUser('${user._id}')">Delete</button>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
-    } catch (err) {
-        console.error('Error loading users:', err);
-        alert('Could not load users.');
-    }
+function editUser(userId) {
+    // Implement the function to edit a user
+    console.log(`Edit user: ${userId}`);
 }
 
-function loadSupervisors() {
-    const select = document.getElementById('newUserSupervisor');
-    select.innerHTML = '<option value="">No Supervisor</option>';
-    
-    const supervisors = users.filter(u => u.role === 'supervisor' || u.role === 'admin');
-    supervisors.forEach(supervisor => {
-        const option = document.createElement('option');
-        option.value = supervisor.id;
-        option.textContent = supervisor.name;
-        select.appendChild(option);
-    });
-}
-
-function showTab(tabName) {
-    // Hide all tabs
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // Show selected tab
-    document.getElementById(tabName + 'Tab').classList.add('active');
-    event.target.classList.add('active');
+function showAddUserModal() {
+    // Implement the function to show the add user modal
+    console.log('Show add user modal');
 }
 
 // ============================================================================
