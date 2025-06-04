@@ -7,7 +7,15 @@ const { auth, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
-
+// GET users
+router.get('/', async (req, res) => {
+  try {
+    const users = await User.find();
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 // Add user (Admin or Supervisor)
 router.post('/', auth, authorize('admin', 'supervisor'), async (req, res) => {
