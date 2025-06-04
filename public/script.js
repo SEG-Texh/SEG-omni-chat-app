@@ -140,9 +140,9 @@ fetch('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com/api/users')
             const supervisorTd = document.createElement('td');
             supervisorTd.textContent = user.supervisor;
             tr.appendChild(supervisorTd);
-
+            
             const statusTd = document.createElement('td');
-            statusTd.textContent = user.status;
+            statusTd.textContent = user.isOnline ? '🟢 Online' : '⚪ Offline';
             tr.appendChild(statusTd);
 
             // Add action buttons
