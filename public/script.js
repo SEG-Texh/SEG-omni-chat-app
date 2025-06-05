@@ -115,16 +115,21 @@ function goToDashboard() {
 // ============================================================================
 // DASHBOARD FUNCTIONS
 // ============================================================================
-// Fetch data from server
 fetch('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com/api/users')
     .then(response => response.json())
     .then(data => {
         const usersTableBody = document.getElementById('usersTableBody');
+        usersTableBody.innerHTML = ''; // Clear existing rows if any
+
+        let totalUsers = 0;
+        let onlineUsers = 0;
+
         data.forEach(user => {
-            // Create a new table row
+            totalUsers++;
+            if (user.isOnline) onlineUsers++;
+
             const tr = document.createElement('tr');
 
-            // Create a new table data for each user property
             const nameTd = document.createElement('td');
             nameTd.textContent = user.name;
             tr.appendChild(nameTd);
@@ -145,7 +150,6 @@ fetch('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com/api/users')
             statusTd.textContent = user.isOnline ? '🟢 Online' : '⚪ Offline';
             tr.appendChild(statusTd);
 
-            // Add action buttons
             const actionsTd = document.createElement('td');
             const editButton = document.createElement('button');
             editButton.textContent = 'Edit';
@@ -153,19 +157,20 @@ fetch('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com/api/users')
             actionsTd.appendChild(editButton);
             tr.appendChild(actionsTd);
 
-            // Add the row to the table body
             usersTableBody.appendChild(tr);
         });
+
+        // Update counters in the DOM
+        document.getElementById('totalUsersCount').textContent = totalUsers;
+        document.getElementById('onlineUsersCount').textContent = onlineUsers;
     })
     .catch(error => console.error('Error:', error));
 
 function editUser(userId) {
-    // Implement the function to edit a user
     console.log(`Edit user: ${userId}`);
 }
 
 function showAddUserModal() {
-    // Implement the function to show the add user modal
     console.log('Show add user modal');
 }
 
