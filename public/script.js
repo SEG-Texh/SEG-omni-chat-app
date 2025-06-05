@@ -168,17 +168,6 @@ function showAddUserModal() {
     // Implement the function to show the add user modal
     console.log('Show add user modal');
 }
-       // Update stats
-        document.getElementById('totalUsers').textContent = users.length;
-
-        const onlineCount = users.filter(u => u.isOnline).length;
-        document.getElementById('onlineUsers').textContent = onlineCount;
-
-        document.getElementById('totalMessages').textContent = messages.length;
-    } catch (err) {
-        console.error('Error loading dashboard stats:', err);
-    }
-}
 
 // ============================================================================
 // USER MANAGEMENT FUNCTIONS
