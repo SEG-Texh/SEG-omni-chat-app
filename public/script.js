@@ -69,60 +69,7 @@ function checkAuth() {
     // For demo purposes, no persistent auth
     return false;
 }
-document.addEventListener('DOMContentLoaded', function() {
-    // Function to count users and update stats
-    function updateStatsFromTable() {
-        const tableRows = document.querySelectorAll('#usersTableBody tr');
-        let totalUsers = 0;
-        let onlineUsers = 0;
 
-        tableRows.forEach(row => {
-            totalUsers++;
-            const statusCell = row.querySelector('td:nth-child(5)'); // Assuming status is the 5th column
-            if (statusCell && statusCell.textContent.includes('🟢 Online')) {
-                onlineUsers++;
-            }
-        });
-
-        // Update the stats display (with animation)
-        animateCount('totalUsers', totalUsers);
-        animateCount('onlineUsers', onlineUsers);
-        
-        // If you have a messages count, add it here
-        // animateCount('totalMessages', totalMessages);
-    }
-
-    // Animate counting from 0 to target value
-    function animateCount(elementId, targetValue) {
-        const element = document.getElementById(elementId);
-        const duration = 1000; // 1 second animation
-        const frameRate = 60; // 60 FPS
-        const totalFrames = Math.round(duration / (1000 / frameRate));
-        let frame = 0;
-
-        const counter = setInterval(() => {
-            frame++;
-            const progress = frame / totalFrames;
-            const currentValue = Math.round(targetValue * progress);
-            
-            element.textContent = currentValue.toLocaleString();
-            
-            if (frame >= totalFrames) {
-                element.textContent = targetValue.toLocaleString();
-                clearInterval(counter);
-            }
-        }, 1000 / frameRate);
-    }
-
-    // Initial update
-    updateStatsFromTable();
-
-    // Optional: Update when table changes (e.g., after AJAX reload)
-    // new MutationObserver(updateStatsFromTable).observe(
-    //     document.getElementById('usersTableBody'),
-    //     { childList: true }
-    // );
-});
 // ============================================================================
 // UI NAVIGATION FUNCTIONS
 // ============================================================================
