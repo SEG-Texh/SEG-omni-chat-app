@@ -204,6 +204,13 @@ document.getElementById('addUserForm').addEventListener('submit', async function
             },
             body: JSON.stringify(newUser)
         });
+        
+        // Update stats
+        document.getElementById('totalUsers').textContent = users.length;
+
+        const onlineCount = users.filter(u => u.isOnline).length;
+        document.getElementById('onlineUsers').textContent = onlineCount;
+
 
         const data = await res.json();
 
