@@ -114,20 +114,24 @@ function goToDashboard() {
 
 // ============================================================================
 // DASHBOARD FUNCTIONS
-// ============================================================================
 fetch('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com/api/users')
     .then(response => response.json())
     .then(data => {
         const usersTableBody = document.getElementById('usersTableBody');
-        usersTableBody.innerHTML = ''; // Clear existing rows if any
 
-        let totalUsers = 0;
-        let onlineUsers = 0;
+        // Clear previous rows (optional if reloading)
+        usersTableBody.innerHTML = '';
 
+        // Count users
+        const totalUsers = data.length;
+        const onlineUsers = data.filter(user => user.isOnline).length;
+
+        // Update counts in the DOM
+        document.getElementById('totalUsers').textContent = totalUsers;
+        document.getElementById('onlineUsers').textContent = onlineUsers;
+
+        // Display each user in the table
         data.forEach(user => {
-            totalUsers++;
-            if (user.isOnline) onlineUsers++;
-
             const tr = document.createElement('tr');
 
             const nameTd = document.createElement('td');
@@ -159,20 +163,8 @@ fetch('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com/api/users')
 
             usersTableBody.appendChild(tr);
         });
-
-        // Update counters in the DOM
-        document.getElementById('totalUsersCount').textContent = totalUsers;
-        document.getElementById('onlineUsersCount').textContent = onlineUsers;
     })
     .catch(error => console.error('Error:', error));
-
-function editUser(userId) {
-    console.log(`Edit user: ${userId}`);
-}
-
-function showAddUserModal() {
-    console.log('Show add user modal');
-}
 
 // ============================================================================
 // USER MANAGEMENT FUNCTIONS
