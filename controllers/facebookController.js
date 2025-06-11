@@ -18,7 +18,7 @@ exports.handleFacebookWebhook = async (req, res) => {
         }
 
         // 2. Handle challenge verification (for webhook setup)
-        if (req.query['hub.mode'] === 'subscribe' && req.query['hub.verify_token'] === process.env.FACEBOOK_VERIFY_TOKEN) {
+        if (req.query['hub.mode'] === 'subscribe' && req.query['hub.verify_token'] === process.env.FACEBOOK_WEBHOOK_VERIFY_TOKEN) {
             console.log('✅ Webhook verified');
             return res.status(200).send(req.query['hub.challenge']);
         }
