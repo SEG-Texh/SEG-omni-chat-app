@@ -7,7 +7,7 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
-const connectDB = require('../config/database');
+const connectDB = require('./config/database');
 const authRoutes = require('../routes/auth');
 const userRoutes = require('../routes/users');
 const messageRoutes = require('../routes/messages');
