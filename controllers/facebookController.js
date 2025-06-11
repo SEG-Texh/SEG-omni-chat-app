@@ -1,24 +1,12 @@
-// controllers/facebookController.js
-const crypto = require('crypto');
-const axios = require('axios');
-
-exports.verifyFacebookWebhook = (req, res) => {
-    const VERIFY_TOKEN = process.env.FACEBOOK_WEBHOOK_VERIFY_TOKEN;
-
-    const mode = req.query['hub.mode'];
-    const token = req.query['hub.verify_token'];
-    const challenge = req.query['hub.challenge'];
-
-    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-        console.log('✅ Facebook webhook verified');
-        res.status(200).send(challenge);
-    } else {
-        console.warn('❌ Facebook webhook verification failed');
-        res.sendStatus(403);
-    }
-};
-
 exports.handleFacebookWebhook = async (req, res) => {
+    const signature = req.headers['x-hub-signature'];
+    const appSecret = process.env.FACEBOOK_APP_SECRET;
+
+    if (!verifyRequestSignature(req.rawBody, signature, appSecret)) {
+        console.warn('❌ Invalid Facebook signature');
+        return res.sendStatus(403);
+    }
+
     const body = req.body;
 
     if (body.object === 'page') {
@@ -30,7 +18,7 @@ exports.handleFacebookWebhook = async (req, res) => {
             if (messageText) {
                 console.log(`📩 Message from Facebook (${senderId}): ${messageText}`);
 
-                // Auto-reply (optional)
+                // Auto-reply
                 await axios.post(
                     `https://graph.facebook.com/v18.0/me/messages?access_token=${process.env.FACEBOOK_PAGE_ACCESS_TOKEN}`,
                     {
@@ -45,3 +33,15 @@ exports.handleFacebookWebhook = async (req, res) => {
         res.sendStatus(404);
     }
 };
+
+function verifyRequestSignature(rawBody, signature, appSecret) {
+    if (!signature || !appSecret) return false;
+
+    const [method, receivedHash] = signature.split('=');
+    const expectedHash = crypto
+        .createHmac('sha1', appSecret)
+        .update(rawBody)
+        .digest('hex');
+
+    return method === 'sha1' && receivedHash === expectedHash;
+}
