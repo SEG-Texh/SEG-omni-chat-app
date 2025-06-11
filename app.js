@@ -6,6 +6,8 @@ require('dotenv').config();
 app.use(bodyParser.json());
 
 const facebookRoutes = require('./routes/facebook');
+const whatsappRoutes = require('./routes/whatsapp');
+const emailRoutes = require('./routes/email');
 app.use('/facebook', facebookRoutes);
 
 app.use('/whatsapp', require('./routes/whatsapp'));
