@@ -1,5 +1,6 @@
 // server/server.js
 const http = require('http');
+const express = require('express');
 const socketIo = require('socket.io');
 const app = require('./app'); // Use the preconfigured app from app.js
 const cors = require('cors');
