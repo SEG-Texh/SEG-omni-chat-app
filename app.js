@@ -1,11 +1,11 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-require('dotenv').config();
 
+const express = require('express');
+const cors = require('cors');
 const app = express();
 
-app.use(bodyParser.json());
-
+app.use(cors());
+app.use(express.json());
+// Your routes go here
 // Import route handlers
 const facebookRoutes = require('./routes/facebook');
 const whatsappRoutes = require('./routes/whatsapp');
