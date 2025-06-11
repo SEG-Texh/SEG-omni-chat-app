@@ -8,12 +8,12 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const connectDB = require('./config/database');
-const authRoutes = require('../routes/auth');
-const userRoutes = require('../routes/users');
-const messageRoutes = require('../routes/messages');
+const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/users');
+const messageRoutes = require('./routes/messages');
 
-const User = require('../models/User');
-const Message = require('../models/message');
+const User = require('./models/User');
+const Message = require('./models/message');
 
 const server = http.createServer(app);
 const io = socketIo(server, {
@@ -29,7 +29,7 @@ connectDB();
 // Middleware (CORS + static)
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.static(path.join(__dirname, './public')));
 app.use('/css', express.static(path.join(__dirname, '../css')));
 app.use('/js', express.static(path.join(__dirname, '../js')));
 
@@ -40,13 +40,13 @@ app.use('/api/messages', messageRoutes);
 
 // Static HTML pages
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+  res.sendFile(path.join(__dirname, './public/index.html'));
 });
 app.get('/dashboard', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/dashboard.html'));
+  res.sendFile(path.join(__dirname, './public/dashboard.html'));
 });
 app.get('/chat', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/chat.html'));
+  res.sendFile(path.join(__dirname, './public/chat.html'));
 });
 
 // Socket.IO authentication middleware
@@ -152,3 +152,4 @@ server.listen(PORT, async () => {
 });
 
 module.exports = { app, server, io };
+
