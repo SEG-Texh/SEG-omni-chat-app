@@ -7,7 +7,7 @@ const cors = require('cors');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
-
+const socket = require('./config/socket');
 const connectDB = require('./config/database');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
@@ -17,12 +17,7 @@ const User = require('./models/User');
 const Message = require('./models/message');
 
 const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
+const io = socket.init(server);
 
 // Connect to DB
 connectDB();
