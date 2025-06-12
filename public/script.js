@@ -273,41 +273,28 @@ function displaySearchResults(messages) {
 // ============================================================================
 function initializeSocket() {
     // Demo socket simulation
-    socket = {
-        emit: (event, data) => {
-            console.log('Socket emit:', event, data);
-            if (event === 'sendMessage') {
-                // Simulate message sending
-                setTimeout(() => {
-                    const message = {
-                        id: Date.now().toString(),
-                        sender: currentUser,
-                        receiver: currentChatUser,
-                        content: data.content,
-                        createdAt: new Date()
-                    };
-                    displayMessage(message);
-                    
-                    // Simulate auto-reply for demo
-                    if (currentChatUser && currentChatUser.id !== currentUser.id) {
-                        setTimeout(() => {
-                            const autoReply = {
-                                id: (Date.now() + 1).toString(),
-                                sender: currentChatUser,
-                                receiver: currentUser,
-                                content: `Thanks for your message: "${data.content}"`,
-                                createdAt: new Date()
-                            };
-                            displayMessage(autoReply);
-                        }, 2000);
-                    }
-                }, 100);
-            }
-        },
-        on: (event, callback) => {
-            console.log('Socket listening to:', event);
-        }
-    };
+// Real socket connection
+const socket = io('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com', {
+    auth: {
+        token: localStorage.getItem('Am0fZr5mEta2KihNo0dU0ua2Re1Dle05') // Replace this if your token is stored differently
+    }
+});
+
+// Handle incoming real-time messages
+socket.on('newMessage', displayMessage);
+socket.on('userTyping', showTypingIndicator);
+socket.on('userStoppedTyping', hideTypingIndicator);
+socket.on('userOnline', updateUserStatus);
+socket.on('userOffline', updateUserStatus);
+
+socket.on('connect', () => {
+    console.log('Connected to server with socket ID:', socket.id);
+});
+
+socket.on('connect_error', (err) => {
+    console.error('Socket connection error:', err.message);
+});
+
     
     // Simulate socket events
     socket.on('newMessage', displayMessage);
