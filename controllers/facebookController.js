@@ -1,15 +1,30 @@
 // controllers/facebookController.js
 const Message = require('../models/message');
 const { getIO } = require('../config/socket');
+const axios = require('axios'); // For fetching sender name from Facebook API
 
 // Create a self-contained module with all methods
 const facebookController = (() => {
   // Private methods
+  const getSenderName = async (senderId, pageAccessToken) => {
+    try {
+      const response = await axios.get(
+        `https://graph.facebook.com/${senderId}?fields=name,profile_pic&access_token=${pageAccessToken}`
+      );
+      return response.data.name || 'Facebook User';
+    } catch (error) {
+      console.error('Error fetching sender name:', error.message);
+      return 'Facebook User';
+    }
+  };
+
   const processMessageEvent = async (event, pageId, io) => {
     try {
       const senderId = event.sender.id;
       const message = event.message;
+      const pageAccessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
       
+      // Check for duplicate message
       const existingMessage = await Message.findOne({
         platform: 'facebook',
         platformMessageId: message.mid
@@ -20,6 +35,10 @@ const facebookController = (() => {
         return;
       }
 
+      // Get sender name from Facebook API
+      const senderName = await getSenderName(senderId, pageAccessToken);
+
+      // Create and save the message
       const newMessage = await Message.create({
         platform: 'facebook',
         platformMessageId: message.mid,
@@ -37,6 +56,7 @@ const facebookController = (() => {
         },
         sender: {
           id: senderId,
+          name: senderName,
           platform: 'facebook'
         },
         recipient: {
@@ -46,9 +66,13 @@ const facebookController = (() => {
         labels: ['unclaimed']
       });
 
+      // Emit socket event with complete message data
       io.emit('new_message', {
         event: 'facebook_message',
-        message: newMessage
+        message: {
+          ...newMessage.toObject(),
+          timestamp: new Date() // Ensure fresh timestamp
+        }
       });
 
       console.log('Processed new Facebook message:', newMessage.id);
@@ -63,7 +87,9 @@ const facebookController = (() => {
     try {
       const senderId = event.sender.id;
       const payload = event.postback.payload;
-      
+      const pageAccessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+      const senderName = await getSenderName(senderId, pageAccessToken);
+
       const postbackMessage = await Message.create({
         platform: 'facebook',
         platformMessageId: `pb-${Date.now()}-${senderId}`,
@@ -80,6 +106,7 @@ const facebookController = (() => {
         },
         sender: {
           id: senderId,
+          name: senderName,
           platform: 'facebook'
         },
         recipient: {
@@ -91,7 +118,10 @@ const facebookController = (() => {
 
       io.emit('new_message', {
         event: 'facebook_postback',
-        message: postbackMessage
+        message: {
+          ...postbackMessage.toObject(),
+          timestamp: new Date()
+        }
       });
 
       console.log('Processed Facebook postback:', postbackMessage.id);

@@ -295,6 +295,15 @@ socket.on('connect', () => {
 // ================================
 // LOGIC 6: SHOW UNCLAIMED MESSAGES
 // ================================
+
+// Listen for new unclaimed messages
+socket.on('new_message', (data) => {
+    if (data.event === 'facebook_message' || data.event === 'facebook_postback') {
+        addUnclaimedMessage(data.message);
+    }
+});
+
+// Listen for initial batch of unclaimed messages
 socket.on('unclaimedMessages', updateUnclaimedMessages);
 
 /**
@@ -304,17 +313,58 @@ socket.on('unclaimedMessages', updateUnclaimedMessages);
 function updateUnclaimedMessages(unclaimedMessages) {
     const messageList = document.getElementById('broadcastMessageList');
     messageList.innerHTML = '';
-
+    
     unclaimedMessages.forEach(msg => {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'chat-user';
-        messageDiv.onclick = () => selectChatMessage(msg); // Pass the clicked message to logic 7
-        messageDiv.innerHTML = `
-            <strong>${msg.senderName || 'Unknown Sender'}</strong><br />
-            <span>${msg.preview || msg.content.slice(0, 50)}...</span>
-        `;
-        messageList.appendChild(messageDiv);
+        addUnclaimedMessage(msg);
     });
+}
+
+/**
+ * Add a single unclaimed message to the sidebar
+ * @param {Object} msg - Message object from server
+ */
+function addUnclaimedMessage(msg) {
+    const messageList = document.getElementById('broadcastMessageList');
+    
+    // Create message preview
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-user';
+    messageDiv.dataset.messageId = msg._id;
+    messageDiv.onclick = () => selectChatMessage(msg);
+    
+    // Format message content
+    let preview = '';
+    if (msg.content.text) {
+        preview = msg.content.text;
+    } else if (msg.content.attachments?.length > 0) {
+        preview = `[${msg.content.attachments[0].type.toUpperCase()}] ${msg.content.attachments[0].caption || ''}`;
+    } else if (msg.event === 'facebook_postback') {
+        preview = `Button clicked: ${msg.content.text.replace('[POSTBACK] ', '')}`;
+    }
+    
+    // Format sender info
+    const senderName = msg.sender?.name || 
+                      (msg.platform === 'facebook' ? 'Facebook User' : 'Unknown Sender');
+    
+    messageDiv.innerHTML = `
+        <div class="message-header">
+            <strong>${senderName}</strong>
+            <span class="message-time">${formatTime(msg.timestamp)}</span>
+        </div>
+        <div class="message-preview">${preview.slice(0, 50)}${preview.length > 50 ? '...' : ''}</div>
+        <div class="message-platform">${msg.platform.toUpperCase()}</div>
+    `;
+    
+    // Add to top of list
+    messageList.insertBefore(messageDiv, messageList.firstChild);
+}
+
+/**
+ * Format timestamp for display
+ */
+function formatTime(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 // ================================
