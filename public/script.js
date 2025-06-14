@@ -285,29 +285,47 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadUnclaimedMessages() {
+  const token = localStorage.getItem('token');
+  
+  if (!token) {
+    messageList.innerHTML = `
+      <div class="error">
+        <p>Not authenticated</p>
+        <button onclick="showLogin()">Login Now</button>
+      </div>
+    `;
+    return;
+  }
+
   try {
-    const response = await fetch('/api/messages/unclaimed');
-    
+    const response = await fetch('/api/messages/unclaimed', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.status === 401) {
+      // Token expired or invalid
+      localStorage.removeItem('token');
+      showLogin();
+      return;
+    }
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(errorData?.message || `HTTP error! status: ${response.status}`);
+      throw new Error(`Server error: ${response.status}`);
     }
-    
+
     const messages = await response.json();
-    
-    if (!Array.isArray(messages)) {
-      throw new Error('Invalid response format: expected array');
-    }
-    
     updateUnclaimedMessages(messages);
-    
+
   } catch (error) {
-    console.error('Error loading messages:', error);
+    console.error('Failed to load messages:', error);
     messageList.innerHTML = `
       <div class="error">
         <p>Failed to load messages</p>
         <small>${error.message}</small>
-        <button onclick="loadUnclaimedMessages()">Retry</button>
+        <button onclick="loadUnclaimedMessages()" class="retry-btn">Retry</button>
       </div>
     `;
   }
