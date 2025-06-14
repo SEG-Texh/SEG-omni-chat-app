@@ -278,6 +278,28 @@
         }
 
         /* Chat Styles */
+        .sent {
+  text-align: right;
+  background: #d1f0d1;
+  padding: 8px;
+  margin: 5px;
+  border-radius: 10px;
+}
+.received {
+  text-align: left;
+  background: #eee;
+  padding: 8px;
+  margin: 5px;
+  border-radius: 10px;
+}
+.chat-user {
+  padding: 10px;
+  border-bottom: 1px solid #ccc;
+  cursor: pointer;
+}
+.chat-user:hover {
+  background: #f0f0f0;
+}
        
 
        
@@ -300,7 +322,7 @@
         }
 
         .modal-content {
-            background: rgb(41, 2, 2);
+            background: rgb(252, 251, 251);
             padding: 30px;
             border-radius: 10px;
             width: 90%;
