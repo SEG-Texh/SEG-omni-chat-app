@@ -113,6 +113,7 @@ io.on('connection', async (socket) => {
       isTyping
     });
   });
+  socket.on('unclaimedMessages', updateUnclaimedMessages);
 
   socket.on('disconnect', async () => {
     console.log(`User ${socket.user.name} disconnected`);

@@ -274,44 +274,121 @@ function displaySearchResults(messages) {
 function initializeSocket() {
     // Demo socket simulation
 // Real socket connection
-// Connect to backend socket
-const socket = io();
-
-// Render incoming messages
-socket.on("receiveMessage", (data) => {
-  renderMessage(data, "received");
+// ================================
+// SOCKET.IO CONNECTION
+// ================================
+const socket = io('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com', {
+    transports: ['websocket'],
+    auth: {
+        token: localStorage.getItem('YOUR_AUTH_TOKEN') // Replace with correct key
+    },
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 1000,
+    timeout: 20000
 });
 
-// Send message
-function sendMessage() {
-  const input = document.getElementById("messageInput");
-  const message = input.value.trim();
+socket.on('connect', () => {
+    console.log('🟢 Connected:', socket.id);
+});
 
-  if (!message) return;
+// ================================
+// LOGIC 6: SHOW UNCLAIMED MESSAGES
+// ================================
+socket.on('unclaimedMessages', updateUnclaimedMessages);
 
-  const data = {
-    sender: "Agent", // Replace with dynamic user if available
-    content: message,
-    timestamp: new Date().toISOString(),
-  };
+/**
+ * Display unclaimed messages in the sidebar
+ * @param {Array} unclaimedMessages - Array of message objects from server
+ */
+function updateUnclaimedMessages(unclaimedMessages) {
+    const messageList = document.getElementById('broadcastMessageList');
+    messageList.innerHTML = '';
 
-  // Emit to server
-  socket.emit("sendMessage", data);
-
-  // Show immediately in UI
-  renderMessage(data, "sent");
-  input.value = "";
+    unclaimedMessages.forEach(msg => {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'chat-user';
+        messageDiv.onclick = () => selectChatMessage(msg); // Pass the clicked message to logic 7
+        messageDiv.innerHTML = `
+            <strong>${msg.senderName || 'Unknown Sender'}</strong><br />
+            <span>${msg.preview || msg.content.slice(0, 50)}...</span>
+        `;
+        messageList.appendChild(messageDiv);
+    });
 }
 
-// Render message into chat container
-function renderMessage(data, type = "received") {
-  const container = document.getElementById("chatMessages");
-  const div = document.createElement("div");
-  div.className = type === "sent" ? "sent" : "received";
-  div.innerHTML = `<strong>${data.sender}:</strong> ${data.content}`;
-  container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
+// ================================
+// LOGIC 7: SELECT MESSAGE AND LOAD CHAT
+// ================================
+
+let currentChatUser = null; // Global state
+
+/**
+ * Called when a message in the list is selected
+ * Sets current user and loads messages from server
+ * @param {Object} messageMeta - contains senderId, senderName, etc.
+ */
+function selectChatMessage(messageMeta) {
+    currentChatUser = { id: messageMeta.senderId, name: messageMeta.senderName };
+
+    // Update chat header and enable inputs
+    document.getElementById('chatUserName').textContent = `Chatting with ${currentChatUser.name}`;
+    document.getElementById('messageInput').disabled = false;
+    document.getElementById('sendBtn').disabled = false;
+
+    // Load messages from the server
+    loadChatMessages(currentChatUser.id);
 }
+
+/**
+ * Load full conversation between current user and selected sender
+ * Assumes server has API route like: GET /api/messages/:senderId
+ */
+function loadChatMessages(senderId) {
+    const messagesContainer = document.getElementById('chatMessages');
+    messagesContainer.innerHTML = '';
+
+    fetch(`/api/messages/${senderId}`, {
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem('YOUR_AUTH_TOKEN')}`
+        }
+    })
+    .then(res => res.json())
+    .then(messages => {
+        messages.forEach(displayMessage);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    })
+    .catch(err => {
+        console.error('❌ Failed to load messages:', err);
+    });
+}
+
+/**
+ * Render a single message bubble in the chat
+ * @param {Object} message - message with content, sender info, etc.
+ */
+function displayMessage(message) {
+    const messagesContainer = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+
+    const isOwnMessage = message.senderId === currentUser.id;
+    messageDiv.className = `message ${isOwnMessage ? 'own' : ''}`;
+
+    messageDiv.innerHTML = `
+        <div class="message-avatar">${message.senderName.charAt(0).toUpperCase()}</div>
+        <div class="message-content">
+            <div class="message-bubble">
+                ${message.content}
+            </div>
+            <div class="message-info">
+                ${message.senderName} • ${new Date(message.createdAt).toLocaleTimeString()}
+            </div>
+        </div>
+    `;
+
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}}
 
 // ============================================================================
 // EVENT LISTENERS
@@ -444,4 +521,4 @@ if (typeof module !== 'undefined' && module.exports) {
         sendMessage,
         displayMessage
     };
-}}
+}
