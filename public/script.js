@@ -297,76 +297,50 @@ socket.on('connect', () => {
 // ================================
 
 // Listen for new unclaimed messages
+// Handle new messages
 socket.on('new_message', (data) => {
-    if (data.event === 'facebook_message' || data.event === 'facebook_postback') {
+    if (data.event === 'facebook_message') {
         addUnclaimedMessage(data.message);
     }
 });
 
-// Listen for initial batch of unclaimed messages
-socket.on('unclaimedMessages', updateUnclaimedMessages);
+// Handle updates to existing messages
+socket.on('message_updated', (data) => {
+    const messageElement = document.querySelector(`[data-message-id="${data.messageId}"]`);
+    if (messageElement) {
+        if (data.updates['sender.name']) {
+            const nameElement = messageElement.querySelector('.message-header strong');
+            if (nameElement) {
+                nameElement.textContent = data.updates['sender.name'];
+            }
+        }
+    }
+});
 
-/**
- * Display unclaimed messages in the sidebar
- * @param {Array} unclaimedMessages - Array of message objects from server
- */
-function updateUnclaimedMessages(unclaimedMessages) {
-    const messageList = document.getElementById('broadcastMessageList');
-    messageList.innerHTML = '';
-    
-    unclaimedMessages.forEach(msg => {
-        addUnclaimedMessage(msg);
-    });
-}
-
-/**
- * Add a single unclaimed message to the sidebar
- * @param {Object} msg - Message object from server
- */
 function addUnclaimedMessage(msg) {
     const messageList = document.getElementById('broadcastMessageList');
     
-    // Create message preview
     const messageDiv = document.createElement('div');
     messageDiv.className = 'chat-user';
     messageDiv.dataset.messageId = msg._id;
     messageDiv.onclick = () => selectChatMessage(msg);
     
-    // Format message content
-    let preview = '';
-    if (msg.content.text) {
-        preview = msg.content.text;
-    } else if (msg.content.attachments?.length > 0) {
-        preview = `[${msg.content.attachments[0].type.toUpperCase()}] ${msg.content.attachments[0].caption || ''}`;
-    } else if (msg.event === 'facebook_postback') {
-        preview = `Button clicked: ${msg.content.text.replace('[POSTBACK] ', '')}`;
+    let preview = msg.content.text || '';
+    if (msg.content.attachments?.length > 0) {
+        preview = `[${msg.content.attachments[0].type.toUpperCase()}]`;
     }
-    
-    // Format sender info
-    const senderName = msg.sender?.name || 
-                      (msg.platform === 'facebook' ? 'Facebook User' : 'Unknown Sender');
-    
+
     messageDiv.innerHTML = `
         <div class="message-header">
-            <strong>${senderName}</strong>
+            <strong>${msg.sender?.name || 'Facebook User'}</strong>
             <span class="message-time">${formatTime(msg.timestamp)}</span>
         </div>
         <div class="message-preview">${preview.slice(0, 50)}${preview.length > 50 ? '...' : ''}</div>
         <div class="message-platform">${msg.platform.toUpperCase()}</div>
     `;
     
-    // Add to top of list
     messageList.insertBefore(messageDiv, messageList.firstChild);
 }
-
-/**
- * Format timestamp for display
- */
-function formatTime(timestamp) {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
 // ================================
 // LOGIC 7: SELECT MESSAGE AND LOAD CHAT
 // ================================
