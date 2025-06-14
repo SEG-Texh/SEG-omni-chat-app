@@ -271,148 +271,168 @@ function displaySearchResults(messages) {
 // ============================================================================
 // CHAT FUNCTIONS
 // ============================================================================
-function initializeSocket() {
-    // Demo socket simulation
-// Real socket connection
-// ================================
-// SOCKET.IO CONNECTION
-// ================================
-const socket = io('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com', {
-    transports: ['websocket'],
-    auth: {
-        token: localStorage.getItem('YOUR_AUTH_TOKEN') // Replace with correct key
-    },
-    reconnection: true,
-    reconnectionAttempts: Infinity,
-    reconnectionDelay: 1000,
-    timeout: 20000
+/* ======================
+   MESSAGE DISPLAY SYSTEM
+   ====================== */
+
+// 1. DOM Elements
+const messageList = document.getElementById('broadcastMessageList');
+
+// 2. Load initial messages when page loads
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadUnclaimedMessages();
+  setupSocketListeners();
 });
 
-socket.on('connect', () => {
-    console.log('🟢 Connected:', socket.id);
-});
+// 3. Fetch messages from backend
+async function loadUnclaimedMessages() {
+  try {
+    const response = await fetch('/api/messages/unclaimed');
+    if (!response.ok) throw new Error('Failed to fetch');
+    const messages = await response.json();
+    updateUnclaimedMessages(messages);
+  } catch (error) {
+    console.error('Error loading messages:', error);
+    messageList.innerHTML = '<div class="error">Failed to load messages</div>';
+  }
+}
 
-// ================================
-// LOGIC 6: SHOW UNCLAIMED MESSAGES
-// ================================
+// 4. Display messages in the sidebar
+function updateUnclaimedMessages(messages) {
+  messageList.innerHTML = ''; // Clear existing
+  
+  if (messages.length === 0) {
+    messageList.innerHTML = '<div class="empty">No unclaimed messages</div>';
+    return;
+  }
 
-// Listen for new unclaimed messages
-// Handle new messages
-socket.on('new_message', (data) => {
+  messages.forEach(msg => {
+    const messageDiv = createMessageElement(msg);
+    messageList.appendChild(messageDiv);
+  });
+}
+
+// 5. Create individual message element
+function createMessageElement(msg) {
+  const messageDiv = document.createElement('div');
+  messageDiv.className = 'chat-user';
+  messageDiv.dataset.messageId = msg._id;
+  
+  // Format message preview
+  let preview = msg.content?.text || '';
+  if (msg.content?.attachments?.length > 0) {
+    preview = `[${msg.content.attachments[0].type.toUpperCase()}] ${msg.content.attachments[0].caption || ''}`;
+  }
+
+  messageDiv.innerHTML = `
+    <div class="message-header">
+      <strong>${msg.sender?.name || 'Facebook User'}</strong>
+      <span class="message-time">${formatTime(msg.timestamp)}</span>
+    </div>
+    <div class="message-preview">${preview.slice(0, 50)}${preview.length > 50 ? '...' : ''}</div>
+    <div class="message-platform">${msg.platform.toUpperCase()}</div>
+  `;
+
+  messageDiv.addEventListener('click', () => selectChatMessage(msg));
+  return messageDiv;
+}
+
+// 6. Format timestamp
+function formatTime(timestamp) {
+  return new Date(timestamp).toLocaleTimeString([], { 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
+}
+
+// 7. Socket.IO real-time updates
+function setupSocketListeners() {
+  socket.on('new_message', (data) => {
     if (data.event === 'facebook_message') {
-        addUnclaimedMessage(data.message);
+      const messageDiv = createMessageElement(data.message);
+      messageList.insertBefore(messageDiv, messageList.firstChild);
+      
+      // Remove "No messages" placeholder if present
+      const emptyMsg = document.querySelector('.empty');
+      if (emptyMsg) emptyMsg.remove();
     }
-});
-
-// Handle updates to existing messages
-socket.on('message_updated', (data) => {
-    const messageElement = document.querySelector(`[data-message-id="${data.messageId}"]`);
-    if (messageElement) {
-        if (data.updates['sender.name']) {
-            const nameElement = messageElement.querySelector('.message-header strong');
-            if (nameElement) {
-                nameElement.textContent = data.updates['sender.name'];
-            }
-        }
-    }
-});
-
-function addUnclaimedMessage(msg) {
-    const messageList = document.getElementById('broadcastMessageList');
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'chat-user';
-    messageDiv.dataset.messageId = msg._id;
-    messageDiv.onclick = () => selectChatMessage(msg);
-    
-    let preview = msg.content.text || '';
-    if (msg.content.attachments?.length > 0) {
-        preview = `[${msg.content.attachments[0].type.toUpperCase()}]`;
-    }
-
-    messageDiv.innerHTML = `
-        <div class="message-header">
-            <strong>${msg.sender?.name || 'Facebook User'}</strong>
-            <span class="message-time">${formatTime(msg.timestamp)}</span>
-        </div>
-        <div class="message-preview">${preview.slice(0, 50)}${preview.length > 50 ? '...' : ''}</div>
-        <div class="message-platform">${msg.platform.toUpperCase()}</div>
-    `;
-    
-    messageList.insertBefore(messageDiv, messageList.firstChild);
+  });
 }
 // ================================
 // LOGIC 7: SELECT MESSAGE AND LOAD CHAT
 // ================================
 
-let currentChatUser = null; // Global state
-
-/**
- * Called when a message in the list is selected
- * Sets current user and loads messages from server
- * @param {Object} messageMeta - contains senderId, senderName, etc.
- */
 function selectChatMessage(messageMeta) {
-    currentChatUser = { id: messageMeta.senderId, name: messageMeta.senderName };
+    currentChatUser = { 
+        id: messageMeta.sender?.id || messageMeta.senderId, 
+        name: messageMeta.sender?.name || messageMeta.senderName 
+    };
 
-    // Update chat header and enable inputs
+    // Update UI
     document.getElementById('chatUserName').textContent = `Chatting with ${currentChatUser.name}`;
     document.getElementById('messageInput').disabled = false;
     document.getElementById('sendBtn').disabled = false;
 
-    // Load messages from the server
+    // Load messages
     loadChatMessages(currentChatUser.id);
 }
 
-/**
- * Load full conversation between current user and selected sender
- * Assumes server has API route like: GET /api/messages/:senderId
- */
 function loadChatMessages(senderId) {
     const messagesContainer = document.getElementById('chatMessages');
-    messagesContainer.innerHTML = '';
+    messagesContainer.innerHTML = '<div class="loading">Loading messages...</div>';
 
     fetch(`/api/messages/${senderId}`, {
         headers: {
-            Authorization: `Bearer ${localStorage.getItem('YOUR_AUTH_TOKEN')}`
+            Authorization: `Bearer ${localStorage.getItem('token')}`
         }
     })
-    .then(res => res.json())
+    .then(res => {
+        if (!res.ok) throw new Error('Failed to load messages');
+        return res.json();
+    })
     .then(messages => {
-        messages.forEach(displayMessage);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        messagesContainer.innerHTML = '';
+        messages.forEach(msg => displayMessage(msg));
+        scrollToBottom();
     })
     .catch(err => {
-        console.error('❌ Failed to load messages:', err);
+        console.error('Failed to load messages:', err);
+        messagesContainer.innerHTML = `<div class="error">${err.message}</div>`;
     });
 }
 
-/**
- * Render a single message bubble in the chat
- * @param {Object} message - message with content, sender info, etc.
- */
 function displayMessage(message) {
     const messagesContainer = document.getElementById('chatMessages');
     const messageDiv = document.createElement('div');
-
-    const isOwnMessage = message.senderId === currentUser.id;
+    
+    const isOwnMessage = message.sender?.id === currentUser?.id || 
+                        message.senderId === currentUser?.id;
+    
     messageDiv.className = `message ${isOwnMessage ? 'own' : ''}`;
-
+    
+    const senderName = message.sender?.name || 
+                      (isOwnMessage ? 'You' : 'Unknown');
+    
     messageDiv.innerHTML = `
-        <div class="message-avatar">${message.senderName.charAt(0).toUpperCase()}</div>
+        <div class="message-avatar">${senderName.charAt(0).toUpperCase()}</div>
         <div class="message-content">
             <div class="message-bubble">
-                ${message.content}
+                ${message.content?.text || '[No content]'}
             </div>
             <div class="message-info">
-                ${message.senderName} • ${new Date(message.createdAt).toLocaleTimeString()}
+                ${senderName} • ${new Date(message.timestamp || message.createdAt).toLocaleTimeString()}
             </div>
         </div>
     `;
-
+    
     messagesContainer.appendChild(messageDiv);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}}
+    scrollToBottom();
+}
+
+function scrollToBottom() {
+    const container = document.getElementById('chatMessages');
+    container.scrollTop = container.scrollHeight;
+}
 
 // ============================================================================
 // EVENT LISTENERS
