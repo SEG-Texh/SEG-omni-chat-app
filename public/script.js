@@ -313,7 +313,6 @@ function renderMessage(data, type = "received") {
   container.scrollTop = container.scrollHeight;
 }
 
-
 // ============================================================================
 // EVENT LISTENERS
 // ============================================================================
@@ -445,4 +444,4 @@ if (typeof module !== 'undefined' && module.exports) {
         sendMessage,
         displayMessage
     };
-}
+}}
