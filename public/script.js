@@ -334,6 +334,8 @@ async function loadUnclaimedMessages() {
 // 4. Display messages in the sidebar
 function updateUnclaimedMessages(messages) {
   messageList.innerHTML = ''; // Clear existing
+  // Temporarily add this before your if statement
+console.log("Messages array:", messages); 
   
   if (messages.length === 0) {
     messageList.innerHTML = '<div class="empty">No unclaimed messages</div>';
