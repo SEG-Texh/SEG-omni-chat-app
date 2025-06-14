@@ -301,6 +301,13 @@ socket.on('disconnect', (reason) => {
 socket.on('reconnect_attempt', () => {
     console.log('🔄 Attempting to reconnect...');
 });
+socket.on('connect', () => {
+    console.log('🟢 WebSocket connected:', socket.id);
+});
+
+socket.on('disconnect', (reason) => {
+    console.log('🔴 Disconnected:', reason);
+});
 
 
 // Handle incoming real-time messages
