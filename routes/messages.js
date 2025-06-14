@@ -49,30 +49,34 @@ router.get('/unclaimed', auth, async (req, res) => {
   }
 });
 
-// Get messages between users (without receiverId)
-router.get('/', auth, async (req, res) => {
+// Get unclaimed messages (for any agent)
+router.get('/unclaimed', auth, async (req, res) => {
   try {
     const { page = 1, limit = 50 } = req.query;
     
-    const query = {
+    const messages = await Message.find({ 
+      claimed: false,
       $or: [
-        { sender: req.user._id },
-        { receiver: req.user._id },
-        { receiver: null } // Broadcast messages
+        { receiver: null },           // Unassigned messages
+        { receiver: req.user._id },    // Messages assigned to current user
+        // Optional: Include team messages if you have teams
+        // { team: req.user.teamId }
       ]
-    };
-
-    const messages = await Message.find(query)
-      .populate('sender', 'name email role')
-      .populate('receiver', 'name email role')
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .lean();
+    })
+    .populate('sender', 'name _id')
+    .populate('receiver', 'name')
+    .sort({ createdAt: -1 })
+    .limit(limit * 1)
+    .skip((page - 1) * limit)
+    .lean();
 
     res.json(messages.map(formatMessage));
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error('Error in /unclaimed:', err);
+    res.status(500).json({ 
+      error: 'Failed to load unclaimed messages',
+      details: process.env.NODE_ENV === 'development' ? err.message : null
+    });
   }
 });
 
@@ -194,30 +198,47 @@ router.put('/:messageId/read', auth, async (req, res) => {
   }
 });
 
-// Claim a message (for admin/supervisor)
+// Claim a message (for any authenticated agent)
 router.put('/:messageId/claim', auth, async (req, res) => {
   try {
-    if (!['admin', 'supervisor'].includes(req.user.role)) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-
     const message = await Message.findOneAndUpdate(
-      { _id: req.params.messageId, claimed: false },
+      { 
+        _id: req.params.messageId, 
+        claimed: false,
+        // Optional: Only allow claiming messages assigned to them or unassigned
+        $or: [
+          { receiver: req.user._id },
+          { receiver: null },
+          { receiver: { $exists: false } }
+        ]
+      },
       { 
         claimed: true,
         claimedBy: req.user._id,
-        claimedAt: new Date() 
+        claimedAt: new Date(),
+        // Assign the message to the claiming agent
+        receiver: req.user._id
       },
       { new: true }
-    ).populate('sender', 'name _id');
+    )
+    .populate('sender', 'name _id')
+    .populate('claimedBy', 'name');
 
     if (!message) {
-      return res.status(404).json({ error: 'Message not found or already claimed' });
+      return res.status(404).json({ 
+        error: 'Message not found, already claimed, or not assigned to you' 
+      });
     }
 
     // Notify via WebSocket
     const io = req.app.get('socketio');
-    io.emit('message_claimed', message._id);
+    io.emit('message_claimed', {
+      messageId: message._id,
+      claimedBy: {
+        id: req.user._id,
+        name: req.user.name
+      }
+    });
 
     res.json(formatMessage(message));
   } catch (error) {
