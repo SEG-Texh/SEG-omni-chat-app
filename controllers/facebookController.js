@@ -33,7 +33,7 @@ const facebookController = {
     /**
      * Handle incoming messages and events from Facebook
      */
-    handleFacebookWebhook: async (req, res) => {
+    handleFacebookWebhook: async function(req, res) {
         try {
             if (req.body.object !== 'page') {
                 return res.status(400).send('Invalid object type');
@@ -42,30 +42,30 @@ const facebookController = {
             const io = getIO();
             const processingPromises = [];
 
-            // Process each entry (batched events)
+            // Bind methods to this instance
+            const boundProcessMessageEvent = this.processMessageEvent.bind(this);
+            const boundProcessPostbackEvent = this.processPostbackEvent.bind(this);
+            const boundProcessDeliveryEvent = this.processDeliveryEvent.bind(this);
+            const boundProcessReadEvent = this.processReadEvent.bind(this);
+
             for (const entry of req.body.entry) {
-                // Process each messaging event
                 for (const event of entry.messaging) {
                     try {
                         if (event.message && !event.message.is_echo) {
-                            // Handle message events
                             processingPromises.push(
-                                this.processMessageEvent(event, entry.id, io)
+                                boundProcessMessageEvent(event, entry.id, io)
                             );
                         } else if (event.postback) {
-                            // Handle postback events
                             processingPromises.push(
-                                this.processPostbackEvent(event, io)
+                                boundProcessPostbackEvent(event, io)
                             );
                         } else if (event.delivery) {
-                            // Handle delivery confirmations
                             processingPromises.push(
-                                this.processDeliveryEvent(event)
+                                boundProcessDeliveryEvent(event)
                             );
                         } else if (event.read) {
-                            // Handle read receipts
                             processingPromises.push(
-                                this.processReadEvent(event)
+                                boundProcessReadEvent(event)
                             );
                         }
                     } catch (error) {
@@ -74,7 +74,6 @@ const facebookController = {
                 }
             }
 
-            // Wait for all processing to complete
             await Promise.all(processingPromises);
             return res.status(200).send('EVENT_RECEIVED');
             
