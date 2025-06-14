@@ -3,15 +3,11 @@ const express = require('express');
 const router = express.Router();
 const facebookController = require('../controllers/facebookController');
 const { getIO } = require('../config/socket');
-// In your webhook handler
-    const messageData = req.body; // Get data from request body
-console.log('Received Facebook message:', messageData);
-
-// After saving to DB
-console.log('Message saved:', savedMessage);
-
-// Before emitting Socket.io event
-console.log('Emitting unclaimedMessages event');
+router.post('/webhook', (req, res) => {
+  const io = require('../config/socket').getIO();
+  io.emit('message', req.body); // Example
+  res.sendStatus(200);
+});
 
 
 
