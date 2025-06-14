@@ -1,19 +1,24 @@
-// ============================================================================
+    // ============================================================================
 // GLOBAL VARIABLES
 // ============================================================================
-let currentUser = JSON.parse(localStorage.getItem("user"));
-let selectedRecipientId = null;
-let selectedPlatform = null;
+let currentUser = null;
 let socket = null;
+let currentChatUser = null;
+let users = [];
 let isTyping = false;
 let typingTimeout = null;
 
-// DOM Elements
-const broadcastMessageList = document.getElementById("broadcastMessageList");
-const chatUserName = document.getElementById("chatUserName");
-const chatMessages = document.getElementById("chatMessages");
-const messageInput = document.getElementById("messageInput");
-const sendBtn = document.getElementById("sendBtn");
+// Demo data for frontend testing
+const demoUsers = [
+    { id: '1', name: 'Admin User', email: 'admin@example.com', role: 'admin', isOnline: true },
+    { id: '2', name: 'Jane Smith', email: 'user@example.com', role: 'user', isOnline: false, supervisor: 'Admin User' },
+    { id: '3', name: 'Bob Johnson', email: 'supervisor@example.com', role: 'supervisor', isOnline: true }
+];
+
+const demoMessages = [
+    { id: '1', sender: demoUsers[1], receiver: demoUsers[0], content: 'Hello Admin!', createdAt: new Date() },
+    { id: '2', sender: demoUsers[0], receiver: demoUsers[1], content: 'Hi there! How can I help?', createdAt: new Date() }
+];
 
 // ============================================================================
 // AUTHENTICATION FUNCTIONS
@@ -34,10 +39,13 @@ async function login(email, password) {
             throw new Error(data.error || 'Login failed');
         }
 
+        // Save the JWT token to localStorage
         localStorage.setItem('token', data.token);
-        currentUser = data.user;
-        localStorage.setItem("user", JSON.stringify(currentUser));
 
+        // Save user info in memory
+        currentUser = data.user;
+
+        // Redirect based on role
         if (currentUser.role === 'admin') {
             showDashboard();
         } else {
@@ -48,12 +56,18 @@ async function login(email, password) {
     }
 }
 
+
 function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
     currentUser = null;
-    if (socket) socket.disconnect();
+    localStorage.removeItem('token');
+    if (socket) socket = null;
     showLogin();
+}
+
+
+function checkAuth() {
+    // For demo purposes, no persistent auth
+    return false;
 }
 
 // ============================================================================
@@ -85,7 +99,7 @@ function showChat() {
     document.getElementById('chatContainer').style.display = 'flex';
     
     initializeSocket();
-    loadBroadcastedMessages();
+    loadChatUsers();
 }
 
 function openChat() {
@@ -100,44 +114,57 @@ function goToDashboard() {
 
 // ============================================================================
 // DASHBOARD FUNCTIONS
-// ============================================================================
-async function loadDashboardData() {
-    try {
-        const res = await fetch('/api/users', {
-            headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
-        });
-        const users = await res.json();
-        
+fetch('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com/api/users')
+    .then(response => response.json())
+    .then(data => {
         const usersTableBody = document.getElementById('usersTableBody');
+
+        // Clear previous rows (optional if reloading)
         usersTableBody.innerHTML = '';
 
-        // Update stats
-        document.getElementById('totalUsers').textContent = users.length;
-        const onlineUsers = users.filter(u => u.isOnline).length;
+        // Count users
+        const totalUsers = data.length;
+        const onlineUsers = data.filter(user => user.isOnline).length;
+
+        // Update counts in the DOM
+        document.getElementById('totalUsers').textContent = totalUsers;
         document.getElementById('onlineUsers').textContent = onlineUsers;
 
-        // Populate users table
-        users.forEach(user => {
+        // Display each user in the table
+        data.forEach(user => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${user.name}</td>
-                <td>${user.email}</td>
-                <td>${user.role}</td>
-                <td>${user.supervisor || '-'}</td>
-                <td>${user.isOnline ? '🟢 Online' : '⚪ Offline'}</td>
-                <td class="actions">
-                    <button class="btn-small btn-edit" onclick="editUser('${user._id}')">Edit</button>
-                    <button class="btn-small btn-delete" onclick="deleteUser('${user._id}')">Delete</button>
-                </td>
-            `;
+
+            const nameTd = document.createElement('td');
+            nameTd.textContent = user.name;
+            tr.appendChild(nameTd);
+
+            const emailTd = document.createElement('td');
+            emailTd.textContent = user.email;
+            tr.appendChild(emailTd);
+
+            const roleTd = document.createElement('td');
+            roleTd.textContent = user.role;
+            tr.appendChild(roleTd);
+
+            const supervisorTd = document.createElement('td');
+            supervisorTd.textContent = user.supervisor;
+            tr.appendChild(supervisorTd);
+            
+            const statusTd = document.createElement('td');
+            statusTd.textContent = user.isOnline ? '🟢 Online' : '⚪ Offline';
+            tr.appendChild(statusTd);
+
+            const actionsTd = document.createElement('td');
+            const editButton = document.createElement('button');
+            editButton.textContent = 'Edit';
+            editButton.onclick = function() { editUser(user._id); };
+            actionsTd.appendChild(editButton);
+            tr.appendChild(actionsTd);
+
             usersTableBody.appendChild(tr);
         });
-    } catch (error) {
-        console.error('Error loading dashboard data:', error);
-    }
-}
+    })
+    .catch(error => console.error('Error:', error));
 
 // ============================================================================
 // USER MANAGEMENT FUNCTIONS
@@ -152,16 +179,35 @@ function closeAddUserModal() {
     document.getElementById('addUserError').textContent = '';
 }
 
-async function addUser(userData) {
+document.getElementById('addUserForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const name = document.getElementById('newUserName').value;
+    const email = document.getElementById('newUserEmail').value;
+    const password = document.getElementById('newUserPassword').value;
+    const role = document.getElementById('newUserRole').value;
+    const supervisor_id = document.getElementById('newUserSupervisor').value || null;
+
+    const newUser = { name, email, password, role, supervisor_id };
+
     try {
+        const token = localStorage.getItem('token'); // assuming you store JWT this way
+
         const res = await fetch('/api/auth/register', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem("token")}`
+                'Authorization': `Bearer ${token}` // if required
             },
-            body: JSON.stringify(userData)
+            body: JSON.stringify(newUser)
         });
+        
+        // Update stats
+        document.getElementById('totalUsers').textContent = users.length;
+
+        const onlineCount = users.filter(u => u.isOnline).length;
+        document.getElementById('onlineUsers').textContent = onlineCount;
+
 
         const data = await res.json();
 
@@ -171,57 +217,33 @@ async function addUser(userData) {
 
         alert('User added successfully!');
         closeAddUserModal();
-        loadDashboardData();
+        loadUsersTable(); // reloads table
     } catch (err) {
         document.getElementById('addUserError').textContent = err.message;
     }
-}
+});
 
 function editUser(userId) {
     alert('Edit functionality would open a modal with user details');
 }
 
-async function deleteUser(userId) {
+function deleteUser(userId) {
     if (!confirm('Are you sure you want to delete this user?')) return;
     
-    try {
-        const res = await fetch(`/api/users/${userId}`, {
-            method: 'DELETE',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem("token")}`
-            }
-        });
-
-        if (!res.ok) {
-            throw new Error('Failed to delete user');
-        }
-
-        alert('User deleted successfully!');
-        loadDashboardData();
-    } catch (error) {
-        console.error('Error deleting user:', error);
-        alert('Failed to delete user');
-    }
+    users = users.filter(u => u.id !== userId);
+    loadUsersTable();
+    alert('User deleted successfully!');
 }
 
-// ============================================================================
-// MESSAGE SEARCH FUNCTIONS
-// ============================================================================
-async function searchMessages() {
+function searchMessages() {
     const query = document.getElementById('messageSearchInput').value.trim();
     if (!query) return;
     
-    try {
-        const res = await fetch(`/api/messages/search?q=${encodeURIComponent(query)}`, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem("token")}`
-            }
-        });
-        const results = await res.json();
-        displaySearchResults(results);
-    } catch (error) {
-        console.error('Error searching messages:', error);
-    }
+    const results = demoMessages.filter(msg => 
+        msg.content.toLowerCase().includes(query.toLowerCase())
+    );
+    
+    displaySearchResults(results);
 }
 
 function displaySearchResults(messages) {
@@ -249,129 +271,170 @@ function displaySearchResults(messages) {
 // ============================================================================
 // CHAT FUNCTIONS
 // ============================================================================
-async function loadBroadcastedMessages() {
-    try {
-        const res = await fetch("/api/messages/unclaimed", {
-            headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
-        });
-        const messages = await res.json();
-        broadcastMessageList.innerHTML = '';
-
-        messages.forEach(msg => {
-            const div = document.createElement("div");
-            div.classList.add("chat-user");
-            div.innerHTML = `
-                <strong>${msg.senderName || msg.sourceId}</strong><br>
-                <small>${msg.platform.toUpperCase()} | ${msg.text.slice(0, 50)}...</small>
-            `;
-            div.onclick = () => selectMessage(msg);
-            broadcastMessageList.appendChild(div);
-        });
-    } catch (error) {
-        console.error('Error loading broadcasted messages:', error);
-    }
-}
-
-async function selectMessage(msg) {
-    selectedRecipientId = msg.sourceId;
-    selectedPlatform = msg.platform;
-    chatUserName.textContent = `Replying to ${msg.senderName || msg.sourceId} via ${msg.platform}`;
-    messageInput.disabled = false;
-    sendBtn.disabled = false;
-
-    try {
-        const res = await fetch(`/api/messages/conversation/${selectedRecipientId}`, {
-            headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
-        });
-        const convo = await res.json();
-        chatMessages.innerHTML = '';
-
-        convo.forEach(m => {
-            const div = document.createElement("div");
-            div.className = m.from === currentUser._id ? 'sent' : 'received';
-            div.innerHTML = `<p>${m.text}</p><small>${new Date(m.createdAt).toLocaleString()}</small>`;
-            chatMessages.appendChild(div);
-        });
-
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    } catch (error) {
-        console.error('Error loading conversation:', error);
-    }
-}
-
-async function sendMessage() {
-    const text = messageInput.value.trim();
-    if (!text || !selectedRecipientId) return;
-
-    try {
-        const res = await fetch("/api/messages/send", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${localStorage.getItem("token")}`
-            },
-            body: JSON.stringify({
-                to: selectedRecipientId,
-                platform: selectedPlatform,
-                text
-            })
-        });
-
-        const data = await res.json();
-        if (data.success) {
-            messageInput.value = '';
-            await selectMessage({ sourceId: selectedRecipientId, platform: selectedPlatform });
-        }
-    } catch (error) {
-        console.error('Error sending message:', error);
-    }
-}
-
 function initializeSocket() {
-    socket = io('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com', {
-        transports: ['websocket'],
-        auth: {
-            token: localStorage.getItem('token')
-        },
-        reconnection: true,
-        reconnectionAttempts: Infinity,
-        reconnectionDelay: 1000,
-        timeout: 20000
-    });
+    // Demo socket simulation
+// Real socket connection
+const socket = io('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com', {
+    transports: ['websocket'], // 👈 Force WebSocket transport
+    auth: {
+        token: localStorage.getItem('Am0fZr5mEta2KihNo0dU0ua2Re1Dle05') // Adjust key as needed
+    },
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 1000,
+    timeout: 20000
+});
 
-    socket.on('connect', () => {
-        console.log('✅ Connected to server via WebSocket');
-    });
+// ✅ Connection events
+socket.on('connect', () => {
+    console.log('✅ Connected to server via WebSocket');
+});
 
-    socket.on('disconnect', (reason) => {
-        console.warn('⚠️ Disconnected from server:', reason);
-        if (reason === 'io server disconnect') {
-            socket.connect();
-        }
-    });
+socket.on('disconnect', (reason) => {
+    console.warn('⚠️ Disconnected from server:', reason);
+    if (reason === 'io server disconnect') {
+        // If server manually disconnected, reconnect explicitly
+        socket.connect();
+    }
+});
 
-    socket.on('reconnect_attempt', () => {
-        console.log('🔄 Attempting to reconnect...');
-    });
+socket.on('reconnect_attempt', () => {
+    console.log('🔄 Attempting to reconnect...');
+});
+socket.on('connect', () => {
+    console.log('🟢 WebSocket connected:', socket.id);
+});
 
+socket.on('disconnect', (reason) => {
+    console.log('🔴 Disconnected:', reason);
+});
+
+
+// Handle incoming real-time messages
+socket.on('newMessage', displayMessage);
+socket.on('userTyping', showTypingIndicator);
+socket.on('userStoppedTyping', hideTypingIndicator);
+socket.on('userOnline', updateUserStatus);
+socket.on('userOffline', updateUserStatus);
+
+socket.on('connect', () => {
+    console.log('Connected to server with socket ID:', socket.id);
+});
+
+socket.on('connect_error', (err) => {
+    console.error('Socket connection error:', err.message);
+});
+
+    
+    // Simulate socket events
     socket.on('newMessage', displayMessage);
     socket.on('userTyping', showTypingIndicator);
     socket.on('userStoppedTyping', hideTypingIndicator);
-    socket.on('userOnline', updateUserStatus);
-    socket.on('userOffline', updateUserStatus);
+    socket.on('userStatusChanged', updateUserStatus);
+}
+
+function loadChatUsers() {
+    const userList = document.getElementById('chatUserList');
+    userList.innerHTML = '';
+    
+    const otherUsers = demoUsers.filter(u => u.id !== currentUser.id);
+    
+    otherUsers.forEach(user => {
+        const userDiv = document.createElement('div');
+        userDiv.className = 'user-item';
+        userDiv.onclick = () => selectChatUser(user);
+        userDiv.innerHTML = `
+            <div class="user-status ${user.isOnline ? 'online' : 'offline'}"></div>
+            <div class="user-avatar">${user.name.charAt(0).toUpperCase()}</div>
+            <div>
+                <div>${user.name}</div>
+                <div style="font-size: 12px; color: #666;">${user.isOnline ? 'Online' : 'Offline'}</div>
+            </div>
+        `;
+        userList.appendChild(userDiv);
+    });
+}
+
+function selectChatUser(user) {
+    currentChatUser = user;
+    
+    // Update active user
+    document.querySelectorAll('.user-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    event.currentTarget.classList.add('active');
+    
+    // Update chat header
+    document.getElementById('chatUserName').textContent = user.name;
+    
+    // Enable input
+    document.getElementById('messageInput').disabled = false;
+    document.getElementById('sendBtn').disabled = false;
+    
+    // Load messages for this conversation
+    loadChatMessages(user);
+}
+
+function loadChatMessages(user) {
+    const messagesContainer = document.getElementById('chatMessages');
+    messagesContainer.innerHTML = '';
+    
+    // Filter messages for this conversation
+    const conversationMessages = demoMessages.filter(msg => 
+        (msg.sender.id === currentUser.id && msg.receiver.id === user.id) ||
+        (msg.sender.id === user.id && msg.receiver.id === currentUser.id)
+    );
+    
+    conversationMessages.forEach(message => {
+        displayMessage(message);
+    });
+    
+    // Scroll to bottom
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function displayMessage(message) {
+    const messagesContainer = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    
+    const isOwnMessage = message.sender.id === currentUser.id;
+    messageDiv.className = `message ${isOwnMessage ? 'own' : ''}`;
+    
+    messageDiv.innerHTML = `
+        <div class="message-avatar">${message.sender.name.charAt(0).toUpperCase()}</div>
+        <div class="message-content">
+            <div class="message-bubble">
+                ${message.content}
+            </div>
+            <div class="message-info">
+                ${message.sender.name} • ${new Date(message.createdAt).toLocaleTimeString()}
+            </div>
+        </div>
+    `;
+    
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function sendMessage() {
+    const input = document.getElementById('messageInput');
+    const content = input.value.trim();
+    
+    if (!content || !currentChatUser) return;
+    
+    socket.emit('sendMessage', {
+        receiverId: currentChatUser.id,
+        content: content
+    });
+    
+    input.value = '';
+    stopTyping();
 }
 
 function handleTyping() {
-    if (!isTyping && selectedRecipientId) {
+    if (!isTyping && currentChatUser) {
         isTyping = true;
-        socket.emit('typing', { 
-            receiverId: selectedRecipientId,
-            platform: selectedPlatform
-        });
+        socket.emit('typing', { receiverId: currentChatUser.id });
     }
     
     clearTimeout(typingTimeout);
@@ -381,34 +444,35 @@ function handleTyping() {
 }
 
 function stopTyping() {
-    if (isTyping && selectedRecipientId) {
+    if (isTyping && currentChatUser) {
         isTyping = false;
-        socket.emit('stopTyping', { 
-            receiverId: selectedRecipientId,
-            platform: selectedPlatform
-        });
+        socket.emit('stopTyping', { receiverId: currentChatUser.id });
     }
 }
 
 function showTypingIndicator(data) {
-    if (data.senderId === selectedRecipientId && data.platform === selectedPlatform) {
+    if (data.senderId === currentChatUser?.id) {
         const indicator = document.getElementById('typingIndicator');
-        indicator.textContent = `${data.senderName || data.senderId} is typing...`;
+        indicator.textContent = `${currentChatUser.name} is typing...`;
         indicator.style.display = 'block';
     }
 }
 
 function hideTypingIndicator(data) {
-    if (data.senderId === selectedRecipientId && data.platform === selectedPlatform) {
+    if (data.senderId === currentChatUser?.id) {
         const indicator = document.getElementById('typingIndicator');
         indicator.style.display = 'none';
     }
 }
 
 function updateUserStatus(data) {
-    // Update user status in the UI
-    if (currentUser.role === 'admin') {
-        loadDashboardData();
+    const user = demoUsers.find(u => u.id === data.userId);
+    if (user) {
+        user.isOnline = data.isOnline;
+        loadChatUsers();
+        if (currentUser.role === 'admin') {
+            loadUsersTable();
+        }
     }
 }
 
@@ -417,13 +481,8 @@ function updateUserStatus(data) {
 // ============================================================================
 document.addEventListener('DOMContentLoaded', function() {
     // Check for existing auth
-    if (localStorage.getItem("token")) {
-        currentUser = JSON.parse(localStorage.getItem("user"));
-        if (currentUser.role === 'admin') {
-            showDashboard();
-        } else {
-            showChat();
-        }
+    if (checkAuth()) {
+        // Auto-login would go here
     } else {
         showLogin();
     }
@@ -450,6 +509,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             loginError.textContent = error.message;
         } finally {
+            // Reset loading state
             loginBtn.disabled = false;
             loginText.style.display = 'block';
             loginSpinner.style.display = 'none';
@@ -460,16 +520,24 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('addUserForm').addEventListener('submit', function(e) {
         e.preventDefault();
         
+        const formData = new FormData(e.target);
         const userData = {
-            name: document.getElementById('newUserName').value,
-            email: document.getElementById('newUserEmail').value,
-            password: document.getElementById('newUserPassword').value,
-            role: document.getElementById('newUserRole').value,
-            supervisor: document.getElementById('newUserSupervisor').value || null
+            name: formData.get('newUserName') || document.getElementById('newUserName').value,
+            email: formData.get('newUserEmail') || document.getElementById('newUserEmail').value,
+            password: formData.get('newUserPassword') || document.getElementById('newUserPassword').value,
+            role: formData.get('newUserRole') || document.getElementById('newUserRole').value,
+            supervisor: document.getElementById('newUserSupervisor').value
         };
         
+        // Basic validation
         if (!userData.name || !userData.email || !userData.password) {
             document.getElementById('addUserError').textContent = 'All fields are required';
+            return;
+        }
+        
+        // Check if email already exists
+        if (users.some(u => u.email === userData.email)) {
+            document.getElementById('addUserError').textContent = 'Email already exists';
             return;
         }
         
@@ -477,6 +545,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Message input events
+    const messageInput = document.getElementById('messageInput');
     if (messageInput) {
         messageInput.addEventListener('input', handleTyping);
         messageInput.addEventListener('keypress', function(e) {
@@ -505,7 +574,19 @@ function formatTime(date) {
     return new Date(date).toLocaleTimeString();
 }
 
-// Error handling
+function generateUserId() {
+    return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+function sanitizeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ============================================================================
+// ERROR HANDLING
+// ============================================================================
 window.addEventListener('error', function(e) {
     console.error('Application error:', e.error);
 });
@@ -513,3 +594,17 @@ window.addEventListener('error', function(e) {
 window.addEventListener('unhandledrejection', function(e) {
     console.error('Unhandled promise rejection:', e.reason);
 });
+
+// ============================================================================
+// EXPORT FOR TESTING (if needed)
+// ============================================================================
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        login,
+        logout,
+        addUser,
+        deleteUser,
+        sendMessage,
+        displayMessage
+    };
+}
