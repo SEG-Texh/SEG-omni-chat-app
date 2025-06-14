@@ -1,101 +1,76 @@
+// controllers/facebookController.js
 const Message = require('../models/message');
 const { getIO } = require('../config/socket');
 const axios = require('axios');
 
-const facebookController = (() => {
-  const getSenderName = async (senderId) => {
+const getSenderName = async (senderId) => {
+  // ... keep your existing implementation ...
+};
+
+const processMessageEvent = async (event, pageId, io) => {
+  // ... keep your existing implementation ...
+};
+
+const processPostbackEvent = async (event, io) => {
+  // ... keep your existing implementation ...
+};
+
+// Export the controller methods directly
+module.exports = {
+  verifyFacebookWebhook: (req, res) => {
+    const VERIFY_TOKEN = process.env.FACEBOOK_WEBHOOK_VERIFY_TOKEN;
+    
+    if (!VERIFY_TOKEN) {
+      console.error('Facebook verify token not configured');
+      return res.sendStatus(500);
+    }
+    
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+    
+    if (mode && token) {
+      if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+        console.log('Facebook webhook verified');
+        return res.status(200).send(challenge);
+      }
+      return res.sendStatus(403);
+    }
+    return res.sendStatus(400);
+  },
+
+  handleFacebookWebhook: async (req, res) => {
     try {
-      const pageAccessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
-      if (!pageAccessToken) {
-        console.warn('No Facebook Page Access Token configured');
-        return 'Facebook User';
+      if (req.body.object !== 'page') {
+        return res.status(400).send('Invalid object type');
       }
 
-      const response = await axios.get(
-        `https://graph.facebook.com/${senderId}?fields=name&access_token=${pageAccessToken}`
-      );
-      return response.data.name || 'Facebook User';
-    } catch (error) {
-      console.error('Error fetching sender name:', error.response?.data?.error?.message || error.message);
-      return 'Facebook User';
-    }
-  };
+      const io = getIO();
+      const processingPromises = [];
 
-  const processMessageEvent = async (event, pageId, io) => {
-    try {
-      const senderId = event.sender.id;
-      const message = event.message;
-      
-      // Check for duplicate message
-      const existingMessage = await Message.findOne({
-        platform: 'facebook',
-        platformMessageId: message.mid
-      });
-      
-      if (existingMessage) return;
-
-      // Create message without waiting for sender name
-      const newMessage = await Message.create({
-        platform: 'facebook',
-        platformMessageId: message.mid,
-        platformThreadId: senderId,
-        direction: 'inbound',
-        status: 'delivered',
-        content: {
-          text: message.text,
-          attachments: message.attachments?.map(attach => ({
-            type: attach.type,
-            url: attach.payload?.url,
-            caption: attach.title,
-            mimeType: attach.payload?.mime_type
-          }))
-        },
-        sender: {
-          id: senderId,
-          platform: 'facebook'
-        },
-        recipient: {
-          id: pageId,
-          platform: 'facebook'
-        },
-        labels: ['unclaimed']
-      });
-
-      // Try to get sender name in background
-      getSenderName(senderId).then(name => {
-        if (name !== 'Facebook User') {
-          Message.updateOne(
-            { _id: newMessage._id },
-            { 'sender.name': name }
-          ).then(() => {
-            io.emit('message_updated', {
-              messageId: newMessage._id,
-              updates: { 'sender.name': name }
-            });
-          });
-        }
-      });
-
-      io.emit('new_message', {
-        event: 'facebook_message',
-        message: {
-          ...newMessage.toObject(),
-          timestamp: new Date(),
-          sender: {
-            ...newMessage.sender,
-            name: 'Facebook User' // Temporary placeholder
+      for (const entry of req.body.entry) {
+        for (const event of entry.messaging) {
+          try {
+            if (event.message && !event.message.is_echo) {
+              processingPromises.push(
+                processMessageEvent(event, entry.id, io)
+              );
+            } else if (event.postback) {
+              processingPromises.push(
+                processPostbackEvent(event, io)
+              );
+            }
+          } catch (error) {
+            console.error('Error processing individual event:', error);
           }
         }
-      });
+      }
 
-      return newMessage;
+      await Promise.all(processingPromises);
+      return res.status(200).send('EVENT_RECEIVED');
     } catch (error) {
-      console.error('Error processing message:', error);
-      throw error;
+      console.error('Error in Facebook webhook handler:', error);
+      return res.status(500).send('SERVER_ERROR');
     }
-  };
-
-  // ... rest of your controller code ...
-})();
-
-module.exports = facebookController;
+  }
+};
