@@ -5,6 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Chat App</title>
   <link rel="stylesheet" href="styles.css">
+  <style>
+.sent {
+  text-align: right;
+  background: #d1f0d1;
+  padding: 8px;
+  margin: 5px;
+  border-radius: 10px;
+}
+.received {
+  text-align: left;
+  background: #eee;
+  padding: 8px;
+  margin: 5px;
+  border-radius: 10px;
+}
+.chat-user {
+  padding: 10px;
+  border-bottom: 1px solid #ccc;
+  cursor: pointer;
+}
+.chat-user:hover {
+  background: #f0f0f0;
+}
+</style>
 </head>
 <body>
     <!-- LOGIN PAGE -->
@@ -104,43 +128,46 @@
         </div>
     </div>
 
-    <!-- CHAT PAGE (Hidden initially) -->
-    <div class="chat-container" id="chatContainer" style="display: none;">
-        <div class="sidebar">
-            <div class="sidebar-header">
-                <h3>Users</h3>
-                <button onclick="goToDashboard()" style="background: none; border: none; color: white; cursor: pointer;">⚙️</button>
-            </div>
-            <div class="user-list" id="chatUserList">
-                <!-- Users will be loaded here -->
-            </div>
-        </div>
-        <div class="chat-main">
-            <div class="chat-header">
-    <div>
-        <h3 id="chatUserName">Select a user to chat</h3>
-        <div class="typing-indicator" id="typingIndicator" style="display: none;"></div>
+   <!-- CHAT PAGE (Modified for Broadcasted Messages) -->
+<div class="chat-container" id="chatContainer" style="display: none;">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h3>Incoming Messages</h3>
+      <button onclick="goToDashboard()" style="background: none; border: none; color: white; cursor: pointer;">⚙️</button>
     </div>
-    <div class="admin-controls">
-        <!-- Add this back button - it will only show for admins -->
+    <div class="user-list" id="broadcastMessageList">
+      <!-- Broadcasted unclaimed messages will be loaded here -->
+    </div>
+  </div>
+
+  <div class="chat-main">
+    <div class="chat-header">
+      <div>
+        <h3 id="chatUserName">Select a message to reply</h3>
+        <div class="typing-indicator" id="typingIndicator" style="display: none;"></div>
+      </div>
+      <div class="admin-controls">
         <button id="backToDashboard" class="back-btn" onclick="goToDashboard()" style="display: none;">
-            ← Back to Dashboard
+          ← Back to Dashboard
         </button>
         <button onclick="logout()" class="btn" style="background: #e74c3c;">Logout</button>
+      </div>
     </div>
+
+    <div class="chat-body" id="chatMessages" style="overflow-y: auto; flex: 1; padding: 10px;">
+      <!-- Conversation messages will be displayed here -->
+    </div>
+
+    <div class="chat-input">
+      <div class="input-group">
+        <input type="text" id="messageInput" placeholder="Type a message..." disabled />
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>
+          <span>📤</span>
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
-                <!-- Messages will appear here -->
-            </div>
-            <div class="chat-input">
-                <div class="input-group">
-                    <input type="text" id="messageInput" placeholder="Type a message..." disabled>
-                    <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>
-                        <span>📤</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- ADD USER MODAL -->
     <div class="modal" id="addUserModal">
@@ -185,7 +212,106 @@
             </form>
         </div>
     </div>
+<script>
+let currentUser = JSON.parse(localStorage.getItem("user"));
+let selectedRecipientId = null; // Source to reply to
+let selectedPlatform = null;
 
+const broadcastMessageList = document.getElementById("broadcastMessageList");
+const chatUserName = document.getElementById("chatUserName");
+const chatMessages = document.getElementById("chatMessages");
+const messageInput = document.getElementById("messageInput");
+const sendBtn = document.getElementById("sendBtn");
+
+// Load unclaimed broadcasted messages
+async function loadBroadcastedMessages() {
+  const res = await fetch("/api/messages/unclaimed", {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`
+    }
+  });
+  const messages = await res.json();
+  broadcastMessageList.innerHTML = '';
+
+  messages.forEach(msg => {
+    const div = document.createElement("div");
+    div.classList.add("chat-user");
+    div.innerHTML = `
+      <strong>${msg.senderName || msg.sourceId}</strong><br>
+      <small>${msg.platform.toUpperCase()} | ${msg.text.slice(0, 50)}...</small>
+    `;
+    div.onclick = () => selectMessage(msg);
+    broadcastMessageList.appendChild(div);
+  });
+}
+
+async function selectMessage(msg) {
+  selectedRecipientId = msg.sourceId;
+  selectedPlatform = msg.platform;
+  chatUserName.textContent = `Replying to ${msg.senderName || msg.sourceId} via ${msg.platform}`;
+  messageInput.disabled = false;
+  sendBtn.disabled = false;
+
+  // Load the conversation
+  const res = await fetch(`/api/messages/conversation/${selectedRecipientId}`, {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`
+    }
+  });
+  const convo = await res.json();
+  chatMessages.innerHTML = '';
+
+  convo.forEach(m => {
+    const div = document.createElement("div");
+    div.className = m.from === currentUser._id ? 'sent' : 'received';
+    div.innerHTML = `<p>${m.text}</p><small>${new Date(m.createdAt).toLocaleString()}</small>`;
+    chatMessages.appendChild(div);
+  });
+
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+async function sendMessage() {
+  const text = messageInput.value.trim();
+  if (!text || !selectedRecipientId) return;
+
+  const res = await fetch("/api/messages/send", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("token")}`
+    },
+    body: JSON.stringify({
+      to: selectedRecipientId,
+      platform: selectedPlatform,
+      text
+    })
+  });
+
+  const data = await res.json();
+  if (data.success) {
+    messageInput.value = '';
+    await selectMessage({ sourceId: selectedRecipientId, platform: selectedPlatform });
+  }
+}
+
+function goToDashboard() {
+  document.getElementById("dashboardContainer").style.display = "block";
+  document.getElementById("chatContainer").style.display = "none";
+}
+
+function showChatPage() {
+  document.getElementById("dashboardContainer").style.display = "none";
+  document.getElementById("chatContainer").style.display = "flex";
+  loadBroadcastedMessages();
+}
+
+window.onload = () => {
+  if (localStorage.getItem("token")) {
+    showChatPage();
+  }
+};
+</script>
     <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
 </body>
