@@ -121,7 +121,18 @@ router.get('/search/:query', auth, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
+// Example using Express.js
+router.get('/unclaimed', authenticateUser, async (req, res) => {
+  try {
+    const messages = await Message.find({ claimed: false })
+      .populate('sender', 'name id') // If using references
+      .sort({ timestamp: -1 }); // Newest first
+    
+    res.json(messages);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 // Mark message as read
 router.put('/:messageId/read', auth, async (req, res) => {
   try {
