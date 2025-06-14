@@ -286,38 +286,30 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function loadUnclaimedMessages() {
   try {
-    // Try real API first
     const response = await fetch('/api/messages/unclaimed');
     
-    if (!response.ok) throw new Error('API failed, using demo data');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(errorData?.message || `HTTP error! status: ${response.status}`);
+    }
     
     const messages = await response.json();
+    
+    if (!Array.isArray(messages)) {
+      throw new Error('Invalid response format: expected array');
+    }
+    
     updateUnclaimedMessages(messages);
     
   } catch (error) {
-    console.warn('Using demo data:', error);
-    
-    // Fallback to demo data
-    const demoMessages = [
-      {
-        _id: 'demo1',
-        platform: 'facebook',
-        sender: { id: 'fb123', name: 'Facebook User' },
-        content: { text: 'This is a sample unclaimed message' },
-        timestamp: new Date(),
-        labels: ['unclaimed']
-      },
-      {
-        _id: 'demo2', 
-        platform: 'whatsapp',
-        sender: { id: 'wa456', name: 'WhatsApp User' },
-        content: { text: 'Another test message' },
-        timestamp: new Date(Date.now() - 3600000),
-        labels: ['unclaimed']
-      }
-    ];
-    
-    updateUnclaimedMessages(demoMessages);
+    console.error('Error loading messages:', error);
+    messageList.innerHTML = `
+      <div class="error">
+        <p>Failed to load messages</p>
+        <small>${error.message}</small>
+        <button onclick="loadUnclaimedMessages()">Retry</button>
+      </div>
+    `;
   }
 }
 
