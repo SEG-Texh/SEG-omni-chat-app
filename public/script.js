@@ -275,10 +275,33 @@ function initializeSocket() {
     // Demo socket simulation
 // Real socket connection
 const socket = io('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com', {
+    transports: ['websocket'], // 👈 Force WebSocket transport
     auth: {
-        token: localStorage.getItem('Am0fZr5mEta2KihNo0dU0ua2Re1Dle05') // Replace this if your token is stored differently
+        token: localStorage.getItem('Am0fZr5mEta2KihNo0dU0ua2Re1Dle05') // Adjust key as needed
+    },
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 1000,
+    timeout: 20000
+});
+
+// ✅ Connection events
+socket.on('connect', () => {
+    console.log('✅ Connected to server via WebSocket');
+});
+
+socket.on('disconnect', (reason) => {
+    console.warn('⚠️ Disconnected from server:', reason);
+    if (reason === 'io server disconnect') {
+        // If server manually disconnected, reconnect explicitly
+        socket.connect();
     }
 });
+
+socket.on('reconnect_attempt', () => {
+    console.log('🔄 Attempting to reconnect...');
+});
+
 
 // Handle incoming real-time messages
 socket.on('newMessage', displayMessage);
