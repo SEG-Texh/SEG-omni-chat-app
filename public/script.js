@@ -274,207 +274,45 @@ function displaySearchResults(messages) {
 function initializeSocket() {
     // Demo socket simulation
 // Real socket connection
-const socket = io('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com', {
-    transports: ['websocket'], // 👈 Force WebSocket transport
-    auth: {
-        token: localStorage.getItem('Am0fZr5mEta2KihNo0dU0ua2Re1Dle05') // Adjust key as needed
-    },
-    reconnection: true,
-    reconnectionAttempts: Infinity,
-    reconnectionDelay: 1000,
-    timeout: 20000
+// Connect to backend socket
+const socket = io();
+
+// Render incoming messages
+socket.on("receiveMessage", (data) => {
+  renderMessage(data, "received");
 });
 
-// ✅ Connection events
-socket.on('connect', () => {
-    console.log('✅ Connected to server via WebSocket');
-});
-
-socket.on('disconnect', (reason) => {
-    console.warn('⚠️ Disconnected from server:', reason);
-    if (reason === 'io server disconnect') {
-        // If server manually disconnected, reconnect explicitly
-        socket.connect();
-    }
-});
-
-socket.on('reconnect_attempt', () => {
-    console.log('🔄 Attempting to reconnect...');
-});
-socket.on('connect', () => {
-    console.log('🟢 WebSocket connected:', socket.id);
-});
-
-socket.on('disconnect', (reason) => {
-    console.log('🔴 Disconnected:', reason);
-});
-
-
-// Handle incoming real-time messages
-socket.on('newMessage', displayMessage);
-socket.on('userTyping', showTypingIndicator);
-socket.on('userStoppedTyping', hideTypingIndicator);
-socket.on('userOnline', updateUserStatus);
-socket.on('userOffline', updateUserStatus);
-
-socket.on('connect', () => {
-    console.log('Connected to server with socket ID:', socket.id);
-});
-
-socket.on('connect_error', (err) => {
-    console.error('Socket connection error:', err.message);
-});
-
-    
-    // Simulate socket events
-    socket.on('newMessage', displayMessage);
-    socket.on('userTyping', showTypingIndicator);
-    socket.on('userStoppedTyping', hideTypingIndicator);
-    socket.on('userStatusChanged', updateUserStatus);
-}
-
-function loadChatUsers() {
-    const userList = document.getElementById('chatUserList');
-    userList.innerHTML = '';
-    
-    const otherUsers = demoUsers.filter(u => u.id !== currentUser.id);
-    
-    otherUsers.forEach(user => {
-        const userDiv = document.createElement('div');
-        userDiv.className = 'user-item';
-        userDiv.onclick = () => selectChatUser(user);
-        userDiv.innerHTML = `
-            <div class="user-status ${user.isOnline ? 'online' : 'offline'}"></div>
-            <div class="user-avatar">${user.name.charAt(0).toUpperCase()}</div>
-            <div>
-                <div>${user.name}</div>
-                <div style="font-size: 12px; color: #666;">${user.isOnline ? 'Online' : 'Offline'}</div>
-            </div>
-        `;
-        userList.appendChild(userDiv);
-    });
-}
-
-function selectChatUser(user) {
-    currentChatUser = user;
-    
-    // Update active user
-    document.querySelectorAll('.user-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    event.currentTarget.classList.add('active');
-    
-    // Update chat header
-    document.getElementById('chatUserName').textContent = user.name;
-    
-    // Enable input
-    document.getElementById('messageInput').disabled = false;
-    document.getElementById('sendBtn').disabled = false;
-    
-    // Load messages for this conversation
-    loadChatMessages(user);
-}
-
-function loadChatMessages(user) {
-    const messagesContainer = document.getElementById('chatMessages');
-    messagesContainer.innerHTML = '';
-    
-    // Filter messages for this conversation
-    const conversationMessages = demoMessages.filter(msg => 
-        (msg.sender.id === currentUser.id && msg.receiver.id === user.id) ||
-        (msg.sender.id === user.id && msg.receiver.id === currentUser.id)
-    );
-    
-    conversationMessages.forEach(message => {
-        displayMessage(message);
-    });
-    
-    // Scroll to bottom
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-function displayMessage(message) {
-    const messagesContainer = document.getElementById('chatMessages');
-    const messageDiv = document.createElement('div');
-    
-    const isOwnMessage = message.sender.id === currentUser.id;
-    messageDiv.className = `message ${isOwnMessage ? 'own' : ''}`;
-    
-    messageDiv.innerHTML = `
-        <div class="message-avatar">${message.sender.name.charAt(0).toUpperCase()}</div>
-        <div class="message-content">
-            <div class="message-bubble">
-                ${message.content}
-            </div>
-            <div class="message-info">
-                ${message.sender.name} • ${new Date(message.createdAt).toLocaleTimeString()}
-            </div>
-        </div>
-    `;
-    
-    messagesContainer.appendChild(messageDiv);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
+// Send message
 function sendMessage() {
-    const input = document.getElementById('messageInput');
-    const content = input.value.trim();
-    
-    if (!content || !currentChatUser) return;
-    
-    socket.emit('sendMessage', {
-        receiverId: currentChatUser.id,
-        content: content
-    });
-    
-    input.value = '';
-    stopTyping();
+  const input = document.getElementById("messageInput");
+  const message = input.value.trim();
+
+  if (!message) return;
+
+  const data = {
+    sender: "Agent", // Replace with dynamic user if available
+    content: message,
+    timestamp: new Date().toISOString(),
+  };
+
+  // Emit to server
+  socket.emit("sendMessage", data);
+
+  // Show immediately in UI
+  renderMessage(data, "sent");
+  input.value = "";
 }
 
-function handleTyping() {
-    if (!isTyping && currentChatUser) {
-        isTyping = true;
-        socket.emit('typing', { receiverId: currentChatUser.id });
-    }
-    
-    clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(() => {
-        stopTyping();
-    }, 1000);
+// Render message into chat container
+function renderMessage(data, type = "received") {
+  const container = document.getElementById("chatMessages");
+  const div = document.createElement("div");
+  div.className = type === "sent" ? "sent" : "received";
+  div.innerHTML = `<strong>${data.sender}:</strong> ${data.content}`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
 }
 
-function stopTyping() {
-    if (isTyping && currentChatUser) {
-        isTyping = false;
-        socket.emit('stopTyping', { receiverId: currentChatUser.id });
-    }
-}
-
-function showTypingIndicator(data) {
-    if (data.senderId === currentChatUser?.id) {
-        const indicator = document.getElementById('typingIndicator');
-        indicator.textContent = `${currentChatUser.name} is typing...`;
-        indicator.style.display = 'block';
-    }
-}
-
-function hideTypingIndicator(data) {
-    if (data.senderId === currentChatUser?.id) {
-        const indicator = document.getElementById('typingIndicator');
-        indicator.style.display = 'none';
-    }
-}
-
-function updateUserStatus(data) {
-    const user = demoUsers.find(u => u.id === data.userId);
-    if (user) {
-        user.isOnline = data.isOnline;
-        loadChatUsers();
-        if (currentUser.role === 'admin') {
-            loadUsersTable();
-        }
-    }
-}
 
 // ============================================================================
 // EVENT LISTENERS
