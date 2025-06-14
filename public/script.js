@@ -336,40 +336,51 @@ async function loadUnclaimedMessages() {
 
 // 4. Display messages in the sidebar
 function updateUnclaimedMessages(messages) {
-  messageList.innerHTML = ''; // Clear existing
-  // Temporarily add this before your if statement
-console.log("messages array:", messages); 
+  const messageList = document.getElementById('broadcastMessageList');
+  messageList.innerHTML = '';
+  
+  console.log("Raw messages from API:", messages);
   
   if (messages.length === 0) {
     messageList.innerHTML = '<div class="empty">No unclaimed messages</div>';
     return;
   }
 
-  messages.forEach(msg => {
-    const messageDiv = createMessageElement(msg);
+  messages.forEach(rawMsg => {
+    const formattedMsg = formatMessageForDisplay(rawMsg);
+    const messageDiv = createMessageElement(formattedMsg);
     messageList.appendChild(messageDiv);
   });
 }
 
-// 5. Create individual message element
 function createMessageElement(msg) {
   const messageDiv = document.createElement('div');
   messageDiv.className = 'chat-user';
   messageDiv.dataset.messageId = msg._id;
   
-  // Format message preview
-  let preview = msg.content?.text || '';
-  if (msg.content?.attachments?.length > 0) {
-    preview = `[${msg.content.attachments[0].type.toUpperCase()}] ${msg.content.attachments[0].caption || ''}`;
-  }
+  // Platform badge color
+  const platformClass = msg.platform.toLowerCase() === 'facebook' ? 'fb-badge' : 'web-badge';
+  
+  // Message preview text
+  const previewText = msg.content.text 
+    ? msg.content.text.slice(0, 50) + (msg.content.text.length > 50 ? '...' : '')
+    : msg.content.attachments?.length 
+      ? `[${msg.content.attachments[0].type.toUpperCase()}]`
+      : '[Media]';
 
   messageDiv.innerHTML = `
     <div class="message-header">
-      <strong>${msg.sender?.name || 'Facebook User'}</strong>
+      <div class="sender-info">
+        <span class="sender-avatar">${msg.sender.name.charAt(0).toUpperCase()}</span>
+        <strong class="sender-name">${msg.sender.name}</strong>
+      </div>
       <span class="message-time">${formatTime(msg.timestamp)}</span>
     </div>
-    <div class="message-preview">${preview.slice(0, 50)}${preview.length > 50 ? '...' : ''}</div>
-    <div class="message-platform">${msg.platform.toUpperCase()}</div>
+    <div class="message-preview">${previewText}</div>
+    <div class="message-footer">
+      <span class="platform-badge ${platformClass}">${msg.platform.toUpperCase()}</span>
+      ${msg.labels.includes('unclaimed') ? '<span class="unclaimed-badge">UNCLAIMED</span>' : ''}
+    </div>
   `;
 
   messageDiv.addEventListener('click', () => selectChatMessage(msg));
@@ -387,13 +398,29 @@ function formatTime(timestamp) {
 // 7. Socket.IO real-time updates
 function setupSocketListeners() {
   socket.on('new_message', (data) => {
-    if (data.event === 'facebook_message') {
-      const messageDiv = createMessageElement(data.message);
-      messageList.insertBefore(messageDiv, messageList.firstChild);
+    const formattedMsg = formatMessageForDisplay(data.message);
+    
+    // Only show if unclaimed
+    if (formattedMsg.labels.includes('unclaimed')) {
+      const messageList = document.getElementById('broadcastMessageList');
+      const emptyMsg = messageList.querySelector('.empty');
       
-      // Remove "No messages" placeholder if present
-      const emptyMsg = document.querySelector('.empty');
       if (emptyMsg) emptyMsg.remove();
+      
+      const messageDiv = createMessageElement(formattedMsg);
+      messageList.insertBefore(messageDiv, messageList.firstChild);
+    }
+  });
+
+  socket.on('message_claimed', (messageId) => {
+    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (messageDiv) {
+      messageDiv.remove();
+      // Show empty state if no messages left
+      if (document.querySelectorAll('.chat-user').length === 0) {
+        document.getElementById('broadcastMessageList').innerHTML = 
+          '<div class="empty">No unclaimed messages</div>';
+      }
     }
   });
 }
@@ -580,7 +607,37 @@ function sanitizeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+// Add these with other utility functions
+function formatMessageForDisplay(msg) {
+  // Handle both populated sender and raw platform sender
+  const senderName = msg.sender?.name || 
+                   (msg.sender?.platform === 'facebook' ? 'Facebook User' : 'Unknown');
+  
+  const senderId = msg.sender?._id?.toString() || 
+                  msg.sender?.id || 
+                  null;
 
+  return {
+    _id: msg._id,
+    content: {
+      text: msg.content?.text || '[No text content]',
+      attachments: msg.content?.attachments || []
+    },
+    sender: {
+      name: senderName,
+      id: senderId
+    },
+    platform: msg.platform || 'web',
+    timestamp: msg.createdAt || new Date(),
+    labels: msg.labels || []
+  };
+}
+
+function formatTime(date) {
+  if (!date) return '';
+  const d = new Date(date);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
 // ============================================================================
 // ERROR HANDLING
 // ============================================================================
