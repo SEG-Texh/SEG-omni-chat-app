@@ -14,7 +14,7 @@ const userRoutes = require('./routes/users');
 const messageRoutes = require('./routes/messages');
 
 const User = require('./models/User');
-const Message = require('./models/message');
+const Message = require('../models/message');
 
 const server = http.createServer(app);
 const io = socket.init(server);
