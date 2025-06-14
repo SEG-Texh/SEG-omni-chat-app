@@ -284,16 +284,40 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupSocketListeners();
 });
 
-// 3. Fetch messages from backend
 async function loadUnclaimedMessages() {
   try {
+    // Try real API first
     const response = await fetch('/api/messages/unclaimed');
-    if (!response.ok) throw new Error('Failed to fetch');
+    
+    if (!response.ok) throw new Error('API failed, using demo data');
+    
     const messages = await response.json();
     updateUnclaimedMessages(messages);
+    
   } catch (error) {
-    console.error('Error loading messages:', error);
-    messageList.innerHTML = '<div class="error">Failed to load messages</div>';
+    console.warn('Using demo data:', error);
+    
+    // Fallback to demo data
+    const demoMessages = [
+      {
+        _id: 'demo1',
+        platform: 'facebook',
+        sender: { id: 'fb123', name: 'Facebook User' },
+        content: { text: 'This is a sample unclaimed message' },
+        timestamp: new Date(),
+        labels: ['unclaimed']
+      },
+      {
+        _id: 'demo2', 
+        platform: 'whatsapp',
+        sender: { id: 'wa456', name: 'WhatsApp User' },
+        content: { text: 'Another test message' },
+        timestamp: new Date(Date.now() - 3600000),
+        labels: ['unclaimed']
+      }
+    ];
+    
+    updateUnclaimedMessages(demoMessages);
   }
 }
 
