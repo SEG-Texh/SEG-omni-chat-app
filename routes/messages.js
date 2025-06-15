@@ -10,8 +10,8 @@ const router = express.Router();
 const formatMessage = (msg) => ({
   _id: msg._id,
   content: {
-    text: msg.content,
-    attachments: msg.attachments || []
+    text: msg.content?.text || '',
+    attachments: msg.content?.attachments || []
   },
   sender: {
     name: msg.sender?.name || 'Unknown',
