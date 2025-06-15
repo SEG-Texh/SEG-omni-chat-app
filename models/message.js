@@ -1,99 +1,76 @@
 const mongoose = require('mongoose');
-const { Schema } = mongoose;
 
-const messageSchema = new Schema({
-  // Platform identification
-  platform: {
-    type: String,
-    enum: ['whatsapp', 'facebook', 'email', 'sms', 'telegram', 'instagram'],
-    required: true
-  },
-  platformMessageId: {
-    type: String,
-    required: true,
-    index: true
-  },
-  platformThreadId: {
-    type: String,
-    index: true
-  },
-
-  // Message direction and status
-  direction: {
-    type: String,
-    enum: ['inbound', 'outbound'],
-    required: true
-  },
-  status: {
-    type: String,
-    enum: ['queued', 'sent', 'delivered', 'read', 'failed', 'deleted'],
-    default: 'delivered'
-  },
-  statusHistory: [{
-    status: String,
-    timestamp: Date,
-    metadata: Schema.Types.Mixed
-  }],
-
-  // Message content
+const messageSchema = new mongoose.Schema({
+  // Core message fields
   content: {
-    text: {
-      type: String,
-      trim: true
-    },
+    text: { type: String, required: true },
     attachments: [{
-      type: {
-        type: String,
-        enum: ['image', 'video', 'audio', 'file', 'location', 'sticker']
-      },
       url: String,
-      caption: String
+      type: { type: String, enum: ['image', 'video', 'audio', 'file'] },
+      name: String,
+      size: Number
     }]
   },
-
-  // User references (using ObjectId for internal users)
+  
+  // Participant information
   sender: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  recipient: {
-    type: Schema.Types.ObjectId,
-    ref: 'User'
+  receiver: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: function() { return this.messageType === 'direct'; }
   },
-
-  // Platform sender/recipient info (for external messages)
-  platformSender: {
-    id: String,
-    name: String,
-    profilePic: String
+  
+  // Platform metadata
+  platform: {
+    type: String,
+    required: true,
+    enum: ['facebook', 'whatsapp', 'email', 'web', 'sms']
   },
-  platformRecipient: {
-    id: String,
-    name: String
+  platformMessageId: String, // Original ID from the platform
+  
+  // Message classification
+  messageType: {
+    type: String,
+    enum: ['direct', 'broadcast', 'group'],
+    default: 'direct'
   },
-
-  // Message management
-  labels: {
-    type: [String],
-    enum: ['unclaimed', 'claimed', 'priority', 'spam', 'resolved'],
-    default: ['unclaimed']
-  },
-  claimedBy: {
-    type: Schema.Types.ObjectId,
-    ref: 'User'
-  },
+  
+  // Status flags
+  isRead: { type: Boolean, default: false },
+  claimed: { type: Boolean, default: false },
+  claimedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   claimedAt: Date,
-
-  // System fields
-  isDeleted: {
-    type: Boolean,
-    default: false
+  
+  // Platform-specific metadata
+  metadata: {
+    // Common fields
+    originalTimestamp: Date,
+    
+    // Email specific
+    emailHeaders: Object,
+    subject: String,
+    
+    // Facebook specific
+    fbThreadId: String,
+    
+    // WhatsApp specific
+    waFrom: String,
+    waTo: String
   }
 }, {
   timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
-// Add index for unclaimed messages
-messageSchema.index({ labels: 1, isDeleted: 1, createdAt: -1 });
+
+// Indexes for better query performance
+messageSchema.index({ sender: 1, createdAt: -1 });
+messageSchema.index({ receiver: 1, createdAt: -1 });
+messageSchema.index({ claimed: 1, createdAt: -1 });
+messageSchema.index({ platform: 1, platformMessageId: 1 }, { unique: true });
 
 module.exports = mongoose.model('Message', messageSchema);
