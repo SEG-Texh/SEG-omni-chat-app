@@ -343,7 +343,8 @@ function renderUnclaimedMessages(messages) {
 
   // Create and append message elements
   messages.forEach(message => {
-    const messageElement = createUnclaimedMessageElement(message);
+    // Corrected in renderUnclaimedMessages
+    const messageElement = createMessageElement(message); // use correct function name
     messageList.appendChild(messageElement);
   });
 }
