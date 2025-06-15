@@ -81,26 +81,32 @@ function showDashboard() {
     
     loadDashboardData();
 }
-
+// Update your showChat function:
 function showChat() {
-    document.getElementById('loginContainer').style.display = 'none';
-    document.getElementById('dashboardContainer').style.display = 'none';
-    document.getElementById('chatContainer').style.display = 'flex';
-    
-    initializeSocket();
-    loadChatUsers();
-}
-
-function openChat() {
-    showChat();
-}
-
-function goToDashboard() {
-    if (currentUser && currentUser.role === 'admin') {
-        showDashboard();
+  document.getElementById('loginContainer').style.display = 'none';
+  document.getElementById('dashboardContainer').style.display = 'none';
+  document.getElementById('chatContainer').style.display = 'flex';
+  
+  // Initialize with current user data
+  const token = localStorage.getItem('token');
+  if (token && !currentUser) {
+    // Decode token to get user info (if not already set)
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      currentUser = {
+        _id: payload.id,
+        name: payload.name,
+        role: payload.role
+      };
+    } catch (e) {
+      console.error('Error parsing token:', e);
     }
+  }
+  
+  initializeSocket();
+  fetchUnclaimedMessages(); // Load messages immediately
+  setInterval(fetchUnclaimedMessages, 30000); // Refresh every 30 seconds
 }
-
 // ============================================================================
 // DASHBOARD FUNCTIONS
 fetch('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com/api/users')
@@ -266,34 +272,43 @@ function displaySearchResults(messages) {
    // Fetch unclaimed messages from server
 async function fetchUnclaimedMessages() {
   try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+
     const response = await fetch('/api/messages/unclaimed?limit=20', {
       headers: {
-        'Authorization': `Bearer ${authToken}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
     
     if (!response.ok) {
-      throw new Error('Failed to fetch messages');
+      throw new Error(`Server returned ${response.status}`);
     }
     
     const messages = await response.json();
-    displayMessageList(messages);
-        // Return messages for other uses if needed
-    return messages;
+    console.log('Fetched messages:', messages); // Debug log
+    
+    // Format messages before displaying
+    const formattedMessages = messages.map(msg => formatMessageForDisplay(msg));
+    displayMessageList(formattedMessages);
+    
+    return formattedMessages;
   } catch (error) {
     console.error('Error fetching messages:', error);
-    // Show error to user
     document.getElementById('broadcastMessageList').innerHTML = 
-      `<div class="error">Error loading messages. Please refresh.</div>`;
+      `<div class="error">Error loading messages: ${error.message}</div>`;
     return [];
   }
 }
 // Display the list of unclaimed messages in the sidebar
 function displayMessageList(messages) {
-  const messageListElement = document.getElementById('broadcastMessageList');
+    console.log('Displaying messages:', messages);
+    const messageListElement = document.getElementById('broadcastMessageList');
   
-  if (messages.length === 0) {
+  if (!messages ||messages.length === 0) {
     messageListElement.innerHTML = '<div class="no-messages">No unclaimed messages</div>';
     return;
   }
