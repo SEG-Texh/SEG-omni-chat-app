@@ -26,18 +26,16 @@ router.get('/unclaimed', auth, async (req, res) => {
   try {
     const { page = 1, limit = 50 } = req.query;
     
-    const messages = await Message.find({ 
-      claimed: false,
-      $or: [
-        { receiver: null },           // Broadcast messages
-        { receiver: req.user._id }    // Messages directly to current user
-      ]
-    })
-    .populate('sender', 'name _id')
-    .sort({ createdAt: -1 })
-    .limit(limit * 1)
-    .skip((page - 1) * limit)
-    .lean();
+const messages = await Message.find({ 
+  labels: { $in: ['unclaimed'] },
+  isDeleted: false
+})
+.populate('sender', 'name _id')
+.sort({ createdAt: -1 })
+.limit(limit * 1)
+.skip((page - 1) * limit)
+.lean();
+
 
     res.json(messages.map(formatMessage));
   } catch (err) {
