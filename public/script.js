@@ -264,9 +264,10 @@ function displaySearchResults(messages) {
    MESSAGE DISPLAY SYSTEM
    ====================== */
 function initializeSocket() {
-  socket = io('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com'); // Your Heroku URL
+  socket = io('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com');
   setupSocketListeners();
 }
+
 // 1. DOM Elements
 const messageList = document.getElementById('broadcastMessageList');
 
@@ -278,7 +279,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function loadUnclaimedMessages() {
   const token = localStorage.getItem('token');
-  
+
   if (!token) {
     messageList.innerHTML = `
       <div class="error">
@@ -298,7 +299,6 @@ async function loadUnclaimedMessages() {
     });
 
     if (response.status === 401) {
-      // Token expired or invalid
       localStorage.removeItem('token');
       showLogin();
       return;
@@ -308,14 +308,12 @@ async function loadUnclaimedMessages() {
       throw new Error(`Server error: ${response.status}`);
     }
 
-const messages = await response.json();
-console.log('Unclaimed messages from server:', messages); // 🔍 Debug
-renderUnclaimedMessages(messages);
-
-
+    const messages = await response.json();
+    console.log('✅ Unclaimed messages from server:', messages);
+    renderUnclaimedMessages(messages);
 
   } catch (error) {
-    console.error('Failed to load messages:', error);
+    console.error('❌ Failed to load messages:', error);
     messageList.innerHTML = `
       <div class="error">
         <p>Failed to load messages</p>
@@ -328,23 +326,18 @@ renderUnclaimedMessages(messages);
 
 // 4. Display messages in the sidebar
 function renderUnclaimedMessages(messages) {
-  const messageList = document.getElementById('broadcastMessageList');
-  
-  // Clear existing messages
   messageList.innerHTML = '';
 
   if (!messages || messages.length === 0) {
-    messageList.innerHTML = '<div class="empty">No unclaimed messages available</div>';
+    messageList.innerHTML = '<div class="empty">⚙️ No unclaimed messages available</div>';
     return;
   }
 
   // Sort messages by timestamp (newest first)
   messages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  // Create and append message elements
   messages.forEach(message => {
-    // Corrected in renderUnclaimedMessages
-    const messageElement = createMessageElement(message); // use correct function name
+    const messageElement = createMessageElement(message); // ✅ FIXED
     messageList.appendChild(messageElement);
   });
 }
@@ -353,29 +346,32 @@ function createMessageElement(msg) {
   const messageDiv = document.createElement('div');
   messageDiv.className = 'chat-user';
   messageDiv.dataset.messageId = msg._id;
-  
-  // Platform badge color
-  const platformClass = msg.platform.toLowerCase() === 'facebook' ? 'fb-badge' : 'web-badge';
-  
-  // Message preview text
-  const previewText = msg.content.text 
+
+  // Fallback for missing sender info
+  const senderName = msg.sender?.name || 'Unknown';
+  const senderInitial = senderName.charAt(0).toUpperCase();
+  const timestamp = msg.createdAt || msg.timestamp || new Date().toISOString();
+
+  const platformClass = msg.platform?.toLowerCase() === 'facebook' ? 'fb-badge' : 'web-badge';
+
+  const previewText = msg.content?.text
     ? msg.content.text.slice(0, 50) + (msg.content.text.length > 50 ? '...' : '')
-    : msg.content.attachments?.length 
+    : msg.content?.attachments?.length
       ? `[${msg.content.attachments[0].type.toUpperCase()}]`
       : '[Media]';
 
   messageDiv.innerHTML = `
     <div class="message-header">
       <div class="sender-info">
-        <span class="sender-avatar">${msg.sender.name.charAt(0).toUpperCase()}</span>
-        <strong class="sender-name">${msg.sender.name}</strong>
+        <span class="sender-avatar">${senderInitial}</span>
+        <strong class="sender-name">${senderName}</strong>
       </div>
-      <span class="message-time">${formatTime(msg.timestamp)}</span>
+      <span class="message-time">${formatTime(timestamp)}</span>
     </div>
     <div class="message-preview">${previewText}</div>
     <div class="message-footer">
       <span class="platform-badge ${platformClass}">${msg.platform.toUpperCase()}</span>
-      ${msg.labels.includes('unclaimed') ? '<span class="unclaimed-badge">UNCLAIMED</span>' : ''}
+      ${msg.labels?.includes('unclaimed') ? '<span class="unclaimed-badge">UNCLAIMED</span>' : ''}
     </div>
   `;
 
@@ -383,26 +379,22 @@ function createMessageElement(msg) {
   return messageDiv;
 }
 
-// 6. Format timestamp
 function formatTime(timestamp) {
-  return new Date(timestamp).toLocaleTimeString([], { 
-    hour: '2-digit', 
-    minute: '2-digit' 
+  return new Date(timestamp).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit'
   });
 }
 
-// 7. Socket.IO real-time updates
 function setupSocketListeners() {
   socket.on('new_message', (data) => {
     const formattedMsg = formatMessageForDisplay(data.message);
-    
-    // Only show if unclaimed
-    if (formattedMsg.labels.includes('unclaimed')) {
+
+    if (formattedMsg.labels?.includes('unclaimed')) {
       const messageList = document.getElementById('broadcastMessageList');
       const emptyMsg = messageList.querySelector('.empty');
-      
       if (emptyMsg) emptyMsg.remove();
-      
+
       const messageDiv = createMessageElement(formattedMsg);
       messageList.insertBefore(messageDiv, messageList.firstChild);
     }
@@ -412,14 +404,13 @@ function setupSocketListeners() {
     const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`);
     if (messageDiv) {
       messageDiv.remove();
-      // Show empty state if no messages left
       if (document.querySelectorAll('.chat-user').length === 0) {
-        document.getElementById('broadcastMessageList').innerHTML = 
-          '<div class="empty">No unclaimed messages</div>';
+        messageList.innerHTML = '<div class="empty">⚙️ No unclaimed messages</div>';
       }
     }
   });
 }
+
 // ================================
 // LOGIC 7: SELECT MESSAGE AND LOAD CHAT
 // ================================
