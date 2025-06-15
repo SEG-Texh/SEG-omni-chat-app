@@ -264,7 +264,7 @@ function displaySearchResults(messages) {
    MESSAGE DISPLAY SYSTEM
    ====================== */
 function initializeSocket() {
-  socket = io('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com');
+  socket = io('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com'); // Your Heroku URL
   setupSocketListeners();
 }
 
@@ -274,12 +274,12 @@ const messageList = document.getElementById('broadcastMessageList');
 // 2. Load initial messages when page loads
 document.addEventListener('DOMContentLoaded', async () => {
   await loadUnclaimedMessages();
-  setupSocketListeners();
+  initializeSocket(); // ✅ Initialize socket AFTER loading messages
 });
 
 async function loadUnclaimedMessages() {
   const token = localStorage.getItem('token');
-
+  
   if (!token) {
     messageList.innerHTML = `
       <div class="error">
@@ -313,7 +313,7 @@ async function loadUnclaimedMessages() {
     renderUnclaimedMessages(messages);
 
   } catch (error) {
-    console.error('❌ Failed to load messages:', error);
+    console.error('Failed to load messages:', error);
     messageList.innerHTML = `
       <div class="error">
         <p>Failed to load messages</p>
@@ -324,49 +324,47 @@ async function loadUnclaimedMessages() {
   }
 }
 
-// 4. Display messages in the sidebar
+// 3. Render messages in the sidebar
 function renderUnclaimedMessages(messages) {
+  const messageList = document.getElementById('broadcastMessageList');
   messageList.innerHTML = '';
 
   if (!messages || messages.length === 0) {
-    messageList.innerHTML = '<div class="empty">⚙️ No unclaimed messages available</div>';
+    messageList.innerHTML = '<div class="empty">No unclaimed messages available</div>';
     return;
   }
 
-  // Sort messages by timestamp (newest first)
   messages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   messages.forEach(message => {
-    const messageElement = createMessageElement(message); // ✅ FIXED
+    const messageElement = createMessageElement(message);
     messageList.appendChild(messageElement);
   });
 }
 
+// 4. Create a message element
 function createMessageElement(msg) {
   const messageDiv = document.createElement('div');
   messageDiv.className = 'chat-user';
   messageDiv.dataset.messageId = msg._id;
 
-  // Fallback for missing sender info
   const senderName = msg.sender?.name || 'Unknown';
-  const senderInitial = senderName.charAt(0).toUpperCase();
-  const timestamp = msg.createdAt || msg.timestamp || new Date().toISOString();
 
   const platformClass = msg.platform?.toLowerCase() === 'facebook' ? 'fb-badge' : 'web-badge';
 
-  const previewText = msg.content?.text
+  const previewText = msg.content?.text 
     ? msg.content.text.slice(0, 50) + (msg.content.text.length > 50 ? '...' : '')
-    : msg.content?.attachments?.length
-      ? `[${msg.content.attachments[0].type.toUpperCase()}]`
+    : msg.content?.attachments?.length 
+      ? `[${msg.content.attachments[0].type?.toUpperCase() || 'MEDIA'}]`
       : '[Media]';
 
   messageDiv.innerHTML = `
     <div class="message-header">
       <div class="sender-info">
-        <span class="sender-avatar">${senderInitial}</span>
+        <span class="sender-avatar">${senderName.charAt(0).toUpperCase()}</span>
         <strong class="sender-name">${senderName}</strong>
       </div>
-      <span class="message-time">${formatTime(timestamp)}</span>
+      <span class="message-time">${formatTime(msg.createdAt)}</span>
     </div>
     <div class="message-preview">${previewText}</div>
     <div class="message-footer">
@@ -379,23 +377,25 @@ function createMessageElement(msg) {
   return messageDiv;
 }
 
+// 5. Format timestamp
 function formatTime(timestamp) {
-  return new Date(timestamp).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit'
+  return new Date(timestamp).toLocaleTimeString([], { 
+    hour: '2-digit', 
+    minute: '2-digit' 
   });
 }
 
+// 6. Socket.IO real-time updates
 function setupSocketListeners() {
   socket.on('new_message', (data) => {
-    const formattedMsg = formatMessageForDisplay(data.message);
-
-    if (formattedMsg.labels?.includes('unclaimed')) {
+    const msg = formatMessageForDisplay(data.message);
+    
+    if (msg.labels?.includes('unclaimed')) {
       const messageList = document.getElementById('broadcastMessageList');
       const emptyMsg = messageList.querySelector('.empty');
       if (emptyMsg) emptyMsg.remove();
 
-      const messageDiv = createMessageElement(formattedMsg);
+      const messageDiv = createMessageElement(msg);
       messageList.insertBefore(messageDiv, messageList.firstChild);
     }
   });
@@ -404,13 +404,14 @@ function setupSocketListeners() {
     const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`);
     if (messageDiv) {
       messageDiv.remove();
+
       if (document.querySelectorAll('.chat-user').length === 0) {
-        messageList.innerHTML = '<div class="empty">⚙️ No unclaimed messages</div>';
+        document.getElementById('broadcastMessageList').innerHTML = 
+          '<div class="empty">No unclaimed messages</div>';
       }
     }
   });
 }
-
 // ================================
 // LOGIC 7: SELECT MESSAGE AND LOAD CHAT
 // ================================
