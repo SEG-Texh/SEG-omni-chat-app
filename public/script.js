@@ -277,7 +277,7 @@ async function fetchUnclaimedMessages() {
       throw new Error('Not authenticated');
     }
 
-    const response = await fetch('/api/messages/unclaimed?limit=20', {
+    const response = await fetch('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com/api/messages/unclaimed?limit=20', {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -317,7 +317,7 @@ function displayMessageList(messages) {
     <div class="message-item" data-message-id="${message._id}" onclick="selectMessage('${message._id}')">
       <div class="sender-info">
         <span class="sender-name">${message.sender.name || 'Unknown'}</span>
-        <span class="message-preview">${message.content.text.substring(0, 30)}...</span>
+        <span class="message-preview">${console.log('Fetched raw messages:', messages)}...</span>
       </div>
       <div class="message-meta">
         <span class="timestamp">${new Date(message.timestamp).toLocaleTimeString()}</span>
