@@ -308,8 +308,10 @@ async function loadUnclaimedMessages() {
       throw new Error(`Server error: ${response.status}`);
     }
 
-    const messages = await response.json();
+const messages = await response.json();
+console.log('Unclaimed messages from server:', messages); // 🔍 Debug
 renderUnclaimedMessages(messages);
+
 
 
   } catch (error) {
