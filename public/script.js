@@ -270,6 +270,8 @@ function displaySearchResults(messages) {
    MESSAGE DISPLAY SYSTEM
    ====================== */
    // Fetch unclaimed messages from server
+   const formattedMessages = messages; // Skip formatting for debugging
+
 async function fetchUnclaimedMessages() {
   try {
     const token = localStorage.getItem('token');
@@ -316,11 +318,11 @@ function displayMessageList(messages) {
   messageListElement.innerHTML = messages.map(message => `
     <div class="message-item" data-message-id="${message._id}" onclick="selectMessage('${message._id}')">
       <div class="sender-info">
-        <span class="sender-name">${message.sender.name || 'Unknown'}</span>
-        <span class="message-preview">${console.log('Fetched raw messages:', messages)}...</span>
+      <span class="sender-name">${message.sender?.name || 'Unknown'}</span>
+        <span class="message-preview">${message.content?.text?.slice(0, 30) || 'No preview'}...</span>
       </div>
       <div class="message-meta">
-        <span class="timestamp">${new Date(message.timestamp).toLocaleTimeString()}</span>
+      <span class="timestamp">${new Date(message.timestamp || message.createdAt || Date.now()).toLocaleTimeString()}</span>
         <span class="platform-badge">${message.platform}</span>
       </div>
     </div>

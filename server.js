@@ -32,7 +32,7 @@ app.use('/js', express.static(path.join(__dirname, '../js')));
 // REST API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/messages', messageRoutes);
+app.use('/api/messages', require('./routes/messages'));
 
 // Static HTML pages
 app.get('/', (req, res) => {
