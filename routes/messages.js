@@ -47,36 +47,6 @@ const messages = await Message.find({
   }
 });
 
-// Get unclaimed messages (for any agent)
-router.get('/unclaimed', auth, async (req, res) => {
-  try {
-    const { page = 1, limit = 50 } = req.query;
-    
-    const messages = await Message.find({ 
-      claimed: false,
-      $or: [
-        { receiver: null },           // Unassigned messages
-        { receiver: req.user._id },    // Messages assigned to current user
-        // Optional: Include team messages if you have teams
-        // { team: req.user.teamId }
-      ]
-    })
-    .populate('sender', 'name _id')
-    .populate('receiver', 'name')
-    .sort({ createdAt: -1 })
-    .limit(limit * 1)
-    .skip((page - 1) * limit)
-    .lean();
-
-    res.json(messages.map(formatMessage));
-  } catch (err) {
-    console.error('Error in /unclaimed:', err);
-    res.status(500).json({ 
-      error: 'Failed to load unclaimed messages',
-      details: process.env.NODE_ENV === 'development' ? err.message : null
-    });
-  }
-});
 
 // Get messages between users (with receiverId)
 router.get('/:receiverId', auth, async (req, res) => {
