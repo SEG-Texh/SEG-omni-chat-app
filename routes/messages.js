@@ -5,7 +5,7 @@ const {
   facebookController,
   emailController,
   whatsappController
-} = require('../controllers');
+} = require('./controllers');
 
 const router = express.Router();
 
