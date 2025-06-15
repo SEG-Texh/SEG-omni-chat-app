@@ -5,6 +5,7 @@ let currentUser = null;
 let socket = null;
 let currentChatUser = null;
 let users = [];
+let unclaimedMessages = [];
 let isTyping = false;
 let typingTimeout = null;
 
@@ -508,6 +509,10 @@ function scrollToBottom() {
 // ============================================================================
 document.addEventListener('DOMContentLoaded', function() {
     // Check for existing auth
+        if (document.getElementById('broadcastMessageList')) {
+        loadUnclaimedMessages();
+        initializeSocket();
+    }
     if (checkAuth()) {
         // Auto-login would go here
     } else {
