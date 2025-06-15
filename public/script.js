@@ -9,18 +9,6 @@ let unclaimedMessages = [];
 let isTyping = false;
 let typingTimeout = null;
 
-// Demo data for frontend testing
-const demoUsers = [
-    { id: '1', name: 'Admin User', email: 'admin@example.com', role: 'admin', isOnline: true },
-    { id: '2', name: 'Jane Smith', email: 'user@example.com', role: 'user', isOnline: false, supervisor: 'Admin User' },
-    { id: '3', name: 'Bob Johnson', email: 'supervisor@example.com', role: 'supervisor', isOnline: true }
-];
-
-const demoMessages = [
-    { id: '1', sender: demoUsers[1], receiver: demoUsers[0], content: 'Hello Admin!', createdAt: new Date() },
-    { id: '2', sender: demoUsers[0], receiver: demoUsers[1], content: 'Hi there! How can I help?', createdAt: new Date() }
-];
-
 // ============================================================================
 // AUTHENTICATION FUNCTIONS
 // ============================================================================
