@@ -335,21 +335,24 @@ async function loadUnclaimedMessages() {
 }
 
 // 4. Display messages in the sidebar
-function updateUnclaimedMessages(messages) {
+function renderUnclaimedMessages(messages) {
   const messageList = document.getElementById('broadcastMessageList');
+  
+  // Clear existing messages
   messageList.innerHTML = '';
-  
-  console.log("Raw messages from API:", messages);
-  
-  if (messages.length === 0) {
-    messageList.innerHTML = '<div class="empty">No unclaimed messages</div>';
+
+  if (!messages || messages.length === 0) {
+    messageList.innerHTML = '<div class="empty">No unclaimed messages available</div>';
     return;
   }
 
-  messages.forEach(rawMsg => {
-    const formattedMsg = formatMessageForDisplay(rawMsg);
-    const messageDiv = createMessageElement(formattedMsg);
-    messageList.appendChild(messageDiv);
+  // Sort messages by timestamp (newest first)
+  messages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  // Create and append message elements
+  messages.forEach(message => {
+    const messageElement = createUnclaimedMessageElement(message);
+    messageList.appendChild(messageElement);
   });
 }
 
