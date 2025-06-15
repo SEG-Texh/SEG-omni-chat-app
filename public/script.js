@@ -309,7 +309,8 @@ async function loadUnclaimedMessages() {
     }
 
     const messages = await response.json();
-    updateUnclaimedMessages(messages);
+renderUnclaimedMessages(messages);
+
 
   } catch (error) {
     console.error('Failed to load messages:', error);
@@ -497,10 +498,6 @@ function scrollToBottom() {
 // ============================================================================
 document.addEventListener('DOMContentLoaded', function() {
     // Check for existing auth
-        if (document.getElementById('broadcastMessageList')) {
-        loadUnclaimedMessages();
-        initializeSocket();
-    }
     if (checkAuth()) {
         // Auto-login would go here
     } else {
