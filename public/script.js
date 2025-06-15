@@ -308,9 +308,10 @@ async function loadUnclaimedMessages() {
       throw new Error(`Server error: ${response.status}`);
     }
 
-    const messages = await response.json();
-    console.log('✅ Unclaimed messages from server:', messages);
-    renderUnclaimedMessages(messages);
+const messages = await response.json();
+console.log('🔍 DEBUG: API returned messages in browser:', messages);
+renderUnclaimedMessages(messages);
+
 
   } catch (error) {
     console.error('Failed to load messages:', error);
