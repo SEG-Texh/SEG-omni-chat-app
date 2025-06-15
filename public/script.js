@@ -263,161 +263,53 @@ function displaySearchResults(messages) {
 /* ======================
    MESSAGE DISPLAY SYSTEM
    ====================== */
-function initializeSocket() {
-  socket = io('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com'); // Your Heroku URL
-  setupSocketListeners();
-}
-// 1. DOM Elements
-const messageList = document.getElementById('broadcastMessageList');
-
-// 2. Load initial messages when page loads
-document.addEventListener('DOMContentLoaded', async () => {
-  await loadUnclaimedMessages();
-  setupSocketListeners();
-});
-
-async function loadUnclaimedMessages() {
-  const token = localStorage.getItem('token');
-  
-  if (!token) {
-    messageList.innerHTML = `
-      <div class="error">
-        <p>Not authenticated</p>
-        <button onclick="showLogin()">Login Now</button>
-      </div>
-    `;
-    return;
-  }
-
+   // Fetch unclaimed messages from server
+async function fetchUnclaimedMessages() {
   try {
-    const response = await fetch('/api/messages/unclaimed', {
+    const response = await fetch('/api/messages/unclaimed?limit=20', {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': `Bearer ${authToken}`,
         'Content-Type': 'application/json'
       }
     });
-
-    if (response.status === 401) {
-      // Token expired or invalid
-      localStorage.removeItem('token');
-      showLogin();
-      return;
-    }
-
+    
     if (!response.ok) {
-      throw new Error(`Server error: ${response.status}`);
+      throw new Error('Failed to fetch messages');
     }
-
-const messages = await response.json();
-console.log('Unclaimed messages from server:', messages); // 🔍 Debug
-renderUnclaimedMessages(messages);
-
-
-
+    
+    const messages = await response.json();
+    displayMessageList(messages);
+        // Return messages for other uses if needed
+    return messages;
   } catch (error) {
-    console.error('Failed to load messages:', error);
-    messageList.innerHTML = `
-      <div class="error">
-        <p>Failed to load messages</p>
-        <small>${error.message}</small>
-        <button onclick="loadUnclaimedMessages()" class="retry-btn">Retry</button>
-      </div>
-    `;
+    console.error('Error fetching messages:', error);
+    // Show error to user
+    document.getElementById('broadcastMessageList').innerHTML = 
+      `<div class="error">Error loading messages. Please refresh.</div>`;
+    return [];
   }
 }
-
-// 4. Display messages in the sidebar
-function renderUnclaimedMessages(messages) {
-  const messageList = document.getElementById('broadcastMessageList');
+// Display the list of unclaimed messages in the sidebar
+function displayMessageList(messages) {
+  const messageListElement = document.getElementById('broadcastMessageList');
   
-  // Clear existing messages
-  messageList.innerHTML = '';
-
-  if (!messages || messages.length === 0) {
-    messageList.innerHTML = '<div class="empty">No unclaimed messages available</div>';
+  if (messages.length === 0) {
+    messageListElement.innerHTML = '<div class="no-messages">No unclaimed messages</div>';
     return;
   }
-
-  // Sort messages by timestamp (newest first)
-  messages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-  // Create and append message elements
-  messages.forEach(message => {
-    const messageElement = createUnclaimedMessageElement(message);
-    messageList.appendChild(messageElement);
-  });
-}
-
-function createMessageElement(msg) {
-  const messageDiv = document.createElement('div');
-  messageDiv.className = 'chat-user';
-  messageDiv.dataset.messageId = msg._id;
   
-  // Platform badge color
-  const platformClass = msg.platform.toLowerCase() === 'facebook' ? 'fb-badge' : 'web-badge';
-  
-  // Message preview text
-  const previewText = msg.content.text 
-    ? msg.content.text.slice(0, 50) + (msg.content.text.length > 50 ? '...' : '')
-    : msg.content.attachments?.length 
-      ? `[${msg.content.attachments[0].type.toUpperCase()}]`
-      : '[Media]';
-
-  messageDiv.innerHTML = `
-    <div class="message-header">
+  messageListElement.innerHTML = messages.map(message => `
+    <div class="message-item" data-message-id="${message._id}" onclick="selectMessage('${message._id}')">
       <div class="sender-info">
-        <span class="sender-avatar">${msg.sender.name.charAt(0).toUpperCase()}</span>
-        <strong class="sender-name">${msg.sender.name}</strong>
+        <span class="sender-name">${message.sender.name || 'Unknown'}</span>
+        <span class="message-preview">${message.content.text.substring(0, 30)}...</span>
       </div>
-      <span class="message-time">${formatTime(msg.timestamp)}</span>
+      <div class="message-meta">
+        <span class="timestamp">${new Date(message.timestamp).toLocaleTimeString()}</span>
+        <span class="platform-badge">${message.platform}</span>
+      </div>
     </div>
-    <div class="message-preview">${previewText}</div>
-    <div class="message-footer">
-      <span class="platform-badge ${platformClass}">${msg.platform.toUpperCase()}</span>
-      ${msg.labels.includes('unclaimed') ? '<span class="unclaimed-badge">UNCLAIMED</span>' : ''}
-    </div>
-  `;
-
-  messageDiv.addEventListener('click', () => selectChatMessage(msg));
-  return messageDiv;
-}
-
-// 6. Format timestamp
-function formatTime(timestamp) {
-  return new Date(timestamp).toLocaleTimeString([], { 
-    hour: '2-digit', 
-    minute: '2-digit' 
-  });
-}
-
-// 7. Socket.IO real-time updates
-function setupSocketListeners() {
-  socket.on('new_message', (data) => {
-    const formattedMsg = formatMessageForDisplay(data.message);
-    
-    // Only show if unclaimed
-    if (formattedMsg.labels.includes('unclaimed')) {
-      const messageList = document.getElementById('broadcastMessageList');
-      const emptyMsg = messageList.querySelector('.empty');
-      
-      if (emptyMsg) emptyMsg.remove();
-      
-      const messageDiv = createMessageElement(formattedMsg);
-      messageList.insertBefore(messageDiv, messageList.firstChild);
-    }
-  });
-
-  socket.on('message_claimed', (messageId) => {
-    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`);
-    if (messageDiv) {
-      messageDiv.remove();
-      // Show empty state if no messages left
-      if (document.querySelectorAll('.chat-user').length === 0) {
-        document.getElementById('broadcastMessageList').innerHTML = 
-          '<div class="empty">No unclaimed messages</div>';
-      }
-    }
-  });
+  `).join('');
 }
 // ================================
 // LOGIC 7: SELECT MESSAGE AND LOAD CHAT
