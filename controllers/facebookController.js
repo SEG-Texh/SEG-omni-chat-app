@@ -1,43 +1,37 @@
-// controllers/facebookController.js
 const Message = require('../models/message');
 const { getIO } = require('../config/socket');
-const axios = require('axios'); // For fetching sender name from Facebook API
+const axios = require('axios');
 
-// Create a self-contained module with all methods
 const facebookController = (() => {
-  // Private methods
-const getSenderName = async (senderId, pageAccessToken) => {
-  try {
-    const url = `https://graph.facebook.com/${senderId}?fields=name,profile_pic&access_token=${pageAccessToken}`;
-    const response = await axios.get(url);
-    return response.data.name || 'Facebook User';
-  } catch (error) {
-    console.error('Error fetching sender name:', error.response?.data || error.message);
-    return 'Facebook User';
-  }
-};
+  const getSenderName = async (senderId, pageAccessToken) => {
+    try {
+      const url = `https://graph.facebook.com/${senderId}?fields=name,profile_pic&access_token=${pageAccessToken}`;
+      const response = await axios.get(url);
+      return response.data.name || 'Facebook User';
+    } catch (error) {
+      console.error('Error fetching sender name:', error.response?.data || error.message);
+      return 'Facebook User';
+    }
+  };
 
   const processMessageEvent = async (event, pageId, io) => {
     try {
       const senderId = event.sender.id;
       const message = event.message;
       const pageAccessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
-      
-      // Check for duplicate message
+
       const existingMessage = await Message.findOne({
         platform: 'facebook',
         platformMessageId: message.mid
       });
-      
+
       if (existingMessage) {
         console.log('Duplicate message detected, skipping');
         return;
       }
 
-      // Get sender name from Facebook API
       const senderName = await getSenderName(senderId, pageAccessToken);
 
-      // Create and save the message
       const newMessage = await Message.create({
         platform: 'facebook',
         platformMessageId: message.mid,
@@ -65,12 +59,11 @@ const getSenderName = async (senderId, pageAccessToken) => {
         labels: ['unclaimed']
       });
 
-      // Emit socket event with complete message data
       io.emit('new_message', {
         event: 'facebook_message',
         message: {
           ...newMessage.toObject(),
-          timestamp: new Date() // Ensure fresh timestamp
+          timestamp: new Date()
         }
       });
 
@@ -131,64 +124,65 @@ const getSenderName = async (senderId, pageAccessToken) => {
     }
   };
 
-  // Public API
-  return {
-    verifyFacebookWebhook: (req, res) => {
-      const VERIFY_TOKEN = process.env.FACEBOOK_WEBHOOK_VERIFY_TOKEN;
-      
-      if (!VERIFY_TOKEN) {
-        console.error('Facebook verify token not configured');
-        return res.sendStatus(500);
-      }
-      
-      const mode = req.query['hub.mode'];
-      const token = req.query['hub.verify_token'];
-      const challenge = req.query['hub.challenge'];
-      
-      if (mode && token) {
-        if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-          console.log('Facebook webhook verified');
-          return res.status(200).send(challenge);
-        }
-        return res.sendStatus(403);
-      }
-      return res.sendStatus(400);
-    },
+  // ✅ NEW: Outbound message sender
+  const sendFacebookMessage = async (req, res) => {
+    const { recipientId, text } = req.body;
 
-    handleFacebookWebhook: async (req, res) => {
-      try {
-        if (req.body.object !== 'page') {
-          return res.status(400).send('Invalid object type');
-        }
-
-        const io = getIO();
-        const processingPromises = [];
-
-        for (const entry of req.body.entry) {
-          for (const event of entry.messaging) {
-            try {
-              if (event.message && !event.message.is_echo) {
-                processingPromises.push(
-                  processMessageEvent(event, entry.id, io)
-                );
-              } else if (event.postback) {
-                processingPromises.push(
-                  processPostbackEvent(event, io)
-                );
-              }
-            } catch (error) {
-              console.error('Error processing individual event:', error);
-            }
-          }
-        }
-
-        await Promise.all(processingPromises);
-        return res.status(200).send('EVENT_RECEIVED');
-      } catch (error) {
-        console.error('Error in Facebook webhook handler:', error);
-        return res.status(500).send('SERVER_ERROR');
-      }
+    if (!recipientId || !text) {
+      return res.status(400).json({ error: 'recipientId and text are required' });
     }
+
+    try {
+      const accessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+      const response = await axios.post(
+        `https://graph.facebook.com/v19.0/me/messages?access_token=${accessToken}`,
+        {
+          recipient: { id: recipientId },
+          message: { text }
+        }
+      );
+
+      // Save sent message to DB
+      const newMessage = await Message.create({
+        platform: 'facebook',
+        platformMessageId: `out-${Date.now()}`,
+        platformThreadId: recipientId,
+        direction: 'outbound',
+        status: 'sent',
+        content: { text },
+        sender: process.env.FACEBOOK_PAGE_ID,
+        recipient: recipientId,
+        platformSender: {
+          id: process.env.FACEBOOK_PAGE_ID,
+          name: 'Page'
+        },
+        platformRecipient: {
+          id: recipientId
+        },
+        labels: []
+      });
+
+      // Emit to Socket.IO
+      const io = getIO();
+      io.emit('new_message', {
+        event: 'facebook_outbound',
+        message: {
+          ...newMessage.toObject(),
+          timestamp: new Date()
+        }
+      });
+
+      return res.status(200).json({ success: true, data: response.data });
+    } catch (error) {
+      console.error('Error sending Facebook message:', error.response?.data || error.message);
+      return res.status(500).json({ error: error.response?.data || error.message });
+    }
+  };
+
+  return {
+    verifyFacebookWebhook,
+    handleFacebookWebhook,
+    sendFacebookMessage // 👈 Export the new method
   };
 })();
 
