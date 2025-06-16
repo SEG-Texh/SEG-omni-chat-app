@@ -13,24 +13,22 @@ const facebookController = (() => {
       return 'Facebook User';
     }
   };
-  // Option 1: If defined in the same file (add this somewhere above where it's used)
-const verifyFacebookWebhook = (req, res) => {
-  const VERIFY_TOKEN = process.env.FACEBOOK_WEBHOOK_VERIFY_TOKEN;
 
-  const mode = req.query['hub.mode'];
-  const token = req.query['hub.verify_token'];
-  const challenge = req.query['hub.challenge'];
+  const verifyFacebookWebhook = (req, res) => {
+    const VERIFY_TOKEN = process.env.FACEBOOK_WEBHOOK_VERIFY_TOKEN;
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
 
-  if (mode && token) {
-    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-      console.log('WEBHOOK_VERIFIED');
-      res.status(200).send(challenge);
-    } else {
-      res.sendStatus(403);
+    if (mode && token) {
+      if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+        console.log('WEBHOOK_VERIFIED');
+        return res.status(200).send(challenge);
+      } else {
+        return res.sendStatus(403);
+      }
     }
-  }
-};
-
+  };
 
   const processMessageEvent = async (event, pageId, io) => {
     try {
@@ -142,7 +140,6 @@ const verifyFacebookWebhook = (req, res) => {
     }
   };
 
-  // ✅ NEW: Outbound message sender
   const sendFacebookMessage = async (req, res) => {
     const { recipientId, text } = req.body;
 
@@ -160,7 +157,6 @@ const verifyFacebookWebhook = (req, res) => {
         }
       );
 
-      // Save sent message to DB
       const newMessage = await Message.create({
         platform: 'facebook',
         platformMessageId: `out-${Date.now()}`,
@@ -180,7 +176,6 @@ const verifyFacebookWebhook = (req, res) => {
         labels: []
       });
 
-      // Emit to Socket.IO
       const io = getIO();
       io.emit('new_message', {
         event: 'facebook_outbound',
@@ -197,10 +192,34 @@ const verifyFacebookWebhook = (req, res) => {
     }
   };
 
+  // ✅ MISSING HANDLER NOW DEFINED
+  const handleFacebookWebhook = async (req, res) => {
+    const body = req.body;
+    const io = getIO();
+
+    if (body.object === 'page') {
+      for (const entry of body.entry) {
+        const pageId = entry.id;
+
+        for (const event of entry.messaging) {
+          if (event.message) {
+            await processMessageEvent(event, pageId, io);
+          } else if (event.postback) {
+            await processPostbackEvent(event, io);
+          }
+        }
+      }
+
+      return res.sendStatus(200);
+    } else {
+      return res.sendStatus(404);
+    }
+  };
+
   return {
     verifyFacebookWebhook,
     handleFacebookWebhook,
-    sendFacebookMessage // 👈 Export the new method
+    sendFacebookMessage
   };
 })();
 
