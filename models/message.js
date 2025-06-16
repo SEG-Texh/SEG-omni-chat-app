@@ -54,11 +54,11 @@ const messageSchema = new Schema({
   },
 
   // User references (using ObjectId for internal users)
-  sender: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
+sender: {
+  type: String,  // Change from ObjectId to String
+  required: true
+},
+// Remove ref: 'User' since it's not referencing your User model
   recipient: {
     type: Schema.Types.ObjectId,
     ref: 'User'
