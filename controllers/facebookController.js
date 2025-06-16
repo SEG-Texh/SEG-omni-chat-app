@@ -104,14 +104,14 @@ const facebookController = (() => {
             payload: payload
           }]
         },
-        sender: {
+        sender: senderId,
+        recipient: event.recipient.id,
+        platformSender: {
           id: senderId,
-          name: senderName,
-          platform: 'facebook'
+          name: senderName
         },
-        recipient: {
-          id: event.recipient.id,
-          platform: 'facebook'
+        platformRecipient: {
+          id: event.recipient.id
         },
         labels: ['unclaimed', 'postback']
       });
