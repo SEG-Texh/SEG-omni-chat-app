@@ -446,17 +446,9 @@ async function sendMessage() {
         document.getElementById('sendBtn').disabled = true;
         document.getElementById('sendBtn').innerHTML = '<span class="spinner"></span> Sending...';
 
+        // Determine if this is a Facebook message
         const isFacebook = currentChatUser.platform === 'facebook';
-        const payload = {
-            receiverId: currentChatUser.id,
-            content: { text: messageText },
-            platform: currentChatUser.platform || 'web',
-            isFacebook: isFacebook
-        };
-
-        if (currentChatUser.originalMessageId) {
-            payload.originalMessageId = currentChatUser.originalMessageId;
-        }
+        const receiverId = isFacebook ? currentChatUser.id : currentChatUser.id;
 
         const response = await fetch('/api/messages', {
             method: 'POST',
@@ -464,17 +456,23 @@ async function sendMessage() {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({
+                receiverId: receiverId,
+                content: { text: messageText },
+                platform: currentChatUser.platform || 'web',
+                isFacebook: isFacebook
+            })
         });
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.message || `Server error: ${response.status}`);
+            throw new Error(errorData.message || `Failed to send message (${response.status})`);
         }
 
         const result = await response.json();
         input.value = '';
         
+        // Display the sent message immediately
         displayMessage({
             _id: result._id,
             sender: { id: currentUser.id, name: currentUser.name },
@@ -483,13 +481,6 @@ async function sendMessage() {
             createdAt: new Date().toISOString(),
             platform: currentChatUser.platform || 'web'
         });
-
-        if (socket) {
-            socket.emit('new_message', {
-                message: result,
-                receiverId: currentChatUser.id
-            });
-        }
 
     } catch (err) {
         console.error('Message send error:', err);
