@@ -418,10 +418,15 @@ function setupSocketListeners() {
 // ================================
 
 function selectChatMessage(messageMeta) {
-    currentChatUser = { 
-        id: messageMeta.sender?.id || messageMeta.senderId, 
-        name: messageMeta.sender?.name || messageMeta.senderName 
-    };
+    const id = messageMeta.sender?.id || messageMeta.senderId;
+    const name = messageMeta.sender?.name || messageMeta.senderName;
+
+    if (!id || !name) {
+        console.warn('Invalid messageMeta: senderId or name missing', messageMeta);
+        return;
+    }
+
+    currentChatUser = { id, name };
 
     // Update UI
     document.getElementById('chatUserName').textContent = `Chatting with ${currentChatUser.name}`;
