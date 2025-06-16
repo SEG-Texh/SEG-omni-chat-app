@@ -421,21 +421,25 @@ function selectChatMessage(messageMeta) {
     const senderId = messageMeta.sender?.id || messageMeta.senderId;
     const senderName = messageMeta.sender?.name || messageMeta.senderName;
 
+    console.log('🧠 Raw messageMeta:', messageMeta);
+    console.log('🔍 Extracted senderId:', senderId);
+    console.log('🔍 Extracted senderName:', senderName);
+
     if (!senderId) {
-        console.warn('❌ Cannot select chat: sender ID is missing.', messageMeta);
+        console.warn('❌ Cannot select chat: sender ID is missing.');
         return;
     }
 
+    // Continue if senderId is valid...
     currentChatUser = { id: senderId, name: senderName };
 
-    // Update UI
     document.getElementById('chatUserName').textContent = `Chatting with ${currentChatUser.name}`;
     document.getElementById('messageInput').disabled = false;
     document.getElementById('sendBtn').disabled = false;
 
-    // Load messages
     loadChatMessages(currentChatUser.id);
 }
+
 
 function loadChatMessages(senderId) {
     const messagesContainer = document.getElementById('chatMessages');
