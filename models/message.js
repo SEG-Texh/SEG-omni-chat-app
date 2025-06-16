@@ -60,8 +60,8 @@ sender: {
 },
 // Remove ref: 'User' since it's not referencing your User model
   recipient: {
-    type: Schema.Types.ObjectId,
-    ref: 'User'
+    type: String, // Changed from ObjectId to String
+    required: true
   },
 
   // Platform sender/recipient info (for external messages)

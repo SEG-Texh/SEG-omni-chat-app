@@ -54,14 +54,14 @@ const facebookController = (() => {
             mimeType: attach.payload?.mime_type
           }))
         },
-        sender: {
+        sender: senderId,
+        recipient: pageId,
+        platformSender: {
           id: senderId,
-          name: senderName,
-          platform: 'facebook'
+          name: senderName
         },
-        recipient: {
-          id: pageId,
-          platform: 'facebook'
+        platformRecipient: {
+          id: pageId
         },
         labels: ['unclaimed']
       });
