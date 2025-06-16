@@ -488,7 +488,51 @@ function scrollToBottom() {
     const container = document.getElementById('chatMessages');
     container.scrollTop = container.scrollHeight;
 }
+ async function sendMessage() {
+    const input = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
 
+    const messageText = input.value.trim();
+    const selectedMessage = window.currentSelectedMessage; // Store this globally when selecting a conversation
+
+    if (!messageText || !selectedMessage || !selectedMessage.platformThreadId) {
+      alert('No message text or no conversation selected.');
+      return;
+    }
+
+    // Disable UI while sending
+    input.disabled = true;
+    sendBtn.disabled = true;
+
+    try {
+      const response = await fetch('/facebook/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          recipientId: selectedMessage.platformThreadId,
+          text: messageText
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        console.log('Message sent:', result);
+        input.value = ''; // Clear input
+      } else {
+        console.error('Send failed:', result);
+        alert('Failed to send message.');
+      }
+    } catch (err) {
+      console.error('Error sending message:', err);
+      alert('Error sending message.');
+    } finally {
+      input.disabled = false;
+      sendBtn.disabled = false;
+    }
+  }
 // ============================================================================
 // EVENT LISTENERS
 // ============================================================================
