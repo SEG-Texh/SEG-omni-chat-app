@@ -2,99 +2,40 @@
 // SERVER/ROUTES/MESSAGES.JS
 // ============================================================================
 const express = require('express');
-const mongoose = require('mongoose');
 const Message = require('../models/message');
 const { auth } = require('../middleware/auth');
 const router = express.Router();
 
-// Middleware for validating IDs
-const validateId = (req, res, next) => {
-  const { receiverId, messageId } = req.params;
-  
-  if (receiverId === 'undefined' || messageId === 'undefined') {
-    return res.status(400).json({ error: 'Invalid ID provided' });
-  }
-  
-  if (messageId && !mongoose.Types.ObjectId.isValid(messageId)) {
-    return res.status(400).json({ error: 'Invalid message ID format' });
-  }
-  
-  next();
-};
-
-// Middleware for input sanitization
-const sanitizeInput = (req, res, next) => {
-  if (req.query) {
-    for (const key in req.query) {
-      if (typeof req.query[key] === 'string') {
-        req.query[key] = req.query[key].trim();
-      }
-    }
-  }
-  
-  if (req.body) {
-    if (req.body.content?.text) {
-      req.body.content.text = req.body.content.text.trim();
-    }
-  }
-  
-  next();
-};
-
 // Utility function to format messages for frontend
-const formatMessage = (msg) => {
-  const sender = msg.sender ? {
-    name: msg.sender.name,
-    id: msg.sender._id
-  } : {
-    name: msg.platformSender?.name || 'Unknown',
-    id: msg.platformSender?.id || null
-  };
-
-  return {
-    _id: msg._id,
-    content: {
-      text: msg.content?.text || '',
-      attachments: msg.content?.attachments || []
-    },
-    sender,
-    platform: msg.platform || 'web',
-    timestamp: msg.createdAt || new Date(),
-    status: msg.status || 'delivered',
-    labels: msg.labels || [],
-    direction: msg.direction || 'inbound'
-  };
-};
+const formatMessage = (msg) => ({
+  _id: msg._id,
+  content: {
+    text: msg.content?.text || '',
+    attachments: msg.content?.attachments || []
+  },
+  sender: {
+    name: msg.sender?.name || 'Unknown',
+    id: msg.sender?._id || null
+  },
+  platform: msg.platform || 'web',
+  timestamp: msg.createdAt || new Date()
+});
 
 // Get unclaimed messages (for admin/supervisor dashboard)
 router.get('/unclaimed', auth, async (req, res) => {
   try {
-    if (!['admin', 'supervisor'].includes(req.user.role)) {
-      return res.status(403).json({ error: 'Unauthorized access' });
-    }
-
     const { page = 1, limit = 50 } = req.query;
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
     
-    if (isNaN(pageNum) || isNaN(limitNum)) {
-      return res.status(400).json({ error: 'Invalid pagination parameters' });
-    }
+const messages = await Message.find({ 
+  labels: { $in: ['unclaimed'] },
+  isDeleted: false
+})
+.populate('sender', 'name _id')
+.sort({ createdAt: -1 })
+.limit(limit * 1)
+.skip((page - 1) * limit)
+.lean();
 
-    const messages = await Message.find({ 
-      labels: { $in: ['unclaimed'] },
-      isDeleted: false
-    })
-    .populate({
-      path: 'sender',
-      select: 'name _id',
-      match: { _id: { $exists: true } }
-    })
-    .populate('claimedBy', 'name _id')
-    .sort({ createdAt: -1 })
-    .limit(limitNum)
-    .skip((pageNum - 1) * limitNum)
-    .lean();
 
     res.json(messages.map(formatMessage));
   } catch (err) {
@@ -106,68 +47,56 @@ router.get('/unclaimed', auth, async (req, res) => {
   }
 });
 
-// Get messages between users
-router.get('/:receiverId', auth, validateId, async (req, res) => {
+
+// Get messages between users (with receiverId)
+router.get('/:receiverId', auth, async (req, res) => {
   try {
     const { receiverId } = req.params;
     const { page = 1, limit = 50 } = req.query;
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-
+    
     const query = {
       $or: [
-        { sender: req.user._id, recipient: receiverId },
-        { sender: receiverId, recipient: req.user._id }
-      ],
-      isDeleted: false
+        { sender: req.user._id, receiver: receiverId },
+        { sender: receiverId, receiver: req.user._id }
+      ]
     };
 
     const messages = await Message.find(query)
       .populate('sender', 'name email role')
-      .populate('recipient', 'name email role')
+      .populate('receiver', 'name email role')
       .sort({ createdAt: -1 })
-      .limit(limitNum)
-      .skip((pageNum - 1) * limitNum)
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
       .lean();
 
     res.json(messages.map(formatMessage));
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Failed to load messages',
-      details: process.env.NODE_ENV === 'development' ? error.message : null
-    });
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Send message
-router.post('/', auth, sanitizeInput, async (req, res) => {
+router.post('/', auth, async (req, res) => {
   try {
-    const { recipientId, content, platform = 'web' } = req.body;
+    const { receiverId, content, messageType = 'direct', platform = 'web' } = req.body;
     
-    if (!content || (!content.text && !content.attachments?.length)) {
-      return res.status(400).json({ error: 'Message content is required' });
-    }
-
     const messageData = {
       sender: req.user._id,
       content,
+      messageType,
       platform,
-      direction: 'outbound',
-      status: 'sent'
+      claimed: messageType === 'broadcast' // Auto-claim broadcast messages
     };
 
-    if (recipientId) {
-      if (!mongoose.Types.ObjectId.isValid(recipientId)) {
-        return res.status(400).json({ error: 'Invalid recipient ID' });
-      }
-      messageData.recipient = recipientId;
+    if (receiverId && messageType === 'direct') {
+      messageData.receiver = receiverId;
     }
 
     const message = new Message(messageData);
     await message.save();
     
     await message.populate('sender', 'name email role');
-    await message.populate('recipient', 'name email role');
+    await message.populate('receiver', 'name email role');
     
     // Emit socket event
     const io = req.app.get('socketio');
@@ -175,10 +104,7 @@ router.post('/', auth, sanitizeInput, async (req, res) => {
 
     res.status(201).json(formatMessage(message));
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Failed to send message',
-      details: process.env.NODE_ENV === 'development' ? error.message : null
-    });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -191,58 +117,44 @@ router.get('/search/:query', auth, async (req, res) => {
 
     const { query } = req.params;
     const { page = 1, limit = 50 } = req.query;
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-
+    
     const searchQuery = {
-      $or: [
-        { 'content.text': { $regex: query, $options: 'i' } },
-        { 'platformSender.name': { $regex: query, $options: 'i' } }
-      ],
-      isDeleted: false
+      content: { $regex: query, $options: 'i' }
     };
 
     if (req.user.role === 'supervisor') {
-      const User = require('./models/user');
-      const supervisedUsers = await User.find({ supervisor: req.user._id }).select('_id');
+      const User = require('../models/User');
+      const supervisedUsers = await User.find({ supervisor_id: req.user._id }).select('_id');
       const userIds = supervisedUsers.map(user => user._id);
-      searchQuery.$or.push(
+      searchQuery.$or = [
         { sender: { $in: userIds } },
-        { recipient: { $in: userIds } }
-      );
+        { receiver: { $in: userIds } }
+      ];
     }
 
     const messages = await Message.find(searchQuery)
       .populate('sender', 'name email role')
-      .populate('recipient', 'name email role')
+      .populate('receiver', 'name email role')
       .sort({ createdAt: -1 })
-      .limit(limitNum)
-      .skip((pageNum - 1) * limitNum)
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
       .lean();
 
     res.json(messages.map(formatMessage));
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Search failed',
-      details: process.env.NODE_ENV === 'development' ? error.message : null
-    });
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Mark message as read
-router.put('/:messageId/read', auth, validateId, async (req, res) => {
+router.put('/:messageId/read', auth, async (req, res) => {
   try {
     const message = await Message.findOneAndUpdate(
-      { 
-        _id: req.params.messageId, 
-        recipient: req.user._id,
-        isDeleted: false
-      },
-      { isRead: true, readAt: new Date() },
+      { _id: req.params.messageId, receiver: req.user._id },
+      { isRead: true },
       { new: true }
-    )
-    .populate('sender', 'name email role')
-    .populate('recipient', 'name email role');
+    ).populate('sender', 'name email role')
+     .populate('receiver', 'name email role');
 
     if (!message) {
       return res.status(404).json({ error: 'Message not found' });
@@ -250,45 +162,43 @@ router.put('/:messageId/read', auth, validateId, async (req, res) => {
 
     res.json(formatMessage(message));
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Failed to mark as read',
-      details: process.env.NODE_ENV === 'development' ? error.message : null
-    });
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Claim a message
-router.put('/:messageId/claim', auth, validateId, async (req, res) => {
+// Claim a message (for any authenticated agent)
+router.put('/:messageId/claim', auth, async (req, res) => {
   try {
     const message = await Message.findOneAndUpdate(
       { 
         _id: req.params.messageId, 
+        claimed: false,
+        // Optional: Only allow claiming messages assigned to them or unassigned
         $or: [
-          { claimedBy: { $exists: false } },
-          { claimedBy: null },
-          { 
-            claimedBy: req.user._id,
-            isDeleted: false
-          }
+          { receiver: req.user._id },
+          { receiver: null },
+          { receiver: { $exists: false } }
         ]
       },
       { 
+        claimed: true,
         claimedBy: req.user._id,
         claimedAt: new Date(),
-        labels: ['claimed'],
-        $addToSet: { recipients: req.user._id }
+        // Assign the message to the claiming agent
+        receiver: req.user._id
       },
       { new: true }
     )
     .populate('sender', 'name _id')
-    .populate('claimedBy', 'name _id');
+    .populate('claimedBy', 'name');
 
     if (!message) {
       return res.status(404).json({ 
-        error: 'Message not found or already claimed by another agent' 
+        error: 'Message not found, already claimed, or not assigned to you' 
       });
     }
 
+    // Notify via WebSocket
     const io = req.app.get('socketio');
     io.emit('message_claimed', {
       messageId: message._id,
@@ -300,10 +210,7 @@ router.put('/:messageId/claim', auth, validateId, async (req, res) => {
 
     res.json(formatMessage(message));
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Failed to claim message',
-      details: process.env.NODE_ENV === 'development' ? error.message : null
-    });
+    res.status(500).json({ error: error.message });
   }
 });
 
