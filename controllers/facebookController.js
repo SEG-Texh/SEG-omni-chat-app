@@ -6,17 +6,16 @@ const axios = require('axios'); // For fetching sender name from Facebook API
 // Create a self-contained module with all methods
 const facebookController = (() => {
   // Private methods
-  const getSenderName = async (senderId, pageAccessToken) => {
-    try {
-      const response = await axios.get(
-        `https://graph.facebook.com/${senderId}?fields=name,profile_pic&access_token=${pageAccessToken}`
-      );
-      return response.data.name || 'Facebook User';
-    } catch (error) {
-      console.error('Error fetching sender name:', error.message);
-      return 'Facebook User';
-    }
-  };
+const getSenderName = async (senderId, pageAccessToken) => {
+  try {
+    const url = `https://graph.facebook.com/${senderId}?fields=name,profile_pic&access_token=${pageAccessToken}`;
+    const response = await axios.get(url);
+    return response.data.name || 'Facebook User';
+  } catch (error) {
+    console.error('Error fetching sender name:', error.response?.data || error.message);
+    return 'Facebook User';
+  }
+};
 
   const processMessageEvent = async (event, pageId, io) => {
     try {
