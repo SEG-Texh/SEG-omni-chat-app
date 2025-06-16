@@ -492,7 +492,12 @@ async function sendMessage() {
     const input = document.getElementById('messageInput');
     const messageText = input.value.trim();
     
-    if (!messageText) return;
+    if (!messageText) {
+        alert('Please enter a message');
+        return;
+    }
+
+    // Get the selected message's sender ID as recipient
     if (!currentChatUser?.id) {
         alert('Please select a conversation first');
         return;
@@ -505,6 +510,10 @@ async function sendMessage() {
             return;
         }
 
+        // Disable UI during send
+        input.disabled = true;
+        document.getElementById('sendBtn').disabled = true;
+
         const response = await fetch('/api/messages', {
             method: 'POST',
             headers: {
@@ -512,30 +521,45 @@ async function sendMessage() {
                 'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
-                receiverId: currentChatUser.id,
+                receiverId: currentChatUser.id, // This is the sender of the original message
                 content: { text: messageText },
-                platform: 'web'
+                platform: 'web',
+                // Optional: reference the original message
+                originalMessageId: currentChatUser.originalMessageId 
             })
         });
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Failed to send message');
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to send message');
         }
 
         const result = await response.json();
         input.value = '';
         
-        // Display the message immediately
+        // Display the sent message immediately
         displayMessage({
+            _id: result._id,
             sender: { id: currentUser.id, name: currentUser.name },
+            receiver: { id: currentChatUser.id, name: currentChatUser.name },
             content: { text: messageText },
-            timestamp: new Date().toISOString()
+            createdAt: new Date().toISOString()
         });
 
+        // Emit via socket if available
+        if (socket) {
+            socket.emit('new_message', {
+                message: result,
+                receiverId: currentChatUser.id
+            });
+        }
+
     } catch (err) {
-        console.error('Send message error:', err);
-        alert(`Error: ${err.message}`);
+        console.error('Message send error:', err);
+        alert(`Failed to send message: ${err.message}`);
+    } finally {
+        input.disabled = false;
+        document.getElementById('sendBtn').disabled = false;
     }
 }
 // ============================================================================
