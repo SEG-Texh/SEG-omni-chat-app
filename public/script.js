@@ -488,24 +488,15 @@ function scrollToBottom() {
     const container = document.getElementById('chatMessages');
     container.scrollTop = container.scrollHeight;
 }
- async function sendMessage() {
-    if (!currentUser || !currentChatUser) {
+async function sendMessage() {
+    const input = document.getElementById('messageInput');
+    const messageText = input.value.trim();
+    
+    if (!messageText) return;
+    if (!currentChatUser?.id) {
         alert('Please select a conversation first');
         return;
     }
-
-    const input = document.getElementById('messageInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const messageText = input.value.trim();
-
-    if (!messageText) {
-        alert('Please enter a message');
-        return;
-    }
-
-    // Disable UI while sending
-    input.disabled = true;
-    sendBtn.disabled = true;
 
     try {
         const token = localStorage.getItem('token');
@@ -522,41 +513,29 @@ function scrollToBottom() {
             },
             body: JSON.stringify({
                 receiverId: currentChatUser.id,
-                content: {
-                    text: messageText
-                },
+                content: { text: messageText },
                 platform: 'web'
             })
         });
 
         if (!response.ok) {
-            throw new Error('Failed to send message');
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to send message');
         }
 
         const result = await response.json();
-        input.value = ''; // Clear input
+        input.value = '';
         
-        // Display the sent message immediately
+        // Display the message immediately
         displayMessage({
             sender: { id: currentUser.id, name: currentUser.name },
             content: { text: messageText },
             timestamp: new Date().toISOString()
         });
 
-        // Emit via socket if available
-        if (socket) {
-            socket.emit('send_message', {
-                ...result,
-                sender: { id: currentUser.id, name: currentUser.name }
-            });
-        }
-
     } catch (err) {
-        console.error('Error sending message:', err);
-        alert('Error sending message: ' + err.message);
-    } finally {
-        input.disabled = false;
-        sendBtn.disabled = false;
+        console.error('Send message error:', err);
+        alert(`Error: ${err.message}`);
     }
 }
 // ============================================================================
