@@ -489,15 +489,18 @@ function scrollToBottom() {
     container.scrollTop = container.scrollHeight;
 }
  async function sendMessage() {
+    if (!currentUser || !currentChatUser) {
+        alert('Please select a conversation first');
+        return;
+    }
+
     const input = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
-
     const messageText = input.value.trim();
-    const selectedMessage = window.currentSelectedMessage; // Store this globally when selecting a conversation
 
-    if (!messageText || !selectedMessage || !selectedMessage.platformThreadId) {
-      alert('No message text or no conversation selected.');
-      return;
+    if (!messageText) {
+        alert('Please enter a message');
+        return;
     }
 
     // Disable UI while sending
@@ -505,34 +508,57 @@ function scrollToBottom() {
     sendBtn.disabled = true;
 
     try {
-      const response = await fetch('/facebook/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          recipientId: selectedMessage.platformThreadId,
-          text: messageText
-        })
-      });
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showLogin();
+            return;
+        }
 
-      const result = await response.json();
+        const response = await fetch('/api/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                receiverId: currentChatUser.id,
+                content: {
+                    text: messageText
+                },
+                platform: 'web'
+            })
+        });
 
-      if (response.ok) {
-        console.log('Message sent:', result);
+        if (!response.ok) {
+            throw new Error('Failed to send message');
+        }
+
+        const result = await response.json();
         input.value = ''; // Clear input
-      } else {
-        console.error('Send failed:', result);
-        alert('Failed to send message.');
-      }
+        
+        // Display the sent message immediately
+        displayMessage({
+            sender: { id: currentUser.id, name: currentUser.name },
+            content: { text: messageText },
+            timestamp: new Date().toISOString()
+        });
+
+        // Emit via socket if available
+        if (socket) {
+            socket.emit('send_message', {
+                ...result,
+                sender: { id: currentUser.id, name: currentUser.name }
+            });
+        }
+
     } catch (err) {
-      console.error('Error sending message:', err);
-      alert('Error sending message.');
+        console.error('Error sending message:', err);
+        alert('Error sending message: ' + err.message);
     } finally {
-      input.disabled = false;
-      sendBtn.disabled = false;
+        input.disabled = false;
+        sendBtn.disabled = false;
     }
-  }
+}
 // ============================================================================
 // EVENT LISTENERS
 // ============================================================================
