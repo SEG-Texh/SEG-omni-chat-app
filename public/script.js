@@ -417,77 +417,9 @@ function setupSocketListeners() {
 // LOGIC 7: SELECT MESSAGE AND LOAD CHAT
 // ================================
 
-function selectChatMessage(messageMeta) {
-    currentChatUser = { 
-        id: messageMeta.sender?.id || messageMeta.senderId, 
-        name: messageMeta.sender?.name || messageMeta.senderName 
-    };
-
-    // Update UI
-    document.getElementById('chatUserName').textContent = `Chatting with ${currentChatUser.name}`;
-    document.getElementById('messageInput').disabled = false;
-    document.getElementById('sendBtn').disabled = false;
-
-    // Load messages
-    loadChatMessages(currentChatUser.id);
-}
-
-function loadChatMessages(senderId) {
-    const messagesContainer = document.getElementById('chatMessages');
-    messagesContainer.innerHTML = '<div class="loading">Loading messages...</div>';
-
-    fetch(`/api/messages/${senderId}`, {
-        headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-    })
-    .then(res => {
-        if (!res.ok) throw new Error('Failed to load messages');
-        return res.json();
-    })
-    .then(messages => {
-        messagesContainer.innerHTML = '';
-        messages.forEach(msg => displayMessage(msg));
-        scrollToBottom();
-    })
-    .catch(err => {
-        console.error('Failed to load messages:', err);
-        messagesContainer.innerHTML = `<div class="error">${err.message}</div>`;
-    });
-}
-
-function displayMessage(message) {
-    const messagesContainer = document.getElementById('chatMessages');
-    const messageDiv = document.createElement('div');
-    
-    const isOwnMessage = message.sender?.id === currentUser?.id || 
-                        message.senderId === currentUser?.id;
-    
-    messageDiv.className = `message ${isOwnMessage ? 'own' : ''}`;
-    
-    const senderName = message.sender?.name || 
-                      (isOwnMessage ? 'You' : 'Unknown');
-    
-    messageDiv.innerHTML = `
-        <div class="message-avatar">${senderName.charAt(0).toUpperCase()}</div>
-        <div class="message-content">
-            <div class="message-bubble">
-                ${message.content?.text || '[No content]'}
-            </div>
-            <div class="message-info">
-                ${senderName} • ${new Date(message.timestamp || message.createdAt).toLocaleTimeString()}
-            </div>
-        </div>
-    `;
-    
-    messagesContainer.appendChild(messageDiv);
-    scrollToBottom();
-}
-
-function scrollToBottom() {
-    const container = document.getElementById('chatMessages');
-    container.scrollTop = container.scrollHeight;
-}
+// ============================================================================
+// MESSAGE FUNCTIONS (UPDATED)
+// ============================================================================
 async function sendMessage() {
     const input = document.getElementById('messageInput');
     const messageText = input.value.trim();
@@ -497,7 +429,6 @@ async function sendMessage() {
         return;
     }
 
-    // Get the selected message's sender ID as recipient
     if (!currentChatUser?.id) {
         alert('Please select a conversation first');
         return;
@@ -513,6 +444,19 @@ async function sendMessage() {
         // Disable UI during send
         input.disabled = true;
         document.getElementById('sendBtn').disabled = true;
+        document.getElementById('sendBtn').innerHTML = '<span class="spinner"></span> Sending...';
+
+        const isFacebook = currentChatUser.platform === 'facebook';
+        const payload = {
+            receiverId: currentChatUser.id,
+            content: { text: messageText },
+            platform: currentChatUser.platform || 'web',
+            isFacebook: isFacebook
+        };
+
+        if (currentChatUser.originalMessageId) {
+            payload.originalMessageId = currentChatUser.originalMessageId;
+        }
 
         const response = await fetch('/api/messages', {
             method: 'POST',
@@ -520,33 +464,26 @@ async function sendMessage() {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({
-                receiverId: currentChatUser.id, // This is the sender of the original message
-                content: { text: messageText },
-                platform: 'web',
-                // Optional: reference the original message
-                originalMessageId: currentChatUser.originalMessageId 
-            })
+            body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to send message');
+            throw new Error(errorData.message || `Server error: ${response.status}`);
         }
 
         const result = await response.json();
         input.value = '';
         
-        // Display the sent message immediately
         displayMessage({
             _id: result._id,
             sender: { id: currentUser.id, name: currentUser.name },
             receiver: { id: currentChatUser.id, name: currentChatUser.name },
             content: { text: messageText },
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            platform: currentChatUser.platform || 'web'
         });
 
-        // Emit via socket if available
         if (socket) {
             socket.emit('new_message', {
                 message: result,
@@ -560,7 +497,51 @@ async function sendMessage() {
     } finally {
         input.disabled = false;
         document.getElementById('sendBtn').disabled = false;
+        document.getElementById('sendBtn').innerHTML = 'Send';
     }
+}
+
+function selectChatMessage(messageMeta) {
+    currentChatUser = { 
+        id: messageMeta.sender?.id || messageMeta.senderId, 
+        name: messageMeta.sender?.name || messageMeta.senderName,
+        platform: messageMeta.platform || 'web',
+        originalMessageId: messageMeta._id,
+        platformThreadId: messageMeta.platformThreadId
+    };
+
+    // Update UI
+    const platformBadge = currentChatUser.platform === 'facebook' ? ' (Facebook)' : '';
+    document.getElementById('chatUserName').textContent = `Chatting with ${currentChatUser.name}${platformBadge}`;
+    document.getElementById('messageInput').disabled = false;
+    document.getElementById('sendBtn').disabled = false;
+
+    loadChatMessages(currentChatUser.id);
+}
+
+// ============================================================================
+// SOCKET.IO FUNCTIONS (UPDATED)
+// ============================================================================
+function setupSocketListeners() {
+    socket.on('new_message', (data) => {
+        const msg = formatMessageForDisplay(data.message);
+        
+        if (msg.labels?.includes('unclaimed')) {
+            const messageList = document.getElementById('broadcastMessageList');
+            const emptyMsg = messageList.querySelector('.empty');
+            if (emptyMsg) emptyMsg.remove();
+
+            const messageDiv = createMessageElement(msg);
+            messageList.insertBefore(messageDiv, messageList.firstChild);
+        } else if (msg.receiver?.id === currentChatUser?.id || msg.sender?.id === currentChatUser?.id) {
+            displayMessage(msg);
+        }
+    });
+
+    socket.on('message_claimed', (messageId) => {
+        const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+        if (messageDiv) messageDiv.remove();
+    });
 }
 // ============================================================================
 // EVENT LISTENERS
