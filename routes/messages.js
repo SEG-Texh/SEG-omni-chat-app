@@ -4,6 +4,7 @@
 const express = require('express');
 const Message = require('../models/message');
 const { auth } = require('../middleware/auth');
+const messageController = require('../controllers/messageController');
 const router = express.Router();
 
 // Utility function to format messages for frontend
@@ -274,5 +275,6 @@ router.put('/:messageId/claim', auth, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+router.post('/', auth, messageController.sendMessage);
 
 module.exports = router;
