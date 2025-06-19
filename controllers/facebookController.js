@@ -152,11 +152,7 @@ const facebookController = (() => {
       const response = await axios.post(
         `https://graph.facebook.com/v19.0/me/messages?access_token=${accessToken}`,
         {
-          recipient: {
-  type: String, // ✅ STRING expected
-  required: true
-},
-
+          recipient: { id: recipientId },
           message: { text }
         }
       );
