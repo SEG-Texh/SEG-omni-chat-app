@@ -82,6 +82,94 @@ router.get('/:receiverId', auth, async (req, res) => {
   }
 });
 
+// Send message
+router.post('/', auth, async (req, res) => {
+  try {
+    const { receiverId, content, platform = 'web', isFacebook = false } = req.body;
+    
+    // Validate required fields
+    if (!receiverId || !content?.text) {
+      return res.status(400).json({ 
+        error: 'Validation failed',
+        message: 'receiverId and content.text are required' 
+      });
+    }
+
+    let result;
+    const io = req.app.get('socketio');
+    
+    // Handle Facebook messages
+    if (isFacebook) {
+      try {
+        const fbResponse = await axios.post(
+          `https://graph.facebook.com/v19.0/me/messages`,
+          {
+            recipient: { id: receiverId },
+            message: { text: content.text }
+          },
+          {
+            params: {
+              access_token: process.env.FACEBOOK_PAGE_ACCESS_TOKEN
+            }
+          }
+        );
+        
+        result = fbResponse.data;
+        
+        if (result.error) {
+          return res.status(400).json({
+            error: 'Facebook API error',
+            message: result.error.message
+          });
+        }
+      } catch (fbError) {
+        console.error('Facebook API error:', fbError.response?.data || fbError.message);
+        return res.status(500).json({
+          error: 'Facebook API failed',
+          message: fbError.response?.data?.error?.message || 'Failed to send Facebook message'
+        });
+      }
+    }
+
+    // Create message document
+    const messageData = {
+      sender: req.user._id,
+      receiver: receiverId,
+      content,
+      platform,
+      ...(isFacebook && { 
+        platformMessageId: result?.message_id,
+        platformThreadId: receiverId,
+        direction: 'outbound',
+        status: 'sent',
+        labels: []
+      })
+    };
+
+    const message = new Message(messageData);
+    await message.save();
+    
+    // Populate sender/receiver if needed
+    await message.populate('sender', 'name email role');
+    await message.populate('receiver', 'name email role');
+
+    // Emit socket event
+    if (platform === 'web') {
+      io.to(receiverId).emit('new_message', formatMessage(message));
+    }
+    io.emit('message_update', formatMessage(message));
+
+    res.status(201).json(formatMessage(message));
+
+  } catch (err) {
+    console.error('Message creation error:', err);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: err.message,
+      ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    });
+  }
+});
 
 // Search messages (Admin and Supervisor)
 router.get('/search/:query', auth, async (req, res) => {

@@ -164,16 +164,19 @@ const newMessage = await Message.create({
   direction: 'outbound',
   status: 'sent',
   content: { text },
-  sender: process.env.FACEBOOK_PAGE_ID, // ✅ Should be here
-  recipient: {
+  sender: process.env.FACEBOOK_PAGE_ID || 'facebook_page', // ✅ must be string
+  recipient: recipientId, // ✅ must be string, not object
+  platformSender: {
+    id: process.env.FACEBOOK_PAGE_ID,
+    name: 'Page'
+  },
+  platformRecipient: {
     id: recipientId,
-    name: ''
-      },
-      platformRecipient: {
-        id: recipientId
-      },
-      labels: []
-    });
+    name: '' // optional
+  },
+  labels: []
+});
+
 
     const io = getIO();
     io.emit('new_message', {
