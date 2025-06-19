@@ -141,60 +141,57 @@ const facebookController = (() => {
   };
 
   const sendFacebookMessage = async (req, res) => {
-    const { recipientId, text } = req.body;
+  const { recipientId, text } = req.body;
 
-    if (!recipientId || !text) {
-      return res.status(400).json({ error: 'recipientId and text are required' });
-    }
+  if (!recipientId || !text) {
+    return res.status(400).json({ error: 'recipientId and text are required' });
+  }
 
-    try {
-      const accessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
-      const response = await axios.post(
-        `https://graph.facebook.com/v19.0/me/messages?access_token=${accessToken}`,
-        {
-          recipient: { id: recipientId },
-          message: { text }
-        }
-      );
+  try {
+    const accessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+    const response = await axios.post(
+      `https://graph.facebook.com/v19.0/me/messages?access_token=${accessToken}`,
+      {
+        recipient: { id: recipientId },
+        message: { text }
+      }
+    );
 
-const newMessage = await Message.create({
-  platform: 'facebook',
-  platformMessageId: `out-${Date.now()}`,
-  platformThreadId: recipientId,
-  direction: 'outbound',
-  status: 'sent',
-  content: { text },
-  sender: process.env.FACEBOOK_PAGE_ID,
-  recipient: {
-    id: recipientId,
-    name: '' // You can use getSenderName() if needed
-  },
-  platformSender: {
-    id: process.env.FACEBOOK_PAGE_ID,
-    name: 'Page'
-  },
-  platformRecipient: {
-    id: recipientId
-  },
-  labels: []
-});
+    const newMessage = await Message.create({
+      platform: 'facebook',
+      platformMessageId: `out-${Date.now()}`,
+      platformThreadId: recipientId,
+      direction: 'outbound',
+      status: 'sent',
+      content: { text },
+      sender: process.env.FACEBOOK_PAGE_ID,   // ✅ string
+      recipient: recipientId,                 // ✅ string, not object
+      platformSender: {
+        id: process.env.FACEBOOK_PAGE_ID,
+        name: 'Page'
+      },
+      platformRecipient: {
+        id: recipientId
+      },
+      labels: []
+    });
 
+    const io = getIO();
+    io.emit('new_message', {
+      event: 'facebook_outbound',
+      message: {
+        ...newMessage.toObject(),
+        timestamp: new Date()
+      }
+    });
 
-      const io = getIO();
-      io.emit('new_message', {
-        event: 'facebook_outbound',
-        message: {
-          ...newMessage.toObject(),
-          timestamp: new Date()
-        }
-      });
+    return res.status(200).json({ success: true, data: response.data });
+  } catch (error) {
+    console.error('Error sending Facebook message:', error.response?.data || error.message);
+    return res.status(500).json({ error: error.response?.data || error.message });
+  }
+};
 
-      return res.status(200).json({ success: true, data: response.data });
-    } catch (error) {
-      console.error('Error sending Facebook message:', error.response?.data || error.message);
-      return res.status(500).json({ error: error.response?.data || error.message });
-    }
-  };
 
   // ✅ MISSING HANDLER NOW DEFINED
   const handleFacebookWebhook = async (req, res) => {
