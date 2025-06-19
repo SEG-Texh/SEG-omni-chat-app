@@ -157,18 +157,17 @@ const facebookController = (() => {
       }
     );
 
-    const newMessage = await Message.create({
-      platform: 'facebook',
-      platformMessageId: `out-${Date.now()}`,
-      platformThreadId: recipientId,
-      direction: 'outbound',
-      status: 'sent',
-      content: { text },
-      sender: process.env.FACEBOOK_PAGE_ID,   // ✅ string
-      recipient: recipientId,                 // ✅ string, not object
-      platformSender: {
-        id: process.env.FACEBOOK_PAGE_ID,
-        name: 'Page'
+const newMessage = await Message.create({
+  platform: 'facebook',
+  platformMessageId: `out-${Date.now()}`,
+  platformThreadId: recipientId,
+  direction: 'outbound',
+  status: 'sent',
+  content: { text },
+  sender: process.env.FACEBOOK_PAGE_ID, // ✅ Should be here
+  recipient: {
+    id: recipientId,
+    name: ''
       },
       platformRecipient: {
         id: recipientId
