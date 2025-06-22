@@ -55,14 +55,17 @@ async function sendEmail(req, res) {
   }
 }
 
-// ✅ IMAP Receive
+// ✅ IMAP Receive (with self-signed cert allowed)
 function fetchInboxEmails(req, res) {
   const imap = new Imap({
     user: process.env.SMTP_USER,
     password: process.env.SMTP_PASS,
     host: 'imap.gmail.com',
     port: 993,
-    tls: true
+    tls: true,
+    tlsOptions: {
+      rejectUnauthorized: false // ✅ Accept self-signed certificates
+    }
   });
 
   const emails = [];
