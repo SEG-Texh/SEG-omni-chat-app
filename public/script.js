@@ -264,7 +264,7 @@ function displaySearchResults(messages) {
    MESSAGE DISPLAY SYSTEM
    ====================== */
 function initializeSocket() {
-  socket = io('https://chat-app-omni-33e1e5eaa993.herokuapp.com/'); // Your Heroku URL
+  socket = io('https://chat-app-omni-33e1e5eaa993.herokuapp.com'); // Your Heroku URL
   setupSocketListeners();
 }
 
@@ -341,22 +341,6 @@ function renderUnclaimedMessages(messages) {
     const messageElement = createMessageElement(message);
     messageList.appendChild(messageElement);
   });
-}
-function displayMessage(message) {
-  const chatWindow = document.getElementById('chatWindow'); // Make sure this exists in your HTML
-  if (!chatWindow) return;
-
-  const messageDiv = document.createElement('div');
-  messageDiv.className = message.sender?.id === currentUser.id ? 'message outgoing' : 'message incoming';
-  messageDiv.innerHTML = `
-    <div class="message-content">
-      <span>${message.content?.text || '[No Text]'}</span>
-      <div class="timestamp">${formatTime(message.createdAt)}</div>
-    </div>
-  `;
-
-  chatWindow.appendChild(messageDiv);
-  chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
 // 4. Create a message element
@@ -489,19 +473,14 @@ async function sendMessage() {
         input.value = '';
         
         // Display the sent message immediately
-        if (typeof displayMessage === 'function') {
-  displayMessage({
-    _id: result._id,
-    sender: { id: currentUser.id, name: currentUser.name },
-    receiver: { id: currentChatUser.id, name: currentChatUser.name },
-    content: { text: messageText },
-    createdAt: new Date().toISOString(),
-    platform: currentChatUser.platform || 'web'
-  });
-} else {
-  console.warn('displayMessage function is not defined');
-}
-
+        displayMessage({
+            _id: result._id,
+            sender: { id: currentUser.id, name: currentUser.name },
+            receiver: { id: currentChatUser.id, name: currentChatUser.name },
+            content: { text: messageText },
+            createdAt: new Date().toISOString(),
+            platform: currentChatUser.platform || 'web'
+        });
 
     } catch (err) {
         console.error('Message send error:', err);
