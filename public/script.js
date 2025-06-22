@@ -1,7 +1,7 @@
     // ============================================================================
 // GLOBAL VARIABLES
 // ============================================================================
-let currentUser = null;
+
 let socket = null;
 let currentChatUser = null;
 let users = [];
@@ -276,6 +276,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadUnclaimedMessages();
   initializeSocket(); // ✅ Initialize socket AFTER loading messages
 });
+const currentUser = JSON.parse(localStorage.getItem('user'));
 
 async function loadUnclaimedMessages() {
   const token = localStorage.getItem('token');
