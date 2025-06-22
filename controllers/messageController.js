@@ -15,6 +15,13 @@ const sendMessage = async (req, res) => {
   }
 
   // Add logic here for email, WhatsApp, or others
+  if (platform === 'email') {
+  const emailController = require('./emailController');
+  req.body.to = receiverId; // Assuming receiverId is the email address
+  req.body.text = content.text;
+  return emailController.sendEmail(req, res);
+  }
+
   return res.status(400).json({ error: `Unsupported platform: ${platform}` });
 };
 
