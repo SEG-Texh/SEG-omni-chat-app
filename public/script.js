@@ -530,7 +530,8 @@ function selectChatMessage(messageMeta) {
 function setupSocketListeners() {
     socket.on('new_message', (data) => {
         const msg = formatMessageForDisplay(data.message);
-        
+
+        // ✅ 1. Handle unclaimed messages (sidebar)
         if (msg.labels?.includes('unclaimed')) {
             const messageList = document.getElementById('broadcastMessageList');
             const emptyMsg = messageList.querySelector('.empty');
@@ -538,16 +539,42 @@ function setupSocketListeners() {
 
             const messageDiv = createMessageElement(msg);
             messageList.insertBefore(messageDiv, messageList.firstChild);
-        } else if (msg.receiver?.id === currentChatUser?.id || msg.sender?.id === currentChatUser?.id) {
+        }
+
+        // ✅ 2. Handle active chat messages
+        if (
+            currentChatUser &&
+            (
+                msg.sender?.id === currentChatUser.id ||
+                msg.receiver?.id === currentChatUser.id
+            ) &&
+            msg.platform === currentChatUser.platform
+        ) {
             displayMessage(msg);
+
+            // Optional: scroll to bottom
+            const chatContainer = document.getElementById('chatMessages');
+            if (chatContainer) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
         }
     });
 
+    // ✅ 3. Remove claimed message from sidebar
     socket.on('message_claimed', (messageId) => {
         const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`);
-        if (messageDiv) messageDiv.remove();
+        if (messageDiv) {
+            messageDiv.remove();
+
+            // If sidebar becomes empty
+            if (document.querySelectorAll('.chat-user').length === 0) {
+                document.getElementById('broadcastMessageList').innerHTML = 
+                    '<div class="empty">No unclaimed messages</div>';
+            }
+        }
     });
 }
+
 // ============================================================================
 // EVENT LISTENERS
 // ============================================================================
