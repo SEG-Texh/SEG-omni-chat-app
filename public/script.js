@@ -543,13 +543,14 @@ function setupSocketListeners() {
 
         // ✅ 2. Handle active chat messages
         if (
-            currentChatUser &&
-            (
-                msg.sender?.id === currentChatUser.id ||
-                msg.receiver?.id === currentChatUser.id
-            ) &&
-            msg.platform === currentChatUser.platform
-        ) {
+  currentChatUser &&
+  (
+    (msg.sender?.id === currentChatUser.id && msg.receiver?.id === currentUser.id) ||
+    (msg.sender?.id === currentUser.id && msg.receiver?.id === currentChatUser.id)
+  ) &&
+  msg.platform === currentChatUser.platform
+)
+ {
             displayMessage(msg);
 
             // Optional: scroll to bottom
