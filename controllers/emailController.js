@@ -1,3 +1,4 @@
+// controllers/emailController.js
 const nodemailer = require('nodemailer');
 const Imap = require('imap');
 const { simpleParser } = require('mailparser');
@@ -64,26 +65,26 @@ const fetchInboxEmails = async (req, res) => {
   });
 
   function openInbox(cb) {
-    imap.openBox('INBOX', true, cb);
+    imap.openBox('INBOX', false, cb); // false = read-write
   }
 
   imap.once('ready', function () {
     openInbox(function (err, box) {
       if (err) return res.status(500).json({ error: err.message });
 
-      const f = imap.seq.fetch(`${box.messages.total}:*`, {
-        bodies: '',
-        struct: true,
-        markSeen: false
-      });
+      imap.search(['UNSEEN'], function (err, results) {
+        if (err || !results || results.length === 0) {
+          imap.end();
+          return res.json([]); // No new messages
+        }
 
-      const emails = [];
+        const f = imap.fetch(results, { bodies: '', struct: true });
+        const emails = [];
+        const parsePromises = [];
 
-      f.on('message', function (msg) {
-        msg.on('body', function (stream) {
-          simpleParser(stream, async (err, parsed) => {
-            if (err) console.error('Parser error:', err);
-            else {
+        f.on('message', function (msg) {
+          msg.on('body', function (stream) {
+            const parsePromise = simpleParser(stream).then(async (parsed) => {
               emails.push({
                 subject: parsed.subject,
                 from: parsed.from.text,
@@ -91,6 +92,9 @@ const fetchInboxEmails = async (req, res) => {
                 date: parsed.date,
                 text: parsed.text
               });
+
+              const exists = await Message.findOne({ platformMessageId: parsed.messageId });
+              if (exists) return;
 
               await Message.create({
                 platform: 'email',
@@ -102,14 +106,28 @@ const fetchInboxEmails = async (req, res) => {
                 platformMessageId: parsed.messageId,
                 labels: ['unclaimed']
               });
-            }
+
+              getIO().emit('new_message', {
+                event: 'email_inbound',
+                message: {
+                  platform: 'email',
+                  content: { text: parsed.text },
+                  sender: parsed.from.text,
+                  recipient: parsed.to.text,
+                  timestamp: new Date()
+                }
+              });
+            });
+
+            parsePromises.push(parsePromise);
           });
         });
-      });
 
-      f.once('end', function () {
-        imap.end();
-        res.json(emails);
+        f.once('end', async function () {
+          await Promise.all(parsePromises);
+          imap.end();
+          res.json(emails);
+        });
       });
     });
   });
@@ -121,5 +139,6 @@ const fetchInboxEmails = async (req, res) => {
 
   imap.connect();
 };
+
 
 module.exports = { sendEmail, fetchInboxEmails };
