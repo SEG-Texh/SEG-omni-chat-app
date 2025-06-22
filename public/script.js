@@ -420,7 +420,9 @@ function displayMessage(message) {
   const chatBox = document.getElementById('chatMessages'); // Make sure this exists
 
   const messageDiv = document.createElement('div');
-  messageDiv.classList.add('chat-bubble', 'sent'); // Add a class for styling
+  const isSent = message.sender?.id === currentUser.id;
+messageDiv.classList.add('chat-bubble', isSent ? 'sent' : 'received');
+
 
   messageDiv.innerHTML = `
     <div class="message-content">${message.content.text}</div>
