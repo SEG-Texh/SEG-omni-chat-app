@@ -1,11 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const emailController = require('../controllers/emailController');
+const emailController = require('../controllers/emailController'); // ✅ Correct spelling!
 
-// Send an email
-router.post('/send', emailController.sendEmail);
-
-// Fetch emails
-router.get('/inbox', emailController.fetchInboxEmails);
+router.post('/send', emailController.sendEmail);   // ✅ Function must exist
+router.get('/inbox', emailController.fetchInboxEmails); // ✅ Function must exist
 
 module.exports = router;
