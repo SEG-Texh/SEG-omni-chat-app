@@ -18,6 +18,7 @@ const Message = require('./models/message');
 
 const server = http.createServer(app);
 const io = socket.init(server);
+const fetchInboxEmails = require('./controllers/emaiController');
 
 // Connect to DB
 connectDB();

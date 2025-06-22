@@ -5,57 +5,7 @@ const { simpleParser } = require('mailparser');
 const Message = require('../models/message');
 const { getIO } = require('../config/socket');
 
-const smtpTransport = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  secure: process.env.SMTP_SECURE === 'true',
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
-});
-
-const sendEmail = async (req, res) => {
-  const { to, subject, text } = req.body;
-
-  if (!to || !text) {
-    return res.status(400).json({ error: 'To and text are required' });
-  }
-
-  try {
-    const mailOptions = {
-      from: process.env.SMTP_FROM,
-      to,
-      subject: subject || 'No Subject',
-      text
-    };
-
-    const info = await smtpTransport.sendMail(mailOptions);
-
-    const newMessage = await Message.create({
-      platform: 'email',
-      direction: 'outbound',
-      status: 'sent',
-      content: { text },
-      sender: process.env.SMTP_FROM,
-      recipient: to,
-      platformMessageId: info.messageId,
-      labels: []
-    });
-
-    getIO().emit('new_message', {
-      event: 'email_outbound',
-      message: { ...newMessage.toObject(), timestamp: new Date() }
-    });
-
-    res.status(200).json({ success: true, info });
-  } catch (err) {
-    console.error('Send email error:', err);
-    res.status(500).json({ error: err.message });
-  }
-};
-
-const fetchInboxEmails = async (req, res) => {
+function fetchInboxEmails() {
   const imap = new Imap({
     user: process.env.SMTP_USER,
     password: process.env.SMTP_PASS,
@@ -64,39 +14,48 @@ const fetchInboxEmails = async (req, res) => {
     tls: true
   });
 
+  const emails = [];
+
   function openInbox(cb) {
-    imap.openBox('INBOX', false, cb); // false = read-write
+    imap.openBox('INBOX', false, cb); // set false to markSeen: false
   }
 
-  imap.once('ready', function () {
-    openInbox(function (err, box) {
-      if (err) return res.status(500).json({ error: err.message });
+  imap.once('ready', () => {
+    openInbox((err, box) => {
+      if (err) {
+        console.error('IMAP inbox open error:', err.message);
+        return;
+      }
 
-      imap.search(['UNSEEN'], function (err, results) {
-        if (err || !results || results.length === 0) {
-          imap.end();
-          return res.json([]); // No new messages
-        }
+      const f = imap.seq.fetch('1:*', {
+        bodies: '',
+        struct: true,
+        markSeen: false
+      });
 
-        const f = imap.fetch(results, { bodies: '', struct: true });
-        const emails = [];
-        const parsePromises = [];
+      let pending = 0;
 
-        f.on('message', function (msg) {
-          msg.on('body', function (stream) {
-            const parsePromise = simpleParser(stream).then(async (parsed) => {
-              emails.push({
-                subject: parsed.subject,
-                from: parsed.from.text,
-                to: parsed.to.text,
-                date: parsed.date,
-                text: parsed.text
-              });
+      f.on('message', function (msg) {
+        pending++;
+        msg.on('body', function (stream) {
+          simpleParser(stream, async (err, parsed) => {
+            if (!parsed?.messageId) {
+              pending--;
+              return;
+            }
 
-              const exists = await Message.findOne({ platformMessageId: parsed.messageId });
-              if (exists) return;
+            const exists = await Message.findOne({
+              platform: 'email',
+              platformMessageId: parsed.messageId
+            });
 
-              await Message.create({
+            if (exists) {
+              pending--;
+              return;
+            }
+
+            try {
+              const newMessage = await Message.create({
                 platform: 'email',
                 direction: 'inbound',
                 status: 'delivered',
@@ -107,38 +66,40 @@ const fetchInboxEmails = async (req, res) => {
                 labels: ['unclaimed']
               });
 
-              getIO().emit('new_message', {
+              const io = getIO();
+              io.emit('new_message', {
                 event: 'email_inbound',
-                message: {
-                  platform: 'email',
-                  content: { text: parsed.text },
-                  sender: parsed.from.text,
-                  recipient: parsed.to.text,
-                  timestamp: new Date()
-                }
+                message: { ...newMessage.toObject(), timestamp: new Date() }
               });
-            });
+            } catch (saveError) {
+              console.error('Email save error:', saveError.message);
+            }
 
-            parsePromises.push(parsePromise);
+            pending--;
+            if (pending === 0) imap.end();
           });
         });
+      });
 
-        f.once('end', async function () {
-          await Promise.all(parsePromises);
-          imap.end();
-          res.json(emails);
-        });
+      f.once('error', function (err) {
+        console.error('IMAP fetch error:', err.message);
+      });
+
+      f.once('end', function () {
+        if (pending === 0) imap.end();
       });
     });
   });
 
   imap.once('error', function (err) {
-    console.error('IMAP error:', err);
-    res.status(500).json({ error: err.message });
+    console.error('IMAP error:', err.message);
+  });
+
+  imap.once('end', function () {
+    console.log('✅ Email fetch complete');
   });
 
   imap.connect();
-};
+}
 
-
-module.exports = { sendEmail, fetchInboxEmails };
+module.exports = fetchInboxEmails;

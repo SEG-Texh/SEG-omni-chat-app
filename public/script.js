@@ -342,6 +342,22 @@ function renderUnclaimedMessages(messages) {
     messageList.appendChild(messageElement);
   });
 }
+function displayMessage(message) {
+  const chatWindow = document.getElementById('chatWindow'); // Make sure this exists in your HTML
+  if (!chatWindow) return;
+
+  const messageDiv = document.createElement('div');
+  messageDiv.className = message.sender?.id === currentUser.id ? 'message outgoing' : 'message incoming';
+  messageDiv.innerHTML = `
+    <div class="message-content">
+      <span>${message.content?.text || '[No Text]'}</span>
+      <div class="timestamp">${formatTime(message.createdAt)}</div>
+    </div>
+  `;
+
+  chatWindow.appendChild(messageDiv);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+}
 
 // 4. Create a message element
 function createMessageElement(msg) {
@@ -473,14 +489,19 @@ async function sendMessage() {
         input.value = '';
         
         // Display the sent message immediately
-        displayMessage({
-            _id: result._id,
-            sender: { id: currentUser.id, name: currentUser.name },
-            receiver: { id: currentChatUser.id, name: currentChatUser.name },
-            content: { text: messageText },
-            createdAt: new Date().toISOString(),
-            platform: currentChatUser.platform || 'web'
-        });
+        if (typeof displayMessage === 'function') {
+  displayMessage({
+    _id: result._id,
+    sender: { id: currentUser.id, name: currentUser.name },
+    receiver: { id: currentChatUser.id, name: currentChatUser.name },
+    content: { text: messageText },
+    createdAt: new Date().toISOString(),
+    platform: currentChatUser.platform || 'web'
+  });
+} else {
+  console.warn('displayMessage function is not defined');
+}
+
 
     } catch (err) {
         console.error('Message send error:', err);
