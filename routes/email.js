@@ -1,9 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const emailController = require('../controllers/emailController');
-const auth = require('../middleware/auth'); // 🔐 Import auth middleware
+const { sendEmail, fetchInboxEmails } = require('../controllers/emailController'); // ✅ Destructure the functions
 
-router.post('/send', auth, emailController.sendEmail);       // Optional: protect sending
-router.get('/inbox', auth, emailController.fetchInboxEmails); // ✅ Require token
+router.post('/send', sendEmail);           // ✅ Function
+router.get('/inbox', fetchInboxEmails);    // ✅ Function
 
 module.exports = router;
