@@ -416,6 +416,20 @@ function setupSocketListeners() {
 // ================================
 // LOGIC 7: SELECT MESSAGE AND LOAD CHAT
 // ================================
+function displayMessage(message) {
+  const chatBox = document.getElementById('chatMessages'); // Make sure this exists
+
+  const messageDiv = document.createElement('div');
+  messageDiv.classList.add('chat-bubble', 'sent'); // Add a class for styling
+
+  messageDiv.innerHTML = `
+    <div class="message-content">${message.content.text}</div>
+    <div class="message-time">${formatTime(message.createdAt)}</div>
+  `;
+
+  chatBox.appendChild(messageDiv);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
 
 // ============================================================================
 // MESSAGE FUNCTIONS (UPDATED)
