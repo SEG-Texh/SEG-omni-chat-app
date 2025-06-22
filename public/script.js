@@ -264,7 +264,7 @@ function displaySearchResults(messages) {
    MESSAGE DISPLAY SYSTEM
    ====================== */
 function initializeSocket() {
-  socket = io('https://omni-chat-app-dbd9c00cc9c4.herokuapp.com'); // Your Heroku URL
+  socket = io('https://chat-app-omni-33e1e5eaa993.herokuapp.com/'); // Your Heroku URL
   setupSocketListeners();
 }
 
