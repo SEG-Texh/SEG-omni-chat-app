@@ -12,6 +12,13 @@ const transporter = nodemailer.createTransport({
     pass: process.env.SMTP_PASS
   }
 });
+async function fetchInboxEmails(req, res) {
+  // Dummy placeholder response for now
+  return res.status(200).json({ inbox: [] });
+}
+
+module.exports = { sendEmail, fetchInboxEmails };
+
 
 async function sendEmail(req, res) {
   try {
