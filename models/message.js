@@ -1,10 +1,8 @@
-//models/message.js
-
+// === models/message.js ===
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const messageSchema = new Schema({
-  // Platform identification
   platform: {
     type: String,
     enum: ['whatsapp', 'facebook', 'email', 'sms', 'telegram', 'instagram'],
@@ -19,8 +17,6 @@ const messageSchema = new Schema({
     type: String,
     index: true
   },
-
-  // Message direction and status
   direction: {
     type: String,
     enum: ['inbound', 'outbound'],
@@ -36,13 +32,8 @@ const messageSchema = new Schema({
     timestamp: Date,
     metadata: Schema.Types.Mixed
   }],
-
-  // Message content
   content: {
-    text: {
-      type: String,
-      trim: true
-    },
+    text: String,
     attachments: [{
       type: {
         type: String,
@@ -52,19 +43,14 @@ const messageSchema = new Schema({
       caption: String
     }]
   },
-
-  // User references (using ObjectId for internal users)
-sender: {
-  type: String,  // Change from ObjectId to String
-  required: true
-},
-// Remove ref: 'User' since it's not referencing your User model
-  recipient: {
-    type: String, // Changed from ObjectId to String
+  sender: {
+    type: String,
     required: true
   },
-
-  // Platform sender/recipient info (for external messages)
+  recipient: {
+    type: String,
+    required: true
+  },
   platformSender: {
     id: String,
     name: String,
@@ -74,8 +60,6 @@ sender: {
     id: String,
     name: String
   },
-
-  // Message management
   labels: {
     type: [String],
     enum: ['unclaimed', 'claimed', 'priority', 'spam', 'resolved'],
@@ -86,16 +70,13 @@ sender: {
     ref: 'User'
   },
   claimedAt: Date,
-
-  // System fields
   isDeleted: {
     type: Boolean,
     default: false
   }
-}, {
-  timestamps: true,
-});
-// Add index for unclaimed messages
+}, { timestamps: true });
+
 messageSchema.index({ labels: 1, isDeleted: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Message', messageSchema);
+

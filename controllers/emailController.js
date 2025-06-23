@@ -1,5 +1,5 @@
+// === controllers/emailController.js ===
 const nodemailer = require('nodemailer');
-const { simpleParser } = require('mailparser');
 const Message = require('../models/message');
 const { getIO } = require('../config/socket');
 
@@ -12,36 +12,21 @@ const transporter = nodemailer.createTransport({
     pass: process.env.SMTP_PASS
   }
 });
-async function fetchInboxEmails(req, res) {
-  // Dummy placeholder response for now
-  return res.status(200).json({ inbox: [] });
-}
 
-module.exports = { sendEmail, fetchInboxEmails };
-
-
-async function sendEmail(req, res) {
+const sendEmail = async (req, res) => {
   try {
     const { to, subject, text, platform = 'email' } = req.body;
 
     if (!to || !text) {
-      return res.status(400).json({
-        error: 'Validation failed',
-        details: {
-          to: !to ? 'Missing recipient email' : undefined,
-          text: !text ? 'Missing message text' : undefined
-        }
-      });
+      return res.status(400).json({ error: 'Missing recipient or message' });
     }
 
-    const mailOptions = {
+    const info = await transporter.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to,
       subject: subject || 'No Subject',
       text
-    };
-
-    const info = await transporter.sendMail(mailOptions);
+    });
 
     const newMessage = await Message.create({
       platform,
@@ -54,25 +39,17 @@ async function sendEmail(req, res) {
       labels: []
     });
 
-    getIO().emit('new_message', {
-      event: 'email_outbound',
-      message: newMessage
-    });
+    getIO().emit('new_message', { event: 'email_outbound', message: newMessage });
 
-    return res.status(200).json({
-      success: true,
-      messageId: newMessage._id,
-      info
-    });
-
+    res.status(200).json({ success: true, messageId: newMessage._id, info });
   } catch (error) {
     console.error('Email send error:', error);
-    return res.status(500).json({
-      error: 'Failed to send email',
-      details: error.message
-    });
+    res.status(500).json({ error: 'Failed to send email' });
   }
-}
+};
+
+const fetchInboxEmails = async (req, res) => {
+  res.status(200).json({ inbox: [] });
+};
 
 module.exports = { sendEmail, fetchInboxEmails };
-
