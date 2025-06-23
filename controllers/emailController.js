@@ -74,5 +74,5 @@ async function sendEmail(req, res) {
   }
 }
 
-// If you're not using fetchInboxEmails yet, export only sendEmail:
-module.exports = { sendEmail };
+module.exports = { sendEmail, fetchInboxEmails };
+
