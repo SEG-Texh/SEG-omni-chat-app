@@ -59,10 +59,10 @@ sender: {
   required: true
 },
 // Remove ref: 'User' since it's not referencing your User model
-  recipient: {
-    type: String, // Changed from ObjectId to String
-    required: true
-  },
+receiver: {  // Changed from recipient to receiver
+  type: String,
+  required: true
+},
 
   // Platform sender/recipient info (for external messages)
   platformSender: {
@@ -76,11 +76,12 @@ sender: {
   },
 
   // Message management
-  labels: {
-    type: [String],
-    enum: ['unclaimed', 'claimed', 'priority', 'spam', 'resolved'],
-    default: ['unclaimed']
-  },
+// In models/message.js
+labels: {
+  type: [String],
+  enum: ['unclaimed', 'claimed', 'priority', 'spam', 'resolved', 'outgoing'], // Added 'outgoing'
+  default: ['unclaimed']
+},
   claimedBy: {
     type: Schema.Types.ObjectId,
     ref: 'User'
