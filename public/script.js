@@ -258,76 +258,52 @@ function displaySearchResults(messages) {
 }
 
 // ============================================================================
-// CHAT FUNCTIONS
+// FRONTEND CHAT SOCKET + MESSAGE HANDLING (FIXED & CLEANED)
 // ============================================================================
-/* ======================
-   MESSAGE DISPLAY SYSTEM
-   ====================== */
+
+// DOM Elements
+const messageList = document.getElementById('broadcastMessageList');
+
+// Load unclaimed messages on page load
+window.addEventListener('DOMContentLoaded', async () => {
+  await loadUnclaimedMessages();
+  initializeSocket();
+});
+
 function initializeSocket() {
-  socket = io('https://chat-app-omni-33e1e5eaa993.herokuapp.com'); // Your Heroku URL
+  const token = localStorage.getItem('token');
+  socket = io('https://chat-app-omni-33e1e5eaa993.herokuapp.com', {
+    auth: { token }
+  });
   setupSocketListeners();
 }
 
-// 1. DOM Elements
-const messageList = document.getElementById('broadcastMessageList');
-
-// 2. Load initial messages when page loads
-document.addEventListener('DOMContentLoaded', async () => {
-  await loadUnclaimedMessages();
-  initializeSocket(); // ✅ Initialize socket AFTER loading messages
-});
-
 async function loadUnclaimedMessages() {
   const token = localStorage.getItem('token');
-  
   if (!token) {
-    messageList.innerHTML = `
-      <div class="error">
-        <p>Not authenticated</p>
-        <button onclick="showLogin()">Login Now</button>
-      </div>
-    `;
+    messageList.innerHTML = `<div class="error"><p>Not authenticated</p><button onclick="showLogin()">Login Now</button></div>`;
     return;
   }
 
   try {
-    const response = await fetch('/api/messages/unclaimed', {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const res = await fetch('/api/messages/unclaimed', {
+      headers: { 'Authorization': `Bearer ${token}` }
     });
 
-    if (response.status === 401) {
+    if (res.status === 401) {
       localStorage.removeItem('token');
       showLogin();
       return;
     }
 
-    if (!response.ok) {
-      throw new Error(`Server error: ${response.status}`);
-    }
-
-const messages = await response.json();
-console.log('🔍 DEBUG: API returned messages in browser:', messages);
-renderUnclaimedMessages(messages);
-
-
-  } catch (error) {
-    console.error('Failed to load messages:', error);
-    messageList.innerHTML = `
-      <div class="error">
-        <p>Failed to load messages</p>
-        <small>${error.message}</small>
-        <button onclick="loadUnclaimedMessages()" class="retry-btn">Retry</button>
-      </div>
-    `;
+    const messages = await res.json();
+    renderUnclaimedMessages(messages);
+  } catch (err) {
+    messageList.innerHTML = `<div class="error"><p>Failed to load messages</p><small>${err.message}</small></div>`;
   }
 }
 
-// 3. Render messages in the sidebar
 function renderUnclaimedMessages(messages) {
-  const messageList = document.getElementById('broadcastMessageList');
   messageList.innerHTML = '';
 
   if (!messages || messages.length === 0) {
@@ -336,247 +312,137 @@ function renderUnclaimedMessages(messages) {
   }
 
   messages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-  messages.forEach(message => {
-    const messageElement = createMessageElement(message);
-    messageList.appendChild(messageElement);
-  });
+  messages.forEach(msg => messageList.appendChild(createMessageElement(msg)));
 }
 
-// 4. Create a message element
 function createMessageElement(msg) {
-  const messageDiv = document.createElement('div');
-  messageDiv.className = 'chat-user';
-  messageDiv.dataset.messageId = msg._id;
+  const div = document.createElement('div');
+  div.className = 'chat-user';
+  div.dataset.messageId = msg._id;
 
-  const senderName = msg.sender?.name || 'Unknown';
-
+  const name = msg.sender?.name || 'Unknown';
   const platformClass = msg.platform?.toLowerCase() === 'facebook' ? 'fb-badge' : 'web-badge';
+  const preview = msg.content?.text ? msg.content.text.slice(0, 50) + (msg.content.text.length > 50 ? '...' : '') : '[Media]';
 
-  const previewText = msg.content?.text 
-    ? msg.content.text.slice(0, 50) + (msg.content.text.length > 50 ? '...' : '')
-    : msg.content?.attachments?.length 
-      ? `[${msg.content.attachments[0].type?.toUpperCase() || 'MEDIA'}]`
-      : '[Media]';
-
-  messageDiv.innerHTML = `
+  div.innerHTML = `
     <div class="message-header">
       <div class="sender-info">
-        <span class="sender-avatar">${senderName.charAt(0).toUpperCase()}</span>
-        <strong class="sender-name">${senderName}</strong>
+        <span class="sender-avatar">${name.charAt(0).toUpperCase()}</span>
+        <strong class="sender-name">${name}</strong>
       </div>
       <span class="message-time">${formatTime(msg.createdAt)}</span>
     </div>
-    <div class="message-preview">${previewText}</div>
+    <div class="message-preview">${preview}</div>
     <div class="message-footer">
       <span class="platform-badge ${platformClass}">${msg.platform.toUpperCase()}</span>
       ${msg.labels?.includes('unclaimed') ? '<span class="unclaimed-badge">UNCLAIMED</span>' : ''}
     </div>
   `;
 
-  messageDiv.addEventListener('click', () => selectChatMessage(msg));
-  return messageDiv;
+  div.addEventListener('click', () => selectChatMessage(msg));
+  return div;
 }
 
-// 5. Format timestamp
-function formatTime(timestamp) {
-  return new Date(timestamp).toLocaleTimeString([], { 
-    hour: '2-digit', 
-    minute: '2-digit' 
-  });
+function formatTime(ts) {
+  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-// 6. Socket.IO real-time updates
 function setupSocketListeners() {
-  socket.on('new_message', (data) => {
-    const msg = formatMessageForDisplay(data.message);
-    
-    if (msg.labels?.includes('unclaimed')) {
-      const messageList = document.getElementById('broadcastMessageList');
-      const emptyMsg = messageList.querySelector('.empty');
-      if (emptyMsg) emptyMsg.remove();
+  socket.on('new_message', ({ message }) => {
+    if (!message) return;
 
-      const messageDiv = createMessageElement(msg);
-      messageList.insertBefore(messageDiv, messageList.firstChild);
+    // Add to unclaimed sidebar if unclaimed
+    if (message.labels?.includes('unclaimed')) {
+      const empty = messageList.querySelector('.empty');
+      if (empty) empty.remove();
+      messageList.insertBefore(createMessageElement(message), messageList.firstChild);
+    }
+
+    // Display in active chat
+    if (currentChatUser && message.platform === currentChatUser.platform) {
+      const isMatch =
+        (message.sender?.id === currentChatUser.id && message.receiver?.id === currentUser.id) ||
+        (message.sender?.id === currentUser.id && message.receiver?.id === currentChatUser.id);
+      if (isMatch) displayMessage(message);
     }
   });
 
-  socket.on('message_claimed', (messageId) => {
-    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`);
-    if (messageDiv) {
-      messageDiv.remove();
-
-      if (document.querySelectorAll('.chat-user').length === 0) {
-        document.getElementById('broadcastMessageList').innerHTML = 
-          '<div class="empty">No unclaimed messages</div>';
-      }
+  socket.on('message_claimed', (id) => {
+    const el = document.querySelector(`[data-message-id="${id}"]`);
+    if (el) el.remove();
+    if (!document.querySelector('.chat-user')) {
+      messageList.innerHTML = '<div class="empty">No unclaimed messages</div>';
     }
   });
-}
-// ================================
-// LOGIC 7: SELECT MESSAGE AND LOAD CHAT
-// ================================
-function displayMessage(message) {
-  const chatBox = document.getElementById('chatMessages'); // Make sure this exists
 
-  const messageDiv = document.createElement('div');
-  const isSent = message.sender?.id === currentUser.id;
-messageDiv.classList.add('chat-bubble', isSent ? 'sent' : 'received');
-
-
-  messageDiv.innerHTML = `
-    <div class="message-content">${message.content.text}</div>
-    <div class="message-time">${formatTime(message.createdAt)}</div>
-  `;
-
-  chatBox.appendChild(messageDiv);
-  chatBox.scrollTop = chatBox.scrollHeight;
+  socket.on('connect_error', (err) => {
+    console.error('Socket connection failed:', err.message);
+    alert('Authentication failed or server unreachable. Please login again.');
+  });
 }
 
-// ============================================================================
-// MESSAGE FUNCTIONS (UPDATED)
-// ============================================================================
 async function sendMessage() {
-    const input = document.getElementById('messageInput');
-    const messageText = input.value.trim();
-    
-    if (!messageText) {
-        alert('Please enter a message');
-        return;
-    }
+  const input = document.getElementById('messageInput');
+  const text = input.value.trim();
 
-    if (!currentChatUser?.id) {
-        alert('Please select a conversation first');
-        return;
-    }
+  if (!text || !currentChatUser?.id) return alert('Select a conversation and type a message');
 
-    try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            showLogin();
-            return;
-        }
-
-        // Disable UI during send
-        input.disabled = true;
-        document.getElementById('sendBtn').disabled = true;
-        document.getElementById('sendBtn').innerHTML = '<span class="spinner"></span> Sending...';
-
-        // Determine if this is a Facebook message
-        const isFacebook = currentChatUser.platform === 'facebook';
-        const receiverId = isFacebook ? currentChatUser.id : currentChatUser.id;
-
-        const response = await fetch('/api/messages', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                receiverId: receiverId,
-                content: { text: messageText },
-                platform: currentChatUser.platform || 'web',
-                isFacebook: isFacebook
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || `Failed to send message (${response.status})`);
-        }
-
-        const result = await response.json();
-        input.value = '';
-        
-        // Display the sent message immediately
-        displayMessage({
-            _id: result._id,
-            sender: { id: currentUser.id, name: currentUser.name },
-            receiver: { id: currentChatUser.id, name: currentChatUser.name },
-            content: { text: messageText },
-            createdAt: new Date().toISOString(),
-            platform: currentChatUser.platform || 'web'
-        });
-
-    } catch (err) {
-        console.error('Message send error:', err);
-        alert(`Failed to send message: ${err.message}`);
-    } finally {
-        input.disabled = false;
-        document.getElementById('sendBtn').disabled = false;
-        document.getElementById('sendBtn').innerHTML = 'Send';
-    }
-}
-
-function selectChatMessage(messageMeta) {
-    currentChatUser = { 
-        id: messageMeta.sender?.id || messageMeta.senderId, 
-        name: messageMeta.sender?.name || messageMeta.senderName,
-        platform: messageMeta.platform || 'web',
-        originalMessageId: messageMeta._id,
-        platformThreadId: messageMeta.platformThreadId
-    };
-
-    // Update UI
-    const platformBadge = currentChatUser.platform === 'facebook' ? ' (Facebook)' : '';
-    document.getElementById('chatUserName').textContent = `Chatting with ${currentChatUser.name}${platformBadge}`;
-    document.getElementById('messageInput').disabled = false;
-    document.getElementById('sendBtn').disabled = false;
-
-    loadChatMessages(currentChatUser.id);
-}
-
-// ============================================================================
-// SOCKET.IO FUNCTIONS (UPDATED)
-// ============================================================================
-function setupSocketListeners() {
-    socket.on('new_message', (data) => {
-        const msg = formatMessageForDisplay(data.message);
-
-        // ✅ 1. Handle unclaimed messages (sidebar)
-        if (msg.labels?.includes('unclaimed')) {
-            const messageList = document.getElementById('broadcastMessageList');
-            const emptyMsg = messageList.querySelector('.empty');
-            if (emptyMsg) emptyMsg.remove();
-
-            const messageDiv = createMessageElement(msg);
-            messageList.insertBefore(messageDiv, messageList.firstChild);
-        }
-
-        // ✅ 2. Handle active chat messages
-        if (
-  currentChatUser &&
-  (
-    (msg.sender?.id === currentChatUser.id && msg.receiver?.id === currentUser.id) ||
-    (msg.sender?.id === currentUser.id && msg.receiver?.id === currentChatUser.id)
-  ) &&
-  msg.platform === currentChatUser.platform
-)
- {
-            displayMessage(msg);
-
-            // Optional: scroll to bottom
-            const chatContainer = document.getElementById('chatMessages');
-            if (chatContainer) {
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-            }
-        }
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch('/api/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({
+        receiverId: currentChatUser.id,
+        content: { text },
+        platform: currentChatUser.platform
+      })
     });
 
-    // ✅ 3. Remove claimed message from sidebar
-    socket.on('message_claimed', (messageId) => {
-        const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`);
-        if (messageDiv) {
-            messageDiv.remove();
+    if (!response.ok) throw new Error((await response.json()).message || 'Send failed');
 
-            // If sidebar becomes empty
-            if (document.querySelectorAll('.chat-user').length === 0) {
-                document.getElementById('broadcastMessageList').innerHTML = 
-                    '<div class="empty">No unclaimed messages</div>';
-            }
-        }
+    input.value = '';
+    displayMessage({
+      _id: 'local_' + Date.now(),
+      sender: { id: currentUser.id, name: currentUser.name },
+      receiver: { id: currentChatUser.id, name: currentChatUser.name },
+      content: { text },
+      createdAt: new Date().toISOString(),
+      platform: currentChatUser.platform
     });
+  } catch (err) {
+    console.error('Send error:', err);
+    alert(err.message);
+  }
 }
+
+function displayMessage(msg) {
+  const chat = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  const isSent = msg.sender?.id === currentUser.id;
+
+  div.classList.add('chat-bubble', isSent ? 'sent' : 'received');
+  div.innerHTML = `<div class="message-content">${msg.content.text}</div><div class="message-time">${formatTime(msg.createdAt)}</div>`;
+
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function selectChatMessage(msgMeta) {
+  currentChatUser = {
+    id: msgMeta.sender?.id || msgMeta.senderId,
+    name: msgMeta.sender?.name || msgMeta.senderName,
+    platform: msgMeta.platform,
+    platformThreadId: msgMeta.platformThreadId
+  };
+
+  document.getElementById('chatUserName').textContent = `Chatting with ${currentChatUser.name} (${currentChatUser.platform})`;
+  document.getElementById('messageInput').disabled = false;
+  document.getElementById('sendBtn').disabled = false;
+
+  // (Optional) Load previous chat messages here
+}
+
 
 // ============================================================================
 // EVENT LISTENERS
