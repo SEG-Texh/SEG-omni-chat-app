@@ -1,5 +1,4 @@
 const nodemailer = require('nodemailer');
-const Imap = require('imap');
 const { simpleParser } = require('mailparser');
 const Message = require('../models/message');
 const { getIO } = require('../config/socket');
@@ -18,9 +17,8 @@ async function sendEmail(req, res) {
   try {
     const { to, subject, text, platform = 'email' } = req.body;
 
-    // Validate required fields
     if (!to || !text) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Validation failed',
         details: {
           to: !to ? 'Missing recipient email' : undefined,
@@ -38,14 +36,13 @@ async function sendEmail(req, res) {
 
     const info = await transporter.sendMail(mailOptions);
 
-    // Create message with proper recipient field
     const newMessage = await Message.create({
       platform,
       direction: 'outbound',
       status: 'sent',
       content: { text },
       sender: process.env.SMTP_FROM || process.env.SMTP_USER,
-      recipient: to,  // Changed from 'receiver' to 'recipient' to match model
+      recipient: to,
       platformMessageId: info.messageId,
       labels: []
     });
@@ -55,19 +52,20 @@ async function sendEmail(req, res) {
       message: newMessage
     });
 
-    return res.status(200).json({ 
-      success: true, 
+    return res.status(200).json({
+      success: true,
       messageId: newMessage._id,
-      info 
+      info
     });
 
   } catch (error) {
     console.error('Email send error:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Failed to send email',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: error.message
     });
   }
 }
 
+// If you're not using fetchInboxEmails yet, export only sendEmail:
 module.exports = { sendEmail };
