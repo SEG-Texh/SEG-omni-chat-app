@@ -1,13 +1,11 @@
-// controllers/emailController.js
-
 const nodemailer = require('nodemailer');
 const Imap = require('imap');
 const { simpleParser } = require('mailparser');
 const Message = require('../models/message');
 const { getIO } = require('../config/socket');
 
-// ✅ SMTP Send
-const smtpTransport = nodemailer.createTransport({
+// Email sending configuration
+const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: process.env.SMTP_PORT,
   secure: process.env.SMTP_SECURE === 'true',
@@ -17,14 +15,14 @@ const smtpTransport = nodemailer.createTransport({
   }
 });
 
-async function sendEmail(req, res) {
-  const { to, subject, text } = req.body;
-
-  if (!to || !text) {
-    return res.status(400).json({ error: 'To and text are required' });
-  }
-
+// Send email
+const sendEmail = async (req, res) => {
   try {
+    const { to, subject, text } = req.body;
+    if (!to || !text) {
+      return res.status(400).json({ error: 'Recipient and text are required' });
+    }
+
     const mailOptions = {
       from: process.env.SMTP_FROM,
       to,
@@ -32,7 +30,7 @@ async function sendEmail(req, res) {
       text
     };
 
-    const info = await smtpTransport.sendMail(mailOptions);
+    const info = await transporter.sendMail(mailOptions);
 
     const newMessage = await Message.create({
       platform: 'email',
@@ -40,75 +38,60 @@ async function sendEmail(req, res) {
       status: 'sent',
       content: { text },
       sender: process.env.SMTP_FROM,
-      recipient: to,
+      receiver: to,
       platformMessageId: info.messageId,
       labels: []
     });
 
     getIO().emit('new_message', {
       event: 'email_outbound',
-      message: { ...newMessage.toObject(), timestamp: new Date() }
+      message: newMessage
     });
 
-    res.status(200).json({ success: true, info });
-  } catch (err) {
-    console.error('Send email error:', err);
-    res.status(500).json({ error: err.message });
+    res.json({ success: true, info });
+  } catch (error) {
+    console.error('Email send error:', error);
+    res.status(500).json({ error: error.message });
   }
-}
+};
 
-// ✅ IMAP Receive (with self-signed cert allowed)
-function fetchInboxEmails(req, res) {
+// Fetch inbox emails
+const fetchInboxEmails = (req, res) => {
   const imap = new Imap({
     user: process.env.SMTP_USER,
     password: process.env.SMTP_PASS,
     host: 'imap.gmail.com',
     port: 993,
     tls: true,
-    tlsOptions: {
-      rejectUnauthorized: false // ✅ Accept self-signed certificates
-    }
+    tlsOptions: { rejectUnauthorized: false }
   });
 
   const emails = [];
 
-  function openInbox(cb) {
-    imap.openBox('INBOX', false, cb);
-  }
-
   imap.once('ready', () => {
-    openInbox((err, box) => {
+    imap.openBox('INBOX', false, (err, box) => {
       if (err) {
-        console.error('IMAP inbox open error:', err.message);
-        return res.status(500).json({ error: 'IMAP error' });
+        console.error('IMAP error:', err);
+        return res.status(500).json({ error: 'Failed to open inbox' });
       }
 
-      const f = imap.seq.fetch('1:*', {
+      const fetch = imap.seq.fetch('1:*', {
         bodies: '',
         struct: true,
         markSeen: false
       });
 
-      let pending = 0;
-
-      f.on('message', function (msg) {
-        pending++;
-        msg.on('body', function (stream) {
+      fetch.on('message', msg => {
+        let email = {};
+        msg.on('body', stream => {
           simpleParser(stream, async (err, parsed) => {
-            if (!parsed?.messageId) {
-              pending--;
-              return;
-            }
+            if (err || !parsed.messageId) return;
 
-            const exists = await Message.findOne({
+            const exists = await Message.exists({
               platform: 'email',
               platformMessageId: parsed.messageId
             });
-
-            if (exists) {
-              pending--;
-              return;
-            }
+            if (exists) return;
 
             try {
               const newMessage = await Message.create({
@@ -117,61 +100,48 @@ function fetchInboxEmails(req, res) {
                 status: 'delivered',
                 content: { text: parsed.text },
                 sender: parsed.from.text,
-                recipient: parsed.to.text,
+                receiver: parsed.to.text,
                 platformMessageId: parsed.messageId,
                 labels: ['unclaimed']
               });
 
-              const io = getIO();
-              io.emit('new_message', {
+              getIO().emit('new_message', {
                 event: 'email_inbound',
-                message: { ...newMessage.toObject(), timestamp: new Date() }
+                message: newMessage
               });
 
               emails.push({
                 subject: parsed.subject,
                 from: parsed.from.text,
-                to: parsed.to.text,
                 date: parsed.date,
                 text: parsed.text
               });
             } catch (saveError) {
-              console.error('Email save error:', saveError.message);
-            }
-
-            pending--;
-            if (pending === 0) {
-              imap.end();
-              res.json(emails);
+              console.error('Email save error:', saveError);
             }
           });
         });
       });
 
-      f.once('error', function (err) {
-        console.error('IMAP fetch error:', err.message);
-        res.status(500).json({ error: 'Fetch error' });
-      });
-
-      f.once('end', function () {
-        if (pending === 0) imap.end();
+      fetch.once('end', () => imap.end());
+      fetch.once('error', err => {
+        console.error('Fetch error:', err);
+        res.status(500).json({ error: 'Email fetch failed' });
       });
     });
   });
 
-  imap.once('error', function (err) {
-    console.error('IMAP connection error:', err.message);
-    res.status(500).json({ error: err.message });
+  imap.once('error', err => {
+    console.error('IMAP connection error:', err);
+    res.status(500).json({ error: 'IMAP connection failed' });
   });
 
-  imap.once('end', function () {
-    console.log('✅ Email fetch complete');
+  imap.once('end', () => {
+    console.log('IMAP connection ended');
+    res.json(emails);
   });
 
   imap.connect();
-}
-
-module.exports = {
-  sendEmail,
-  fetchInboxEmails
 };
+
+module.exports = { sendEmail, fetchInboxEmails };

@@ -1,158 +1,129 @@
+const axios = require('axios');
 const Message = require('../models/message');
 const { getIO } = require('../config/socket');
-const axios = require('axios');
 
-const facebookController = (() => {
-
-  const getSenderName = async (senderId, pageAccessToken) => {
-    try {
-      const url = `https://graph.facebook.com/${senderId}?fields=name,profile_pic&access_token=${pageAccessToken}`;
-      const response = await axios.get(url);
-      return response.data.name || 'Facebook User';
-    } catch (error) {
-      console.error('Error fetching sender name:', error.response?.data || error.message);
-      return 'Facebook User';
-    }
-  };
-
-  const verifyFacebookWebhook = (req, res) => {
+const facebookController = {
+  // Verify Facebook webhook
+  verifyFacebookWebhook: (req, res) => {
     const VERIFY_TOKEN = process.env.FACEBOOK_WEBHOOK_VERIFY_TOKEN;
-    const mode = req.query['hub.mode'];
-    const token = req.query['hub.verify_token'];
-    const challenge = req.query['hub.challenge'];
-
-    if (mode && token) {
-      if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-        console.log('WEBHOOK_VERIFIED');
-        return res.status(200).send(challenge);
-      } else {
-        return res.sendStatus(403);
-      }
+    if (req.query['hub.mode'] === 'subscribe' && 
+        req.query['hub.verify_token'] === VERIFY_TOKEN) {
+      return res.status(200).send(req.query['hub.challenge']);
     }
-  };
+    return res.sendStatus(403);
+  },
 
-  const processMessageEvent = async (event, pageId, io) => {
+  // Handle incoming Facebook messages
+  handleFacebookWebhook: async (req, res) => {
     try {
-      const senderId = event.sender.id;
-      const message = event.message;
-      const pageAccessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+      if (req.body.object !== 'page') return res.sendStatus(404);
+      
+      const io = getIO();
+      const entries = req.body.entry;
 
-      const existingMessage = await Message.findOne({
-        platform: 'facebook',
-        platformMessageId: message.mid
-      });
-
-      if (existingMessage) {
-        console.log('Duplicate message detected, skipping');
-        return;
+      for (const entry of entries) {
+        const pageId = entry.id;
+        for (const event of entry.messaging) {
+          if (event.message) {
+            await this.processMessage(event, pageId, io);
+          } else if (event.postback) {
+            await this.processPostback(event, io);
+          }
+        }
       }
 
-      const senderName = await getSenderName(senderId, pageAccessToken);
-
-      const newMessage = await Message.create({
-        platform: 'facebook',
-        platformMessageId: message.mid,
-        platformThreadId: senderId,
-        direction: 'inbound',
-        status: 'delivered',
-        content: {
-          text: message.text,
-          attachments: message.attachments?.map(attach => ({
-            type: attach.type,
-            url: attach.payload?.url,
-            caption: attach.title,
-            mimeType: attach.payload?.mime_type
-          }))
-        },
-        sender: senderId,
-        recipient: pageId,
-        platformSender: {
-          id: senderId,
-          name: senderName
-        },
-        platformRecipient: {
-          id: pageId
-        },
-        labels: ['unclaimed']
-      });
-
-      io.emit('new_message', {
-        event: 'facebook_message',
-        message: {
-          ...newMessage.toObject(),
-          timestamp: new Date()
-        }
-      });
-
-      console.log('Processed new Facebook message:', newMessage.id);
-      return newMessage;
+      res.sendStatus(200);
     } catch (error) {
-      console.error('Error processing message event:', error);
-      throw error;
+      console.error('Webhook processing error:', error);
+      res.status(500).json({ error: error.message });
     }
-  };
+  },
 
-  const processPostbackEvent = async (event, io) => {
+  // Process regular messages
+  processMessage: async (event, pageId, io) => {
+    const { sender, message } = event;
+    const existing = await Message.findOne({ 
+      platform: 'facebook', 
+      platformMessageId: message.mid 
+    });
+    if (existing) return;
+
+    const senderInfo = await this.getFacebookUserInfo(sender.id);
+    
+    const newMessage = await Message.create({
+      platform: 'facebook',
+      platformMessageId: message.mid,
+      platformThreadId: sender.id,
+      direction: 'inbound',
+      status: 'delivered',
+      content: {
+        text: message.text,
+        attachments: message.attachments?.map(attach => ({
+          type: attach.type,
+          url: attach.payload?.url,
+          caption: attach.title
+        }))
+      },
+      sender: sender.id,
+      receiver: pageId,
+      platformSender: {
+        id: sender.id,
+        name: senderInfo.name,
+        profilePic: senderInfo.profile_pic
+      },
+      labels: ['unclaimed']
+    });
+
+    io.emit('new_message', { 
+      event: 'facebook_message',
+      message: newMessage 
+    });
+  },
+
+  // Process postback events
+  processPostback: async (event, io) => {
+    const { sender, postback } = event;
+    const senderInfo = await this.getFacebookUserInfo(sender.id);
+
+    const postbackMessage = await Message.create({
+      platform: 'facebook',
+      platformMessageId: `pb-${Date.now()}-${sender.id}`,
+      platformThreadId: sender.id,
+      direction: 'inbound',
+      status: 'delivered',
+      content: {
+        text: `[POSTBACK] ${postback.payload}`,
+        buttons: [{
+          type: 'postback',
+          title: postback.title,
+          payload: postback.payload
+        }]
+      },
+      sender: sender.id,
+      receiver: event.recipient.id,
+      platformSender: {
+        id: sender.id,
+        name: senderInfo.name
+      },
+      labels: ['unclaimed', 'postback']
+    });
+
+    io.emit('new_message', {
+      event: 'facebook_postback',
+      message: postbackMessage
+    });
+  },
+
+  // Send messages to Facebook
+  sendFacebookMessage: async (req, res) => {
     try {
-      const senderId = event.sender.id;
-      const payload = event.postback.payload;
-      const pageAccessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
-      const senderName = await getSenderName(senderId, pageAccessToken);
+      const { recipientId, text } = req.body;
+      if (!recipientId || !text) {
+        return res.status(400).json({ error: 'Recipient ID and text are required' });
+      }
 
-      const postbackMessage = await Message.create({
-        platform: 'facebook',
-        platformMessageId: `pb-${Date.now()}-${senderId}`,
-        platformThreadId: senderId,
-        direction: 'inbound',
-        status: 'delivered',
-        content: {
-          text: `[POSTBACK] ${payload}`,
-          buttons: [{
-            type: 'postback',
-            title: event.postback.title || 'Button',
-            payload: payload
-          }]
-        },
-        sender: senderId,
-        recipient: event.recipient.id,
-        platformSender: {
-          id: senderId,
-          name: senderName
-        },
-        platformRecipient: {
-          id: event.recipient.id
-        },
-        labels: ['unclaimed', 'postback']
-      });
-
-      io.emit('new_message', {
-        event: 'facebook_postback',
-        message: {
-          ...postbackMessage.toObject(),
-          timestamp: new Date()
-        }
-      });
-
-      console.log('Processed Facebook postback:', postbackMessage.id);
-      return postbackMessage;
-    } catch (error) {
-      console.error('Error processing postback event:', error);
-      throw error;
-    }
-  };
-
-  const sendFacebookMessage = async (req, res, isInternal = false) => {
-    const { recipientId, text } = req.body;
-
-    if (!recipientId || !text) {
-      const err = { error: 'recipientId and text are required' };
-      return isInternal ? err : res.status(400).json(err);
-    }
-
-    try {
-      const accessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
       const response = await axios.post(
-        `https://graph.facebook.com/v19.0/me/messages?access_token=${accessToken}`,
+        `https://graph.facebook.com/v19.0/me/messages?access_token=${process.env.FACEBOOK_PAGE_ACCESS_TOKEN}`,
         {
           recipient: { id: recipientId },
           message: { text }
@@ -161,78 +132,47 @@ const facebookController = (() => {
 
       const newMessage = await Message.create({
         platform: 'facebook',
-        platformMessageId: `out-${Date.now()}`,
+        platformMessageId: response.data.message_id,
         platformThreadId: recipientId,
         direction: 'outbound',
         status: 'sent',
         content: { text },
-        sender: process.env.FACEBOOK_PAGE_ID || 'facebook_page',
-        recipient: recipientId,
-        platformSender: {
-          id: process.env.FACEBOOK_PAGE_ID,
-          name: 'Page'
-        },
-        platformRecipient: {
-          id: recipientId,
-          name: ''
-        },
+        sender: process.env.FACEBOOK_PAGE_ID,
+        receiver: recipientId,
         labels: []
       });
 
-      const io = getIO();
-      io.emit('new_message', {
+      getIO().emit('new_message', {
         event: 'facebook_outbound',
-        message: {
-          ...newMessage.toObject(),
-          timestamp: new Date()
-        }
+        message: newMessage
       });
 
-      const result = {
+      res.json({ 
         success: true,
         message: newMessage,
         facebookResponse: response.data
-      };
-
-      return isInternal ? result : res.status(200).json(result);
-
+      });
     } catch (error) {
-      console.error('Error sending Facebook message:', error.response?.data || error.message);
-      const err = { error: error.response?.data || error.message };
-      return isInternal ? err : res.status(500).json(err);
+      console.error('Facebook send error:', error.response?.data || error.message);
+      res.status(500).json({ 
+        error: 'Failed to send message',
+        details: error.response?.data || error.message
+      });
     }
-  };
+  },
 
-const handleFacebookWebhook = async (req, res) => {
-  console.log('Facebook webhook received:', JSON.stringify(req.body, null, 2)); // <== add this
-  const body = req.body;
-  const io = getIO();
-
-    if (body.object === 'page') {
-      for (const entry of body.entry) {
-        const pageId = entry.id;
-
-        for (const event of entry.messaging) {
-          if (event.message) {
-            await processMessageEvent(event, pageId, io);
-          } else if (event.postback) {
-            await processPostbackEvent(event, io);
-          }
-        }
-      }
-
-      return res.sendStatus(200);
-    } else {
-      return res.sendStatus(404);
+  // Get Facebook user info
+  getFacebookUserInfo: async (userId) => {
+    try {
+      const response = await axios.get(
+        `https://graph.facebook.com/${userId}?fields=name,profile_pic&access_token=${process.env.FACEBOOK_PAGE_ACCESS_TOKEN}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching Facebook user:', error.message);
+      return { name: 'Facebook User' };
     }
-  };
-
-  return {
-    verifyFacebookWebhook,
-    handleFacebookWebhook,
-    sendFacebookMessage
-  };
-
-})();
+  }
+};
 
 module.exports = facebookController;

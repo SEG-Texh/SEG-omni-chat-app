@@ -1,8 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { sendEmail, fetchInboxEmails } = require('../controllers/emailController'); // ✅ Destructure the functions
+const { sendEmail, fetchInboxEmails } = require('../controllers/emailController');
 
-router.post('/send', sendEmail);           // ✅ Function
-router.get('/inbox', fetchInboxEmails);    // ✅ Function
+// Send email
+router.post('/send', sendEmail);
+
+// Fetch emails
+router.get('/inbox', fetchInboxEmails);
 
 module.exports = router;
