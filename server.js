@@ -19,6 +19,7 @@ const Message = require('./models/message');
 const server = http.createServer(app);
 const io = socket.init(server);
 const emailRoutes = require('./routes/email');
+const facebookRoutes = require('./routes/facebook');
 
 
 
@@ -36,6 +37,7 @@ app.use('/js', express.static(path.join(__dirname, '../js')));
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/messages', require('./routes/messages'));
+app.use('/facebook', facebookRoutes);
 app.use('/api/email', emailRoutes);
 // Static HTML pages
 app.get('/', (req, res) => {
