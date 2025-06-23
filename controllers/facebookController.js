@@ -203,9 +203,10 @@ const facebookController = (() => {
     }
   };
 
-  const handleFacebookWebhook = async (req, res) => {
-    const body = req.body;
-    const io = getIO();
+const handleFacebookWebhook = async (req, res) => {
+  console.log('Facebook webhook received:', JSON.stringify(req.body, null, 2)); // <== add this
+  const body = req.body;
+  const io = getIO();
 
     if (body.object === 'page') {
       for (const entry of body.entry) {
