@@ -1,45 +1,51 @@
+// controllers/messageController.js
+
+const facebookController = require('./facebookController');
+const emailController = require('./emailController');
 const Message = require('../models/message');
-const { sendEmail } = require('./emailController');
 
-async function sendMessage(req, res) {
+const sendMessage = async (req, res) => {
+  const { receiverId, content, platform } = req.body;
+
+  if (!receiverId || !content?.text || !platform) {
+    return res.status(400).json({ error: 'receiverId, content.text, and platform are required' });
+  }
+
   try {
-    const { receiverId, content, platform = 'web' } = req.body;
+    // 1. Handle Facebook message
+    if (platform === 'facebook') {
+      req.body.recipientId = receiverId;
+      req.body.text = content.text;
 
-    if (!receiverId || !content?.text || !platform) {
-      return res.status(400).json({ 
-        error: 'Validation failed',
-        details: {
-          receiverId: !receiverId ? 'Missing receiverId' : undefined,
-          content: !content?.text ? 'Missing message text' : undefined,
-          platform: !platform ? 'Missing platform' : undefined
-        }
-      });
+      const fbResponse = await facebookController.sendFacebookMessage(req, res, true); // true = internal call
+      if (!fbResponse || fbResponse.error) throw new Error('Facebook send failed');
     }
 
-    let result;
-    
-    if (platform === 'email') {
-      result = await sendEmail(req, res, true); // true = internal call
-      if (result.error) throw new Error(result.error);
-    } 
-    // Add other platform handlers here
-    
-    // Save to database
+    // 2. Handle Email
+    else if (platform === 'email') {
+      req.body.to = receiverId;
+      req.body.text = content.text;
+
+      const emailResponse = await emailController.sendEmail(req, res, true); // true = internal call
+      if (!emailResponse || emailResponse.error) throw new Error('Email send failed');
+    }
+
+    // 3. Save to database
     const newMessage = new Message({
       sender: req.user._id,
-      recipient: receiverId,  // Changed to match model
+      receiver: receiverId,
       content: {
         text: content.text,
         attachments: content.attachments || []
       },
       platform,
-      direction: 'outbound',
-      status: 'sent'
+      labels: ['outgoing'],
+      createdAt: new Date()
     });
 
     const savedMessage = await newMessage.save();
 
-    // Emit via Socket.IO
+    // 4. Emit via Socket.IO
     const io = req.app.get('socketio');
     io.emit('new_message', { message: savedMessage });
 
@@ -47,11 +53,8 @@ async function sendMessage(req, res) {
 
   } catch (error) {
     console.error('sendMessage error:', error);
-    return res.status(500).json({ 
-      error: error.message || 'Failed to send message',
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    return res.status(500).json({ error: error.message || 'Failed to send message' });
   }
-}
+};
 
 module.exports = { sendMessage };

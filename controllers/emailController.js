@@ -1,4 +1,6 @@
 const nodemailer = require('nodemailer');
+const Imap = require('imap');
+const { simpleParser } = require('mailparser');
 const Message = require('../models/message');
 const { getIO } = require('../config/socket');
 
