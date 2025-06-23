@@ -4,7 +4,6 @@ const { simpleParser } = require('mailparser');
 const Message = require('../models/message');
 const { getIO } = require('../config/socket');
 
-// Email sending configuration
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: process.env.SMTP_PORT,
@@ -15,16 +14,23 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// Send email
-const sendEmail = async (req, res) => {
+async function sendEmail(req, res) {
   try {
-    const { to, subject, text } = req.body;
+    const { to, subject, text, platform = 'email' } = req.body;
+
+    // Validate required fields
     if (!to || !text) {
-      return res.status(400).json({ error: 'Recipient and text are required' });
+      return res.status(400).json({ 
+        error: 'Validation failed',
+        details: {
+          to: !to ? 'Missing recipient email' : undefined,
+          text: !text ? 'Missing message text' : undefined
+        }
+      });
     }
 
     const mailOptions = {
-      from: process.env.SMTP_FROM,
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to,
       subject: subject || 'No Subject',
       text
@@ -32,13 +38,14 @@ const sendEmail = async (req, res) => {
 
     const info = await transporter.sendMail(mailOptions);
 
+    // Create message with proper recipient field
     const newMessage = await Message.create({
-      platform: 'email',
+      platform,
       direction: 'outbound',
       status: 'sent',
       content: { text },
-      sender: process.env.SMTP_FROM,
-      receiver: to,
+      sender: process.env.SMTP_FROM || process.env.SMTP_USER,
+      recipient: to,  // Changed from 'receiver' to 'recipient' to match model
       platformMessageId: info.messageId,
       labels: []
     });
@@ -48,100 +55,19 @@ const sendEmail = async (req, res) => {
       message: newMessage
     });
 
-    res.json({ success: true, info });
+    return res.status(200).json({ 
+      success: true, 
+      messageId: newMessage._id,
+      info 
+    });
+
   } catch (error) {
     console.error('Email send error:', error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Fetch inbox emails
-const fetchInboxEmails = (req, res) => {
-  const imap = new Imap({
-    user: process.env.SMTP_USER,
-    password: process.env.SMTP_PASS,
-    host: 'imap.gmail.com',
-    port: 993,
-    tls: true,
-    tlsOptions: { rejectUnauthorized: false }
-  });
-
-  const emails = [];
-
-  imap.once('ready', () => {
-    imap.openBox('INBOX', false, (err, box) => {
-      if (err) {
-        console.error('IMAP error:', err);
-        return res.status(500).json({ error: 'Failed to open inbox' });
-      }
-
-      const fetch = imap.seq.fetch('1:*', {
-        bodies: '',
-        struct: true,
-        markSeen: false
-      });
-
-      fetch.on('message', msg => {
-        let email = {};
-        msg.on('body', stream => {
-          simpleParser(stream, async (err, parsed) => {
-            if (err || !parsed.messageId) return;
-
-            const exists = await Message.exists({
-              platform: 'email',
-              platformMessageId: parsed.messageId
-            });
-            if (exists) return;
-
-            try {
-              const newMessage = await Message.create({
-                platform: 'email',
-                direction: 'inbound',
-                status: 'delivered',
-                content: { text: parsed.text },
-                sender: parsed.from.text,
-                receiver: parsed.to.text,
-                platformMessageId: parsed.messageId,
-                labels: ['unclaimed']
-              });
-
-              getIO().emit('new_message', {
-                event: 'email_inbound',
-                message: newMessage
-              });
-
-              emails.push({
-                subject: parsed.subject,
-                from: parsed.from.text,
-                date: parsed.date,
-                text: parsed.text
-              });
-            } catch (saveError) {
-              console.error('Email save error:', saveError);
-            }
-          });
-        });
-      });
-
-      fetch.once('end', () => imap.end());
-      fetch.once('error', err => {
-        console.error('Fetch error:', err);
-        res.status(500).json({ error: 'Email fetch failed' });
-      });
+    return res.status(500).json({ 
+      error: 'Failed to send email',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
-  });
+  }
+}
 
-  imap.once('error', err => {
-    console.error('IMAP connection error:', err);
-    res.status(500).json({ error: 'IMAP connection failed' });
-  });
-
-  imap.once('end', () => {
-    console.log('IMAP connection ended');
-    res.json(emails);
-  });
-
-  imap.connect();
-};
-
-module.exports = { sendEmail, fetchInboxEmails };
+module.exports = { sendEmail };
