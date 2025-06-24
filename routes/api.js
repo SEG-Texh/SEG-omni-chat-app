@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Message = require('../models/message');
+const Message = require('../models/Chat');
 
 // Add this endpoint to fetch unclaimed messages
 router.get('/unclaimed', async (req, res) => {
