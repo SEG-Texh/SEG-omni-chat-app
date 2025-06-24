@@ -1,5 +1,5 @@
 const axios = require('axios');
-const Chat = require('../models/Chat');
+const Chat = require('../models/message');
 
 class WhatsAppController {
   // Verify webhook
