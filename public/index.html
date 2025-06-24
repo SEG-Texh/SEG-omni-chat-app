@@ -9,17 +9,21 @@
 <body>
   <!-- LOGIN -->
   <div id="loginContainer" class="container">
-    <div class="logo"><h1>Omni Chat</h1></div>
-    <form id="loginForm">
+    <div class="logo">
+      <div class="logo-icon">💬</div>
+      <h1>Omni Chat</h1>
+      <p>Connect across all platforms</p>
+    </div>
+    <form id="loginForm" class="login-form">
       <div class="form-group">
         <label>Email</label>
-        <input type="email" id="email" required />
+        <input type="email" id="email" required placeholder="Enter your email" />
       </div>
       <div class="form-group">
         <label>Password</label>
-        <input type="password" id="password" required />
+        <input type="password" id="password" required placeholder="Enter your password" />
       </div>
-      <button type="submit" class="btn">
+      <button type="submit" class="btn btn-primary">
         <span id="loginText">Login</span>
         <span id="loginSpinner" class="spinner" style="display:none;"></span>
       </button>
@@ -30,33 +34,343 @@
   <!-- DASHBOARD & CHAT -->
   <div id="appContainer" style="display:none;">
     <div class="header">
-      <div class="user-info">
-        <div id="userAvatar" class="user-avatar">U</div>
-        <div>
-          <div id="userName">User Name</div>
-          <div id="userRole" class="badge user">User</div>
-        </div>
+      <div class="header-left">
+        <div class="logo-small">💬</div>
+        <h2>Omni Chat</h2>
       </div>
-      <button class="btn" onclick="logout()">Logout</button>
+      <div class="user-info">
+        <div id="userAvatar" class="user-avatar">A</div>
+        <div class="user-details">
+          <div id="userName">Admin User</div>
+          <div id="userRole" class="badge admin">Admin</div>
+        </div>
+        <button class="btn btn-secondary" onclick="logout()">Logout</button>
+      </div>
     </div>
 
     <div class="nav-tabs">
-      <button class="tab-btn active" onclick="switchTab('facebook')">Facebook</button>
-      <button class="tab-btn" onclick="switchTab('whatsapp')">WhatsApp</button>
-      <button class="tab-btn" onclick="switchTab('dashboard')">Dashboard</button>
+      <button class="tab-btn active" onclick="switchTab('dashboard')">
+        <span class="tab-icon">📊</span>
+        Dashboard
+      </button>
+      <button class="tab-btn" onclick="switchTab('facebook')">
+        <span class="tab-icon">📘</span>
+        Facebook
+      </button>
+      <button class="tab-btn" onclick="switchTab('whatsapp')">
+        <span class="tab-icon">💚</span>
+        WhatsApp
+      </button>
     </div>
 
-    <div id="facebookTab" class="tab-content active">
-      <h2>Facebook Chat</h2>
-      <div class="chat-container"><!-- Chat UI here --></div>
+    <div id="dashboardTab" class="tab-content active">
+      <div class="dashboard">
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-content">
+              <h3>2,847</h3>
+              <p>Total Users</p>
+              <span class="stat-change positive">+12%</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">💬</div>
+            <div class="stat-content">
+              <h3>18,392</h3>
+              <p>Messages Today</p>
+              <span class="stat-change positive">+8%</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">⚡</div>
+            <div class="stat-content">
+              <h3>94.2%</h3>
+              <p>Response Rate</p>
+              <span class="stat-change negative">-2%</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🎯</div>
+            <div class="stat-content">
+              <h3>1,247</h3>
+              <p>Active Chats</p>
+              <span class="stat-change positive">+15%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="charts-grid">
+          <!-- Message Volume Chart -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>Message Volume</h3>
+              <select class="chart-filter">
+                <option>Last 7 days</option>
+                <option>Last 30 days</option>
+                <option>Last 3 months</option>
+              </select>
+            </div>
+            <div class="bar-chart">
+              <div class="bar-chart-container">
+                <div class="bar" style="--height: 85%;" data-value="850">
+                  <span class="bar-label">Mon</span>
+                </div>
+                <div class="bar" style="--height: 92%;" data-value="920">
+                  <span class="bar-label">Tue</span>
+                </div>
+                <div class="bar" style="--height: 78%;" data-value="780">
+                  <span class="bar-label">Wed</span>
+                </div>
+                <div class="bar" style="--height: 95%;" data-value="950">
+                  <span class="bar-label">Thu</span>
+                </div>
+                <div class="bar" style="--height: 88%;" data-value="880">
+                  <span class="bar-label">Fri</span>
+                </div>
+                <div class="bar" style="--height: 72%;" data-value="720">
+                  <span class="bar-label">Sat</span>
+                </div>
+                <div class="bar" style="--height: 65%;" data-value="650">
+                  <span class="bar-label">Sun</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Platform Distribution -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>Platform Distribution</h3>
+            </div>
+            <div class="pie-chart">
+              <div class="pie-chart-container">
+                <div class="pie-slice facebook" style="--percentage: 45;"></div>
+                <div class="pie-slice whatsapp" style="--percentage: 35;"></div>
+                <div class="pie-slice other" style="--percentage: 20;"></div>
+              </div>
+              <div class="pie-legend">
+                <div class="legend-item">
+                  <span class="legend-color facebook"></span>
+                  <span>Facebook (45%)</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-color whatsapp"></span>
+                  <span>WhatsApp (35%)</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-color other"></span>
+                  <span>Other (20%)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Response Time Trend -->
+          <div class="chart-card full-width">
+            <div class="chart-header">
+              <h3>Response Time Trend</h3>
+            </div>
+            <div class="line-chart">
+              <div class="line-chart-container">
+                <svg viewBox="0 0 400 200" class="line-chart-svg">
+                  <defs>
+                    <linearGradient id="lineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" style="stop-color:#4f46e5;stop-opacity:0.3" />
+                      <stop offset="100%" style="stop-color:#4f46e5;stop-opacity:0" />
+                    </linearGradient>
+                  </defs>
+                  <path d="M 0 150 L 50 120 L 100 100 L 150 80 L 200 90 L 250 70 L 300 60 L 350 50 L 400 45" 
+                        stroke="#4f46e5" stroke-width="3" fill="none"/>
+                  <path d="M 0 150 L 50 120 L 100 100 L 150 80 L 200 90 L 250 70 L 300 60 L 350 50 L 400 45 L 400 200 L 0 200 Z" 
+                        fill="url(#lineGradient)"/>
+                  <circle cx="50" cy="120" r="4" fill="#4f46e5"/>
+                  <circle cx="100" cy="100" r="4" fill="#4f46e5"/>
+                  <circle cx="150" cy="80" r="4" fill="#4f46e5"/>
+                  <circle cx="200" cy="90" r="4" fill="#4f46e5"/>
+                  <circle cx="250" cy="70" r="4" fill="#4f46e5"/>
+                  <circle cx="300" cy="60" r="4" fill="#4f46e5"/>
+                  <circle cx="350" cy="50" r="4" fill="#4f46e5"/>
+                </svg>
+                <div class="line-chart-labels">
+                  <span>Jan</span>
+                  <span>Feb</span>
+                  <span>Mar</span>
+                  <span>Apr</span>
+                  <span>May</span>
+                  <span>Jun</span>
+                  <span>Jul</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity & Top Agents -->
+        <div class="bottom-grid">
+          <div class="activity-card">
+            <div class="card-header">
+              <h3>Recent Activity</h3>
+              <button class="btn btn-sm">View All</button>
+            </div>
+            <div class="activity-list">
+              <div class="activity-item">
+                <div class="activity-avatar">👤</div>
+                <div class="activity-content">
+                  <p><strong>John Doe</strong> started a new conversation</p>
+                  <span class="activity-time">2 minutes ago</span>
+                </div>
+                <div class="activity-platform facebook">FB</div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-avatar">👩</div>
+                <div class="activity-content">
+                  <p><strong>Sarah Wilson</strong> resolved a ticket</p>
+                  <span class="activity-time">5 minutes ago</span>
+                </div>
+                <div class="activity-platform whatsapp">WA</div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-avatar">👨</div>
+                <div class="activity-content">
+                  <p><strong>Mike Johnson</strong> sent a broadcast message</p>
+                  <span class="activity-time">12 minutes ago</span>
+                </div>
+                <div class="activity-platform facebook">FB</div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-avatar">👩</div>
+                <div class="activity-content">
+                  <p><strong>Emma Davis</strong> updated customer profile</p>
+                  <span class="activity-time">18 minutes ago</span>
+                </div>
+                <div class="activity-platform whatsapp">WA</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="agents-card">
+            <div class="card-header">
+              <h3>Top Performing Agents</h3>
+            </div>
+            <div class="agents-list">
+              <div class="agent-item">
+                <div class="agent-rank">1</div>
+                <div class="agent-avatar">A</div>
+                <div class="agent-info">
+                  <div class="agent-name">Alice Cooper</div>
+                  <div class="agent-stats">847 messages • 98% satisfaction</div>
+                </div>
+                <div class="agent-score">98%</div>
+              </div>
+              <div class="agent-item">
+                <div class="agent-rank">2</div>
+                <div class="agent-avatar">B</div>
+                <div class="agent-info">
+                  <div class="agent-name">Bob Smith</div>
+                  <div class="agent-stats">723 messages • 96% satisfaction</div>
+                </div>
+                <div class="agent-score">96%</div>
+              </div>
+              <div class="agent-item">
+                <div class="agent-rank">3</div>
+                <div class="agent-avatar">C</div>
+                <div class="agent-info">
+                  <div class="agent-name">Carol Johnson</div>
+                  <div class="agent-stats">692 messages • 94% satisfaction</div>
+                </div>
+                <div class="agent-score">94%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <div id="facebookTab" class="tab-content">
+      <div class="chat-interface">
+        <h2>Facebook Chat</h2>
+        <div class="chat-container">
+          <div class="chat-sidebar">
+            <div class="chat-search">
+              <input type="text" placeholder="Search conversations..." />
+            </div>
+            <div class="chat-list">
+              <div class="chat-item active">
+                <div class="chat-avatar">👤</div>
+                <div class="chat-info">
+                  <div class="chat-name">John Doe</div>
+                  <div class="chat-preview">Hey, I need help with...</div>
+                </div>
+                <div class="chat-time">2m</div>
+              </div>
+              <!-- More chat items would go here -->
+            </div>
+          </div>
+          <div class="chat-main">
+            <div class="chat-header">
+              <div class="chat-user">
+                <div class="chat-avatar">👤</div>
+                <div class="chat-details">
+                  <div class="chat-name">John Doe</div>
+                  <div class="chat-status">Online</div>
+                </div>
+              </div>
+            </div>
+            <div class="chat-messages">
+              <!-- Messages would go here -->
+            </div>
+            <div class="chat-input">
+              <input type="text" placeholder="Type a message..." />
+              <button class="btn btn-primary">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="whatsappTab" class="tab-content">
-      <h2>WhatsApp Chat</h2>
-      <div class="chat-container"><!-- Chat UI here --></div>
-    </div>
-    <div id="dashboardTab" class="tab-content">
-      <h2>Admin Dashboard</h2>
-      <!-- Dashboard UI here -->
+      <div class="chat-interface">
+        <h2>WhatsApp Chat</h2>
+        <div class="chat-container">
+          <!-- Similar structure to Facebook tab -->
+          <div class="chat-sidebar">
+            <div class="chat-search">
+              <input type="text" placeholder="Search conversations..." />
+            </div>
+            <div class="chat-list">
+              <div class="chat-item active">
+                <div class="chat-avatar">👩</div>
+                <div class="chat-info">
+                  <div class="chat-name">Sarah Wilson</div>
+                  <div class="chat-preview">Thanks for the quick response!</div>
+                </div>
+                <div class="chat-time">5m</div>
+              </div>
+            </div>
+          </div>
+          <div class="chat-main">
+            <div class="chat-header">
+              <div class="chat-user">
+                <div class="chat-avatar">👩</div>
+                <div class="chat-details">
+                  <div class="chat-name">Sarah Wilson</div>
+                  <div class="chat-status">Online</div>
+                </div>
+              </div>
+            </div>
+            <div class="chat-messages">
+              <!-- Messages would go here -->
+            </div>
+            <div class="chat-input">
+              <input type="text" placeholder="Type a message..." />
+              <button class="btn btn-primary">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
