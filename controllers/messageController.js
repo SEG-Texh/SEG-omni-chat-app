@@ -1,6 +1,5 @@
 // === controllers/messageController.js ===
 const facebookController = require('./facebookController');
-const emailController = require('./emailController');
 const Message = require('../models/message');
 
 const sendMessage = async (req, res) => {
@@ -15,10 +14,8 @@ const sendMessage = async (req, res) => {
       req.body.recipientId = receiverId;
       req.body.text = content.text;
       await facebookController.sendFacebookMessage(req, res);
-    } else if (platform === 'email') {
-      req.body.to = receiverId;
-      req.body.text = content.text;
-      await emailController.sendEmail(req, res);
+    } else {
+      return res.status(400).json({ error: 'Unsupported platform' });
     }
   } catch (error) {
     res.status(500).json({ error: error.message });
