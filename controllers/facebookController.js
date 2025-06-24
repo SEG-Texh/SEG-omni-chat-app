@@ -148,7 +148,18 @@ class FacebookController {
       return 'Thanks for your message! Our team will get back to you shortly.';
     }
   }
-
+  // Add to FacebookController class
+async fetchConversationHistory(userId) {
+  try {
+    const response = await axios.get(
+      `https://graph.facebook.com/v13.0/${userId}?fields=conversations{messages{from,message,created_time,attachments}}&access_token=${process.env.FACEBOOK_PAGE_ACCESS_TOKEN}`
+    );
+    return response.data.conversations?.data || [];
+  } catch (error) {
+    console.error('Error fetching Facebook conversation history:', error);
+    throw error;
+  }
+}
   // Send message to user
   async sendMessage(recipientId, text, quickReplies = null) {
     try {
