@@ -1,67 +1,145 @@
-// controllers/whatsappController.js
-const Message = require('../models/message');
-const { getIO } = require('../config/socket');
+const axios = require('axios');
+const Chat = require('../models/Chat');
 
-exports.handleWebhook = async (req, res) => {
-  try {
-    const from = req.body.From;
-    const to = req.body.To;
-    const text = req.body.Body;
-
-    const incoming = await Message.create({
-      platform: 'whatsapp',
-      platformMessageId: req.body.MessageSid,
-      platformThreadId: from,
-      direction: 'inbound',
-      status: 'delivered',
-      content: { text },
-      sender: from,
-      recipient: to,
-      platformSender: { id: from },
-      platformRecipient: { id: to },
-      labels: ['unclaimed']
-    });
-
-    getIO().emit('new_message', incoming);
-    res.sendStatus(200);
-  } catch (err) {
-    console.error('WhatsApp Webhook Error:', err);
-    res.sendStatus(500);
+class WhatsAppController {
+  // Verify webhook
+  async verifyWebhook(req, res) {
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+    
+    if (mode === 'subscribe' && token === process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN) {
+      console.log('WhatsApp webhook verified');
+      return res.status(200).send(challenge);
+    }
+    
+    console.error('WhatsApp webhook verification failed');
+    return res.sendStatus(403);
   }
-};
 
-exports.sendWhatsApp = async (req, res) => {
-  try {
-    const { to, text } = req.body;
-    const TWILIO = require('twilio')(
-      process.env.TWILIO_ACCOUNT_SID,
-      process.env.TWILIO_AUTH_TOKEN
-    );
-
-    const resp = await TWILIO.messages.create({
-      from: process.env.TWILIO_WHATSAPP_NUMBER,
-      to,
-      body: text
-    });
-
-    const outgoing = await Message.create({
-      platform: 'whatsapp',
-      platformMessageId: resp.sid,
-      platformThreadId: to,
-      direction: 'outbound',
-      status: resp.status,
-      content: { text },
-      sender: process.env.TWILIO_WHATSAPP_NUMBER,
-      recipient: to,
-      platformSender: { id: process.env.TWILIO_WHATSAPP_NUMBER },
-      platformRecipient: { id: to },
-      labels: []
-    });
-
-    getIO().emit('new_message', outgoing);
-    res.json({ success: true, message: outgoing });
-  } catch (err) {
-    console.error('WhatsApp Send Error:', err);
-    res.status(500).json({ error: 'Failed to send via WhatsApp' });
+  // Handle incoming messages
+  async handleMessage(req, res) {
+    try {
+      const body = req.body;
+      
+      if (body.object && body.entry) {
+        for (const entry of body.entry) {
+          for (const change of entry.changes) {
+            if (change.field === 'messages' && change.value.messages) {
+              const message = change.value.messages[0];
+              const phoneNumber = change.value.contacts[0].wa_id;
+              
+              await this.processMessage(phoneNumber, message);
+            }
+          }
+        }
+      }
+      
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error handling WhatsApp message:', error);
+      res.sendStatus(500);
+    }
   }
-};
+
+  // Process incoming message
+  async processMessage(phoneNumber, message) {
+    try {
+      let text = '';
+      
+      if (message.type === 'text') {
+        text = message.text.body;
+      } else if (message.type === 'interactive') {
+        text = message.interactive.button_reply?.title || 
+               message.interactive.list_reply?.title || 
+               'Interactive message received';
+      }
+      
+      // Save to database
+      const chat = new Chat({
+        platform: 'whatsapp',
+        senderId: phoneNumber,
+        message: text,
+        direction: 'incoming',
+        timestamp: new Date()
+      });
+      await chat.save();
+      
+      // Auto reply example
+      if (text.toLowerCase().includes('hello')) {
+        await this.sendMessage(phoneNumber, 'Hello! Thanks for reaching out. How can I assist you?');
+      }
+    } catch (error) {
+      console.error('Error processing WhatsApp message:', error);
+    }
+  }
+
+  // Send text message
+  async sendMessage(phoneNumber, text) {
+    try {
+      const response = await axios.post(
+        `https://graph.facebook.com/v13.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+        {
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: phoneNumber,
+          type: "text",
+          text: { body: text }
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      // Save outgoing message to database
+      const chat = new Chat({
+        platform: 'whatsapp',
+        senderId: phoneNumber,
+        message: text,
+        direction: 'outgoing',
+        timestamp: new Date()
+      });
+      await chat.save();
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error sending WhatsApp message:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  // Send template message (for approved templates)
+  async sendTemplateMessage(phoneNumber, templateName, languageCode = 'en') {
+    try {
+      const response = await axios.post(
+        `https://graph.facebook.com/v13.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+        {
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: phoneNumber,
+          type: "template",
+          template: {
+            name: templateName,
+            language: { code: languageCode }
+          }
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error sending WhatsApp template message:', error);
+      throw error;
+    }
+  }
+}
+
+module.exports = new WhatsAppController();

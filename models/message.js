@@ -1,82 +1,39 @@
-// === models/message.js ===
 const mongoose = require('mongoose');
-const { Schema } = mongoose;
 
-const messageSchema = new Schema({
+const chatSchema = new mongoose.Schema({
   platform: {
     type: String,
-    enum: ['whatsapp', 'facebook', 'email', 'sms', 'telegram', 'instagram'],
+    required: true,
+    enum: ['facebook', 'whatsapp', 'email', 'sms']
+  },
+  senderId: {
+    type: String,
     required: true
   },
-  platformMessageId: {
+  recipientId: String,
+  message: {
     type: String,
-    required: true,
-    index: true
-  },
-  platformThreadId: {
-    type: String,
-    index: true
+    required: true
   },
   direction: {
     type: String,
-    enum: ['inbound', 'outbound'],
-    required: true
+    required: true,
+    enum: ['incoming', 'outgoing']
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now
   },
   status: {
     type: String,
-    enum: ['queued', 'sent', 'delivered', 'read', 'failed', 'deleted'],
-    default: 'delivered'
+    enum: ['sent', 'delivered', 'read', 'failed'],
+    default: 'sent'
   },
-  statusHistory: [{
-    status: String,
-    timestamp: Date,
-    metadata: Schema.Types.Mixed
-  }],
-  content: {
-    text: String,
-    attachments: [{
-      type: {
-        type: String,
-        enum: ['image', 'video', 'audio', 'file', 'location', 'sticker']
-      },
-      url: String,
-      caption: String
-    }]
-  },
-  sender: {
-    type: String,
-    required: true
-  },
-  recipient: {
-    type: String,
-    required: true
-  },
-  platformSender: {
-    id: String,
-    name: String,
-    profilePic: String
-  },
-  platformRecipient: {
-    id: String,
-    name: String
-  },
-  labels: {
-    type: [String],
-    enum: ['unclaimed', 'claimed', 'priority', 'spam', 'resolved'],
-    default: ['unclaimed']
-  },
-  claimedBy: {
-    type: Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  claimedAt: Date,
-  isDeleted: {
-    type: Boolean,
-    default: false
-  }
-}, { timestamps: true });
+  metadata: mongoose.Schema.Types.Mixed
+});
 
-messageSchema.index({ labels: 1, isDeleted: 1, createdAt: -1 });
+// Indexes for faster queries
+chatSchema.index({ platform: 1, senderId: 1 });
+chatSchema.index({ timestamp: -1 });
 
-module.exports = mongoose.model('Message', messageSchema);
-
+module.exports = mongoose.model('Chat', chatSchema);
