@@ -1,4 +1,4 @@
-    // ============================================================================
+// ============================================================================
 // GLOBAL VARIABLES
 // ============================================================================
 let currentUser = null;
@@ -8,6 +8,7 @@ let users = [];
 let unclaimedMessages = [];
 let isTyping = false;
 let typingTimeout = null;
+let currentPlatform = null;
 
 // ============================================================================
 // AUTHENTICATION FUNCTIONS
@@ -28,13 +29,9 @@ async function login(email, password) {
             throw new Error(data.error || 'Login failed');
         }
 
-        // Save the JWT token to localStorage
         localStorage.setItem('token', data.token);
-
-        // Save user info in memory
         currentUser = data.user;
 
-        // Redirect based on role
         if (currentUser.role === 'admin') {
             showDashboard();
         } else {
@@ -45,18 +42,11 @@ async function login(email, password) {
     }
 }
 
-
 function logout() {
     currentUser = null;
     localStorage.removeItem('token');
-    if (socket) socket = null;
+    if (socket) socket.disconnect();
     showLogin();
-}
-
-
-function checkAuth() {
-    // For demo purposes, no persistent auth
-    return false;
 }
 
 // ============================================================================
@@ -72,13 +62,10 @@ function showDashboard() {
     document.getElementById('loginContainer').style.display = 'none';
     document.getElementById('dashboardContainer').style.display = 'block';
     document.getElementById('chatContainer').style.display = 'none';
-    
-    // Update user info
     document.getElementById('userName').textContent = currentUser.name;
     document.getElementById('userRole').textContent = currentUser.role;
     document.getElementById('userRole').className = `badge ${currentUser.role}`;
     document.getElementById('userAvatar').textContent = currentUser.name.charAt(0).toUpperCase();
-    
     loadDashboardData();
 }
 
@@ -86,20 +73,70 @@ function showChat() {
     document.getElementById('loginContainer').style.display = 'none';
     document.getElementById('dashboardContainer').style.display = 'none';
     document.getElementById('chatContainer').style.display = 'flex';
-    
     initializeSocket();
     loadChatUsers();
+    loadUnclaimedMessages();
 }
 
-function openChat() {
-    showChat();
-}
-
-function goToDashboard() {
-    if (currentUser && currentUser.role === 'admin') {
-        showDashboard();
+function switchTab(tab) {
+    ['facebook','whatsapp','dashboard'].forEach(t => {
+        document.getElementById(`${t}Tab`).classList.toggle('active', t === tab);
+        document.querySelector(`button[onclick="switchTab('${t}')"]`).classList.toggle('active', t === tab);
+    });
+    if (tab !== 'dashboard') {
+        currentPlatform = tab;
     }
 }
+
+// ============================================================================
+// DOMContentLoaded INITIALIZATION
+// ============================================================================
+document.addEventListener('DOMContentLoaded', function () {
+    const token = localStorage.getItem('token');
+    if (token) {
+        fetch('/api/auth/me', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+            .then(res => res.json())
+            .then(data => {
+                currentUser = data.user;
+                if (currentUser.role === 'admin') {
+                    showDashboard();
+                } else {
+                    showChat();
+                }
+            })
+            .catch(() => showLogin());
+    } else {
+        showLogin();
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const loginBtn = document.getElementById('loginBtn');
+        const loginText = document.getElementById('loginText');
+        const loginSpinner = document.getElementById('loginSpinner');
+        const loginError = document.getElementById('loginError');
+
+        loginBtn.disabled = true;
+        loginText.style.display = 'none';
+        loginSpinner.style.display = 'block';
+        loginError.textContent = '';
+
+        try {
+            await login(email, password);
+        } catch (error) {
+            loginError.textContent = error.message;
+        } finally {
+            loginBtn.disabled = false;
+            loginText.style.display = 'block';
+            loginSpinner.style.display = 'none';
+        }
+    });
+});
 
 // ============================================================================
 // DASHBOARD FUNCTIONS
