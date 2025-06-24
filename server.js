@@ -28,7 +28,6 @@ app.use('/js', express.static(path.join(__dirname, '../js')));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/messages', messageRoutes);
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, './public/index.html')));
 app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, './public/dashboard.html')));

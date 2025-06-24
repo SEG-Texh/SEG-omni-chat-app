@@ -129,13 +129,43 @@ function switchTab(tabName) {
 }
 
 // Initialize socket connection
-function initializeSocket() {
-  // In a real application, you would connect to your socket server
-  // socket = io('your-socket-server-url');
+function initializeSocket(token) {
+  socket = io('https://chat-app-omni-33e1e5eaa993.herokuapp.com', {
+    auth: {
+      token: token
+    }
+  });
 
-  // Mock socket events for demo
-  console.log("Socket connection initialized")
+  socket.on("connect", () => {
+    console.log("✅ Socket connected:", socket.id);
+  });
+
+  socket.on("newMessage", (msg) => {
+    console.log("📨 New message:", msg);
+    // updateChatUI(msg);
+  });
+
+  socket.on("userTyping", (data) => {
+    console.log(`${data.name} is typing...`);
+  });
+
+  socket.on("userOnline", (data) => {
+    console.log(`${data.name} is online`);
+  });
+
+  socket.on("userOffline", (data) => {
+    console.log(`${data.name} went offline`);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("🔌 Disconnected from socket");
+  });
+
+  socket.on("connect_error", (err) => {
+    console.error("❌ Connection error:", err.message);
+  });
 }
+
 
 // Load dashboard data
 function loadDashboardData() {
