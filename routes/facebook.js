@@ -18,7 +18,15 @@ router.post('/send-message', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
+// Add to facebookRoutes.js
+router.get('/conversation/:userId', async (req, res) => {
+  try {
+    const messages = await facebookController.fetchConversationHistory(req.params.userId);
+    res.json(messages);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 // Get user profile
 router.get('/user/:userId', async (req, res) => {
   try {
