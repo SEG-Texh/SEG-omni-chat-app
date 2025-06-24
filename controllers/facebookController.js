@@ -9,6 +9,7 @@ class FacebookController {
     this.processMessage = this.processMessage.bind(this);
     this.sendMessage = this.sendMessage.bind(this);
     this.getUserProfile = this.getUserProfile.bind(this);
+    this.fetchConversationHistory = this.fetchConversationHistory.bind(this);
   }
 
   // Verify webhook
@@ -22,54 +23,53 @@ class FacebookController {
       return res.status(200).send(challenge);
     }
     
-    console.error('Facebook webhook verification failed');
+    console.error('Facebook webhook verification failed. Received token:', token);
     return res.sendStatus(403);
   }
 
   // Handle incoming messages
   async handleMessage(req, res) {
     try {
-      console.log('=== RAW WEBHOOK REQUEST ===');
-      console.log('Headers:', JSON.stringify(req.headers));
+      console.log('=== INCOMING WEBHOOK ===');
+      console.log('Headers:', req.headers);
       console.log('Body:', JSON.stringify(req.body, null, 2));
       
-      const body = req.body;
-      
-      // Validate basic payload structure
-      if (!body || typeof body !== 'object') {
+      if (!req.body || typeof req.body !== 'object') {
         console.error('Invalid request body');
         return res.status(400).json({ error: 'Invalid request body' });
       }
       
-      // Check if this is a page subscription
-      if (body.object === 'page') {
-        if (!body.entry || !Array.isArray(body.entry)) {
+      if (req.body.object === 'page') {
+        if (!Array.isArray(req.body.entry)) {
           console.error('Invalid entry format');
           return res.status(400).json({ error: 'Invalid entry format' });
         }
         
-        // Iterate over each entry
-        for (const entry of body.entry) {
-          if (!entry.messaging || !Array.isArray(entry.messaging)) {
-            console.error('Invalid messaging format in entry:', entry);
+        for (const entry of req.body.entry) {
+          if (!Array.isArray(entry.messaging)) {
+            console.error('Invalid messaging format in entry:', entry.id);
             continue;
           }
           
-          for (const webhookEvent of entry.messaging) {
+          for (const event of entry.messaging) {
             try {
-              const senderId = webhookEvent.sender?.id;
-              const message = webhookEvent.message;
-              
-              if (!senderId) {
-                console.error('Missing sender ID in event:', webhookEvent);
+              if (!event.sender?.id) {
+                console.error('Missing sender ID in event:', event);
                 continue;
               }
               
-              if (message) {
-                await this.processMessage(senderId, message);
+              if (event.message) {
+                console.log('Processing message from:', event.sender.id);
+                await this.processMessage(event.sender.id, event.message);
+              } else if (event.postback) {
+                console.log('Processing postback from:', event.sender.id);
+                await this.processPostback(event.sender.id, event.postback);
               }
-            } catch (eventError) {
-              console.error('Error processing messaging event:', eventError);
+            } catch (error) {
+              console.error('Error processing event:', {
+                error: error.message,
+                event
+              });
             }
           }
         }
@@ -77,7 +77,7 @@ class FacebookController {
       
       res.sendStatus(200);
     } catch (error) {
-      console.error('Error handling Facebook message:', {
+      console.error('Error in handleMessage:', {
         message: error.message,
         stack: error.stack,
         body: req.body
@@ -92,16 +92,20 @@ class FacebookController {
   // Process incoming message
   async processMessage(senderId, message) {
     try {
+      console.log('Processing message from', senderId, ':', message);
+      
       const text = message.text || '';
       const attachments = message.attachments || [];
+      const messageId = message.mid || Date.now().toString();
       
       // Get user profile info
       const userProfile = await this.getUserProfile(senderId);
       
-      // Save to database with more details
-      const chat = new Chat({
+      // Create chat document
+      const chatData = {
         platform: 'facebook',
         senderId,
+        messageId,
         senderName: userProfile?.name || 'Unknown',
         senderAvatar: userProfile?.profile_pic || '',
         message: text,
@@ -110,27 +114,61 @@ class FacebookController {
         timestamp: new Date(),
         metadata: {
           isRead: false,
-          isReplied: false
+          isReplied: false,
+          rawMessage: message
         }
-      });
+      };
       
+      console.log('Saving message to DB:', chatData);
+      const chat = new Chat(chatData);
       await chat.save();
+      console.log('Message saved successfully');
       
-      // Enhanced auto-reply logic
+      // Generate and send response
       if (text) {
         const response = await this.generateReply(text);
         await this.sendMessage(senderId, response);
       } else if (attachments.length > 0) {
-        await this.sendMessage(senderId, "Thanks for sending the attachment!");
+        await this.sendMessage(senderId, "Thanks for the attachment!");
       }
     } catch (error) {
-      console.error('Error processing Facebook message:', {
+      console.error('Error in processMessage:', {
         error: error.message,
         stack: error.stack,
         senderId,
         message
       });
       throw error;
+    }
+  }
+
+  // Process postback
+  async processPostback(senderId, postback) {
+    try {
+      console.log('Processing postback from', senderId, ':', postback);
+      
+      const payload = postback.payload;
+      const chat = new Chat({
+        platform: 'facebook',
+        senderId,
+        message: `[POSTBACK] ${payload}`,
+        direction: 'incoming',
+        timestamp: new Date(),
+        metadata: {
+          isRead: false,
+          isReplied: false,
+          payload: postback
+        }
+      });
+      
+      await chat.save();
+      
+      // Handle different postback payloads
+      if (payload === 'GET_STARTED') {
+        await this.sendMessage(senderId, "Welcome! How can I help you today?");
+      }
+    } catch (error) {
+      console.error('Error processing postback:', error);
     }
   }
 
@@ -148,49 +186,71 @@ class FacebookController {
       return 'Thanks for your message! Our team will get back to you shortly.';
     }
   }
-  // Add to FacebookController class
-async fetchConversationHistory(userId) {
-  try {
-    const response = await axios.get(
-      `https://graph.facebook.com/v13.0/${userId}?fields=conversations{messages{from,message,created_time,attachments}}&access_token=${process.env.FACEBOOK_PAGE_ACCESS_TOKEN}`
-    );
-    return response.data.conversations?.data || [];
-  } catch (error) {
-    console.error('Error fetching Facebook conversation history:', error);
-    throw error;
+
+  // Fetch conversation history
+  async fetchConversationHistory(userId, limit = 50) {
+    try {
+      console.log(`Fetching conversation history for ${userId}`);
+      
+      let url = `https://graph.facebook.com/v13.0/${userId}/conversations?fields=messages{from,message,created_time,attachments,id}&limit=${limit}&access_token=${process.env.FACEBOOK_PAGE_ACCESS_TOKEN}`;
+      
+      const allMessages = [];
+      while (url && allMessages.length < limit) {
+        const response = await axios.get(url);
+        const conversations = response.data.data || [];
+        
+        for (const conversation of conversations) {
+          if (conversation.messages?.data) {
+            allMessages.push(...conversation.messages.data);
+          }
+        }
+        
+        url = response.data.paging?.next || null;
+      }
+      
+      console.log(`Fetched ${allMessages.length} messages`);
+      return allMessages.slice(0, limit);
+    } catch (error) {
+      console.error('Error fetching conversation history:', {
+        error: error.response?.data || error.message,
+        userId
+      });
+      throw error;
+    }
   }
-}
+
   // Send message to user
   async sendMessage(recipientId, text, quickReplies = null) {
-  try {
-    // Validate parameters
-    if (!recipientId || !text) {
-      throw new Error('Missing required parameters');
-    }
-
-    const messagePayload = {
-      recipient: { id: recipientId },
-      message: { text }
-    };
-
-    if (quickReplies) {
-      messagePayload.message.quick_replies = quickReplies;
-    }
-
-    const response = await axios.post(
-      `https://graph.facebook.com/v13.0/me/messages`,
-      messagePayload,
-      {
-        params: {
-          access_token: process.env.FACEBOOK_PAGE_ACCESS_TOKEN
-        },
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
-    );
+    try {
+      console.log('Sending message to', recipientId, ':', text);
       
-      // Save outgoing message to database
+      if (!recipientId || !text) {
+        throw new Error('Missing required parameters');
+      }
+
+      const messagePayload = {
+        recipient: { id: recipientId },
+        message: { text }
+      };
+
+      if (quickReplies) {
+        messagePayload.message.quick_replies = quickReplies;
+      }
+
+      const response = await axios.post(
+        `https://graph.facebook.com/v13.0/me/messages`,
+        messagePayload,
+        {
+          params: {
+            access_token: process.env.FACEBOOK_PAGE_ACCESS_TOKEN
+          },
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      // Save outgoing message
       const chat = new Chat({
         platform: 'facebook',
         senderId: recipientId,
@@ -199,32 +259,37 @@ async fetchConversationHistory(userId) {
         timestamp: new Date(),
         metadata: {
           isDelivered: true,
-          isRead: false
+          isRead: false,
+          messageId: response.data.message_id
         }
       });
       
       await chat.save();
+      console.log('Message sent and saved successfully');
       
       return response.data;
-  } catch (error) {
-    console.error('Facebook API Error:', {
-      status: error.response?.status,
-      errorCode: error.response?.data?.error?.code,
-      message: error.response?.data?.error?.message || error.message
-    });
-    throw new Error('Failed to send Facebook message');
+    } catch (error) {
+      console.error('Error sending message:', {
+        status: error.response?.status,
+        errorCode: error.response?.data?.error?.code,
+        message: error.response?.data?.error?.message || error.message,
+        recipientId,
+        text
+      });
+      throw error;
+    }
   }
-}
 
   // Get user profile
   async getUserProfile(userId) {
     try {
+      console.log('Fetching profile for user:', userId);
       const response = await axios.get(
-        `https://graph.facebook.com/v13.0/${userId}?fields=name,profile_pic&access_token=${process.env.FACEBOOK_PAGE_ACCESS_TOKEN}`
+        `https://graph.facebook.com/v13.0/${userId}?fields=name,first_name,last_name,profile_pic,gender&access_token=${process.env.FACEBOOK_PAGE_ACCESS_TOKEN}`
       );
       return response.data;
     } catch (error) {
-      console.error('Error getting Facebook user profile:', {
+      console.error('Error getting user profile:', {
         error: error.response?.data || error.message,
         userId
       });
@@ -233,5 +298,4 @@ async fetchConversationHistory(userId) {
   }
 }
 
-// Export a properly configured instance
 module.exports = new FacebookController();
