@@ -1,196 +1,26 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Chat App</title>
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <!-- LOGIN PAGE -->
-    <div class="container" id="loginContainer">
-        <div class="logo">
-            <h1>💬 ChatApp</h1>
-        </div>
-        <form id="loginForm">
-            <div class="form-group">
-                <label for="email">Email:</label>
-                <input type="email" id="email" name="email" required>
-            </div>
-            <div class="form-group">
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" required>
-            </div>
-            <button type="submit" class="btn" id="loginBtn">
-                <span id="loginText">Login</span>
-                <div class="spinner" id="loginSpinner" style="display: none;"></div>
-            </button>
-            <div class="error" id="loginError"></div>
-        </form>
-        <p style="text-align: center; margin-top: 20px; color: #666; font-size: 14px;">
-            Default Admin: admin@example.com / admin123
-        </p>
-    </div>
-
-    <!-- DASHBOARD PAGE (Hidden initially) -->
-    <div class="dashboard" id="dashboardContainer" style="display: none;">
-        <div class="header">
-            <div class="user-info">
-                <div class="user-avatar" id="userAvatar"></div>
-                <div>
-                    <h3 id="userName"></h3>
-                    <span class="badge" id="userRole"></span>
-                </div>
-            </div>
-            <div style="display: flex; gap: 10px;">
-                <button class="btn" onclick="openChat()">💬 Open Chat</button>
-                <button class="btn" onclick="logout()" style="background: #e74c3c;">Logout</button>
-            </div>
-        </div>
-
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-number" id="totalUsers">0</div>
-                <div class="stat-label">Total Users</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="onlineUsers">0</div>
-                <div class="stat-label">Online Users</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="totalMessages">0</div>
-                <div class="stat-label">Total Messages</div>
-            </div>
-        </div>
-
-        <div class="nav-tabs">
-            <button class="tab-btn active" onclick="showTab('users')">👥 Manage Users</button>
-            <button class="tab-btn" onclick="showTab('messages')">💬 Search Messages</button>
-        </div>
-
-        <div id="usersTab" class="tab-content active">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3>Users Management</h3>
-                <button class="btn" onclick="showAddUserModal()">+ Add User</button>
-            </div>
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Supervisor</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="usersTableBody">
-                    <!-- Users will be loaded here -->
-                </tbody>
-            </table>
-        </div>
-
-        <div id="messagesTab" class="tab-content">
-            <div style="margin-bottom: 20px;">
-                <h3>Search Messages</h3>
-                <div class="form-group">
-                    <input type="text" id="messageSearchInput" placeholder="Search messages..." style="width: 100%;">
-                </div>
-                <button class="btn" onclick="searchMessages()">Search</button>
-            </div>
-            <div id="searchResults">
-                <!-- Search results will appear here -->
-            </div>
-        </div>
-    </div>
-
-    <!-- CHAT PAGE (Hidden initially) -->
-   <!-- CHAT PAGE (Modified for Broadcasted Messages) -->
-<div class="chat-container" id="chatContainer" style="display: none;">
+<!-- CHAT PAGE -->
+<div class="chat-container" id="chatContainer" style="display:none;">
   <div class="sidebar">
     <div class="sidebar-header">
-      <h3>Incoming Messages</h3>
-      <button onclick="goToDashboard()" style="background: none; border: none; color: white; cursor: pointer;">⚙️</button>
+      <h3>Chats</h3>
+      <button onclick="goToDashboard()">⚙️</button>
     </div>
-    <div class="user-list" id="broadcastMessageList">
-      <!-- Broadcasted unclaimed messages will be loaded here -->
+    <div class="chat-tabs">
+      <button class="tab-btn active" onclick="showPlatform('facebook')">Facebook</button>
+      <button class="tab-btn" onclick="showPlatform('whatsapp')">WhatsApp</button>
     </div>
+    <div class="user-list" id="chatList"></div>
   </div>
 
   <div class="chat-main">
     <div class="chat-header">
-      <div>
-        <h3 id="chatUserName">Select a message to reply</h3>
-        <div class="typing-indicator" id="typingIndicator" style="display: none;"></div>
-      </div>
-      <div class="admin-controls">
-        <button id="backToDashboard" class="back-btn" onclick="goToDashboard()" style="display: none;">
-          ← Back to Dashboard
-        </button>
-        <button onclick="logout()" class="btn" style="background: #e74c3c;">Logout</button>
-      </div>
+      <h3 id="chatUserName">Select a conversation</h3>
+      <button onclick="goToDashboard()" class="btn">Back</button>
     </div>
-
-    <div class="chat-body" id="chatMessages" style="overflow-y: auto; flex: 1; padding: 10px;">
-      <!-- Conversation messages will be displayed here -->
-    </div>
-
+    <div class="chat-body" id="chatMessages"></div>
     <div class="chat-input">
-      <div class="input-group">
-        <input type="text" id="messageInput" placeholder="Type a message..." disabled />
-        <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>
-          <span>📤</span>
-        </button>
-      </div>
+      <input type="text" id="messageInput" placeholder="Type..." disabled/>
+      <button id="sendBtn" class="send-btn" disabled onclick="sendMessage()">📤</button>
     </div>
   </div>
 </div>
-
-    <!-- ADD USER MODAL -->
-    <div class="modal" id="addUserModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Add New User</h3>
-                <button class="close-btn" onclick="closeAddUserModal()">&times;</button>
-            </div>
-            <form id="addUserForm">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="newUserName">Name:</label>
-                        <input type="text" id="newUserName" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="newUserEmail">Email:</label>
-                        <input type="email" id="newUserEmail" required>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="newUserPassword">Password:</label>
-                        <input type="password" id="newUserPassword" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="newUserRole">Role:</label>
-                        <select id="newUserRole">
-                            <option value="user">User</option>
-                            <option value="supervisor">Supervisor</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="newUserSupervisor">Supervisor (optional):</label>
-                    <select id="newUserSupervisor">
-                        <option value="">No Supervisor</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn">Add User</button>
-                <div class="error" id="addUserError"></div>
-            </form>
-        </div>
-    </div>
-
-    <script src="/socket.io/socket.io.js"></script>
-  <script src="script.js"></script>
-</body>
-</html>

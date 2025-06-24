@@ -1,14 +1,9 @@
 const express = require('express');
+const controller = require('../controllers/facebookController');
 const router = express.Router();
-const facebookController = require('../controllers/facebookController');
 
-// Webhook verification
-router.get('/webhook', facebookController.verifyFacebookWebhook);
-
-// Webhook handler
-router.post('/webhook', facebookController.handleFacebookWebhook);
-
-// Send message API
-router.post('/send', facebookController.sendFacebookMessage);
+router.get('/webhook', controller.verifyFacebookWebhook);
+router.post('/webhook', controller.handleFacebookWebhook);
+router.post('/send', controller.sendFacebookMessage);
 
 module.exports = router;

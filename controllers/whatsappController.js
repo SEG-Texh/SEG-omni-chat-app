@@ -1,58 +1,67 @@
 // controllers/whatsappController.js
-const axios = require('axios');
+const Message = require('../models/message');
+const { getIO } = require('../config/socket');
 
-exports.verifyWhatsAppWebhook = (req, res) => {
-    const VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
+exports.handleWebhook = async (req, res) => {
+  try {
+    const from = req.body.From;
+    const to = req.body.To;
+    const text = req.body.Body;
 
-    const mode = req.query['hub.mode'];
-    const token = req.query['hub.verify_token'];
-    const challenge = req.query['hub.challenge'];
+    const incoming = await Message.create({
+      platform: 'whatsapp',
+      platformMessageId: req.body.MessageSid,
+      platformThreadId: from,
+      direction: 'inbound',
+      status: 'delivered',
+      content: { text },
+      sender: from,
+      recipient: to,
+      platformSender: { id: from },
+      platformRecipient: { id: to },
+      labels: ['unclaimed']
+    });
 
-    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-        console.log('✅ WhatsApp webhook verified');
-        res.status(200).send(challenge);
-    } else {
-        console.warn('❌ WhatsApp webhook verification failed');
-        res.sendStatus(403);
-    }
+    getIO().emit('new_message', incoming);
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('WhatsApp Webhook Error:', err);
+    res.sendStatus(500);
+  }
 };
 
-exports.handleWhatsAppWebhook = async (req, res) => {
-    const body = req.body;
+exports.sendWhatsApp = async (req, res) => {
+  try {
+    const { to, text } = req.body;
+    const TWILIO = require('twilio')(
+      process.env.TWILIO_ACCOUNT_SID,
+      process.env.TWILIO_AUTH_TOKEN
+    );
 
-    if (body.object) {
-        for (const entry of body.entry || []) {
-            for (const change of entry.changes || []) {
-                const messages = change.value.messages || [];
+    const resp = await TWILIO.messages.create({
+      from: process.env.TWILIO_WHATSAPP_NUMBER,
+      to,
+      body: text
+    });
 
-                for (const msg of messages) {
-                    const from = msg.from;
-                    const messageText = msg.text?.body;
+    const outgoing = await Message.create({
+      platform: 'whatsapp',
+      platformMessageId: resp.sid,
+      platformThreadId: to,
+      direction: 'outbound',
+      status: resp.status,
+      content: { text },
+      sender: process.env.TWILIO_WHATSAPP_NUMBER,
+      recipient: to,
+      platformSender: { id: process.env.TWILIO_WHATSAPP_NUMBER },
+      platformRecipient: { id: to },
+      labels: []
+    });
 
-                    if (messageText) {
-                        console.log(`📩 Message from WhatsApp (${from}): ${messageText}`);
-
-                        // Auto-reply (optional)
-                        await axios.post(
-                            `https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
-                            {
-                                messaging_product: 'whatsapp',
-                                to: from,
-                                text: { body: `Thanks for messaging us! You said: "${messageText}"` },
-                            },
-                            {
-                                headers: {
-                                    Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-                                    'Content-Type': 'application/json',
-                                },
-                            }
-                        );
-                    }
-                }
-            }
-        }
-        res.sendStatus(200);
-    } else {
-        res.sendStatus(404);
-    }
+    getIO().emit('new_message', outgoing);
+    res.json({ success: true, message: outgoing });
+  } catch (err) {
+    console.error('WhatsApp Send Error:', err);
+    res.status(500).json({ error: 'Failed to send via WhatsApp' });
+  }
 };
