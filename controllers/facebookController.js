@@ -1,10 +1,6 @@
 const axios = require('axios');
 const Chat = require('../models/message');
-// At the very start of your webhook handler
-console.log('=== RAW WEBHOOK REQUEST ===');
-console.log('Headers:', JSON.stringify(req.headers));
-console.log('Body:', JSON.stringify(req.body));
-console.log('Query:', JSON.stringify(req.query));
+
 
 class FacebookController {
   // Verify webhook
@@ -25,6 +21,9 @@ class FacebookController {
   // Handle incoming messages
   async handleMessage(req, res) {
     try {
+      console.log('=== RAW WEBHOOK REQUEST ===');
+      console.log('Headers:', JSON.stringify(req.headers));
+      console.log('Body:', JSON.stringify(req.body));
       const body = req.body;
       
       // Check if this is a page subscription
