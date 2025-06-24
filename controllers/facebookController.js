@@ -162,25 +162,33 @@ async fetchConversationHistory(userId) {
 }
   // Send message to user
   async sendMessage(recipientId, text, quickReplies = null) {
-    try {
-      const messagePayload = {
-        recipient: { id: recipientId },
-        message: { text }
-      };
-      
-      if (quickReplies) {
-        messagePayload.message.quick_replies = quickReplies;
-      }
-      
-      const response = await axios.post(
-        `https://graph.facebook.com/v13.0/me/messages?access_token=${process.env.FACEBOOK_PAGE_ACCESS_TOKEN}`,
-        messagePayload,
-        {
-          headers: {
-            'Content-Type': 'application/json'
-          }
+  try {
+    // Validate parameters
+    if (!recipientId || !text) {
+      throw new Error('Missing required parameters');
+    }
+
+    const messagePayload = {
+      recipient: { id: recipientId },
+      message: { text }
+    };
+
+    if (quickReplies) {
+      messagePayload.message.quick_replies = quickReplies;
+    }
+
+    const response = await axios.post(
+      `https://graph.facebook.com/v13.0/me/messages`,
+      messagePayload,
+      {
+        params: {
+          access_token: process.env.FACEBOOK_PAGE_ACCESS_TOKEN
+        },
+        headers: {
+          'Content-Type': 'application/json'
         }
-      );
+      }
+    );
       
       // Save outgoing message to database
       const chat = new Chat({
@@ -198,15 +206,15 @@ async fetchConversationHistory(userId) {
       await chat.save();
       
       return response.data;
-    } catch (error) {
-      console.error('Error sending Facebook message:', {
-        error: error.response?.data || error.message,
-        recipientId,
-        text
-      });
-      throw error;
-    }
+  } catch (error) {
+    console.error('Facebook API Error:', {
+      status: error.response?.status,
+      errorCode: error.response?.data?.error?.code,
+      message: error.response?.data?.error?.message || error.message
+    });
+    throw new Error('Failed to send Facebook message');
   }
+}
 
   // Get user profile
   async getUserProfile(userId) {
