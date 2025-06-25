@@ -168,16 +168,290 @@ function initializeSocket(token) {
 
 
 // Load dashboard data
-function loadDashboardData() {
-  // In a real application, this would fetch data from your API
-  console.log("Loading dashboard data...")
+// Dashboard Service - Real Data Implementation
+const DashboardService = {
+  async fetchStats() {
+    try {
+      // Calculate stats based on your Chat model
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      
+      const stats = await Promise.all([
+        // Total unique users
+        mongoose.model('Chat').distinct('senderId').countDocuments(),
+        
+        // Messages today
+        mongoose.model('Chat').countDocuments({
+          timestamp: { $gte: todayStart }
+        }),
+        
+        // Active chats (users with messages in last 24 hours)
+        mongoose.model('Chat').distinct('senderId', {
+          timestamp: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+        }).countDocuments(),
+        
+        // Response rate (percentage of incoming messages with replies)
+        this.calculateResponseRate()
+      ]);
+      
+      return {
+        totalUsers: stats[0],
+        messagesToday: stats[1],
+        activeChats: stats[2],
+        responseRate: stats[3],
+        // Calculate changes (you might want to store these in another collection)
+        userGrowth: await this.calculateGrowth('users'),
+        messageGrowth: await this.calculateGrowth('messages'),
+        responseRateChange: await this.calculateGrowth('responseRate')
+      };
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+      return null;
+    }
+  },
 
-  // Animate charts
-  animateCharts()
+  async calculateResponseRate() {
+    // Get all incoming messages
+    const incomingCount = await mongoose.model('Chat').countDocuments({
+      direction: 'incoming'
+    });
+    
+    if (incomingCount === 0) return 100; // If no incoming messages, consider 100% response
+    
+    // Get messages that were replied to (have an outgoing message after them)
+    const repliedCount = await mongoose.model('Chat').countDocuments({
+      direction: 'outgoing',
+      'metadata.inReplyTo': { $exists: true }
+    });
+    
+    return (repliedCount / incomingCount) * 100;
+  },
 
-  // Update real-time data periodically
-  setInterval(updateRealTimeData, 30000) // Update every 30 seconds
+  async calculateGrowth(metric) {
+    // You should implement proper growth calculation based on historical data
+    // This is a simplified version
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    let current, previous;
+    
+    switch(metric) {
+      case 'users':
+        current = await mongoose.model('Chat').distinct('senderId', {
+          timestamp: { $gte: today.setHours(0, 0, 0, 0) }
+        }).countDocuments();
+        
+        previous = await mongoose.model('Chat').distinct('senderId', {
+          timestamp: { 
+            $gte: yesterday.setHours(0, 0, 0, 0),
+            $lt: today.setHours(0, 0, 0, 0)
+          }
+        }).countDocuments();
+        break;
+        
+      case 'messages':
+        current = await mongoose.model('Chat').countDocuments({
+          timestamp: { $gte: today.setHours(0, 0, 0, 0) }
+        });
+        
+        previous = await mongoose.model('Chat').countDocuments({
+          timestamp: { 
+            $gte: yesterday.setHours(0, 0, 0, 0),
+            $lt: today.setHours(0, 0, 0, 0)
+          }
+        });
+        break;
+        
+      case 'responseRate':
+        return 0; // Simplified - implement proper calculation
+    }
+    
+    if (previous === 0) return 100; // Avoid division by zero
+    return ((current - previous) / previous) * 100;
+  },
+
+  async fetchMessageVolume(timeRange = '7d') {
+    try {
+      let days;
+      switch(timeRange) {
+        case '7d': days = 7; break;
+        case '30d': days = 30; break;
+        case '3m': days = 90; break;
+        default: days = 7;
+      }
+      
+      const data = await mongoose.model('Chat').aggregate([
+        {
+          $match: {
+            timestamp: { $gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000) }
+          }
+        },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: "%Y-%m-%d", date: "$timestamp" }
+            },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ]);
+      
+      // Format for chart
+      return data.map(item => ({
+        label: new Date(item._id).toLocaleDateString('en-US', { weekday: 'short' }),
+        value: item.count,
+        percentage: (item.count / Math.max(...data.map(d => d.count), 1)) * 100
+      }));
+    } catch (error) {
+      console.error('Error fetching message volume:', error);
+      return null;
+    }
+  },
+
+  async fetchPlatformDistribution() {
+    try {
+      const result = await mongoose.model('Chat').aggregate([
+        {
+          $group: {
+            _id: "$platform",
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+      
+      const total = result.reduce((sum, item) => sum + item.count, 0);
+      
+      return result.map(item => ({
+        name: item._id,
+        percentage: ((item.count / total) * 100).toFixed(1)
+      }));
+    } catch (error) {
+      console.error('Error fetching platform distribution:', error);
+      return null;
+    }
+  },
+
+  async fetchResponseTimeTrend() {
+    try {
+      // This would need your actual response time data
+      // Using message timestamps as a proxy for this example
+      const data = await mongoose.model('Chat').aggregate([
+        {
+          $match: {
+            direction: 'outgoing',
+            'metadata.inReplyTo': { $exists: true }
+          }
+        },
+        {
+          $lookup: {
+            from: 'chats',
+            localField: 'metadata.inReplyTo',
+            foreignField: '_id',
+            as: 'incomingMessage'
+          }
+        },
+        {
+          $unwind: '$incomingMessage'
+        },
+        {
+          $project: {
+            responseTime: {
+              $divide: [
+                { $subtract: ["$timestamp", "$incomingMessage.timestamp"] },
+                1000 * 60 // Convert to minutes
+              ]
+            },
+            month: { $month: "$timestamp" }
+          }
+        },
+        {
+          $group: {
+            _id: "$month",
+            avgResponseTime: { $avg: "$responseTime" }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ]);
+      
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"];
+      
+      return data.map(item => ({
+        label: monthNames[item._id - 1],
+        value: 100 - (item.avgResponseTime * 2) // Scale for visualization
+      }));
+    } catch (error) {
+      console.error('Error fetching response time trend:', error);
+      return null;
+    }
+  }
+};
+
+// Dashboard UI Updater (same as before, but with improved number formatting)
+const DashboardUpdater = {
+  async updateStats() {
+    const stats = await DashboardService.fetchStats();
+    if (!stats) return;
+
+    document.querySelectorAll('.stat-card').forEach(card => {
+      const type = card.querySelector('p').textContent.toLowerCase();
+      if (type.includes('users') && stats.totalUsers) {
+        this.updateStatCard(card, stats.totalUsers, stats.userGrowth);
+      } else if (type.includes('messages') && stats.messagesToday) {
+        this.updateStatCard(card, stats.messagesToday, stats.messageGrowth);
+      } else if (type.includes('rate') && stats.responseRate) {
+        this.updateStatCard(card, stats.responseRate, stats.responseRateChange);
+      } else if (type.includes('chats') && stats.activeChats) {
+        this.updateStatCard(card, stats.activeChats, stats.activeChatsGrowth);
+      }
+    });
+  },
+
+  updateStatCard(card, value, change) {
+    const valueEl = card.querySelector('h3');
+    const changeEl = card.querySelector('.stat-change');
+    
+    // Format value based on content
+    if (card.textContent.includes('%')) {
+      valueEl.textContent = `${value.toFixed(1)}%`;
+    } else {
+      valueEl.textContent = value.toLocaleString();
+    }
+    
+    // Update change indicator
+    if (change !== undefined) {
+      changeEl.textContent = `${change > 0 ? '+' : ''}${change.toFixed(1)}%`;
+      changeEl.className = `stat-change ${change >= 0 ? 'positive' : 'negative'}`;
+    }
+  },
+
+  // ... rest of the DashboardUpdater implementation remains the same ...
+};
+
+// Initialize dashboard
+async function loadDashboardData() {
+  if (!mongoose.connection.readyState) {
+    console.error('Database not connected');
+    return;
+  }
+
+  try {
+    await Promise.all([
+      DashboardUpdater.updateStats(),
+      DashboardUpdater.updateMessageVolumeChart(),
+      DashboardUpdater.updatePlatformDistribution(),
+      DashboardUpdater.updateResponseTimeTrend()
+    ]);
+
+    DashboardUpdater.initChartFilters();
+    setInterval(() => DashboardUpdater.updateStats(), 30000);
+  } catch (error) {
+    console.error('Error loading dashboard:', error);
+  }
 }
+
+document.addEventListener('DOMContentLoaded', loadDashboardData);
 
 // Load Facebook chats
 function loadFacebookChats() {
