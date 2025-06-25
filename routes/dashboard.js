@@ -1,9 +1,11 @@
-// routes/dashboard.js)
-
+// routes/dashboard.js
 const express = require('express');
 const router = express.Router();
-const Chat = require('../models/message');
+const Chat = require('../models/messages');
 const User = require('../models/User');
+
+// Add authentication middleware if needed
+// router.use(require('../middleware/auth'));
 
 // Get total user count
 router.get('/users/count', async (req, res) => {
@@ -18,7 +20,7 @@ router.get('/users/count', async (req, res) => {
 // Get today's message count
 router.get('/chats/count', async (req, res) => {
   try {
-    const startDate = new Date(req.query.startDate) || new Date();
+    const startDate = new Date(req.query.startDate || new Date());
     startDate.setHours(0, 0, 0, 0);
     
     const endDate = new Date(startDate);
@@ -37,7 +39,7 @@ router.get('/chats/count', async (req, res) => {
 // Get active chats count
 router.get('/chats/active', async (req, res) => {
   try {
-    const since = new Date(req.query.since) || new Date(Date.now() - 15 * 60 * 1000);
+    const since = new Date(req.query.since || Date.now() - 15 * 60 * 1000);
     
     const count = await Chat.distinct('senderId', {
       timestamp: { $gte: since },
@@ -73,7 +75,7 @@ router.get('/chats/platform-distribution', async (req, res) => {
   }
 });
 
-// Get message volume (last 7 days by default)
+// Get message volume
 router.get('/chats/message-volume', async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 7;
@@ -95,9 +97,7 @@ router.get('/chats/message-volume', async (req, res) => {
           count: { $sum: 1 }
         }
       },
-      {
-        $sort: { _id: 1 }
-      }
+      { $sort: { _id: 1 } }
     ]);
     
     const data = [];
@@ -119,7 +119,7 @@ router.get('/chats/message-volume', async (req, res) => {
   }
 });
 
-// Get response times (last 7 months by default)
+// Get response times
 router.get('/chats/response-times', async (req, res) => {
   try {
     const months = parseInt(req.query.months) || 7;
@@ -128,7 +128,7 @@ router.get('/chats/response-times', async (req, res) => {
     startDate.setDate(1);
     startDate.setHours(0, 0, 0, 0);
     
-    // This is a simplified version - implement actual response time calculation
+    // This assumes you have a way to calculate response times
     const result = await Chat.aggregate([
       {
         $match: {
@@ -141,12 +141,10 @@ router.get('/chats/response-times', async (req, res) => {
           _id: {
             $dateToString: { format: "%Y-%m", date: "$timestamp" }
           },
-          avgResponseTime: { $avg: "$responseTime" } // Assuming responseTime field
+          avgResponseTime: { $avg: "$responseTime" }
         }
       },
-      {
-        $sort: { _id: 1 }
-      }
+      { $sort: { _id: 1 } }
     ]);
     
     const data = [];
