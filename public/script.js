@@ -168,290 +168,325 @@ function initializeSocket(token) {
 
 
 // Load dashboard data
-// Dashboard Service - Real Data Implementation
-const DashboardService = {
-  async fetchStats() {
-    try {
-      // Calculate stats based on your Chat model
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-      
-      const stats = await Promise.all([
-        // Total unique users
-        mongoose.model('Chat').distinct('senderId').countDocuments(),
-        
-        // Messages today
-        mongoose.model('Chat').countDocuments({
-          timestamp: { $gte: todayStart }
-        }),
-        
-        // Active chats (users with messages in last 24 hours)
-        mongoose.model('Chat').distinct('senderId', {
-          timestamp: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
-        }).countDocuments(),
-        
-        // Response rate (percentage of incoming messages with replies)
-        this.calculateResponseRate()
-      ]);
-      
-      return {
-        totalUsers: stats[0],
-        messagesToday: stats[1],
-        activeChats: stats[2],
-        responseRate: stats[3],
-        // Calculate changes (you might want to store these in another collection)
-        userGrowth: await this.calculateGrowth('users'),
-        messageGrowth: await this.calculateGrowth('messages'),
-        responseRateChange: await this.calculateGrowth('responseRate')
-      };
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-      return null;
-    }
-  },
-
-  async calculateResponseRate() {
-    // Get all incoming messages
-    const incomingCount = await mongoose.model('Chat').countDocuments({
-      direction: 'incoming'
-    });
-    
-    if (incomingCount === 0) return 100; // If no incoming messages, consider 100% response
-    
-    // Get messages that were replied to (have an outgoing message after them)
-    const repliedCount = await mongoose.model('Chat').countDocuments({
-      direction: 'outgoing',
-      'metadata.inReplyTo': { $exists: true }
-    });
-    
-    return (repliedCount / incomingCount) * 100;
-  },
-
-  async calculateGrowth(metric) {
-    // You should implement proper growth calculation based on historical data
-    // This is a simplified version
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    
-    let current, previous;
-    
-    switch(metric) {
-      case 'users':
-        current = await mongoose.model('Chat').distinct('senderId', {
-          timestamp: { $gte: today.setHours(0, 0, 0, 0) }
-        }).countDocuments();
-        
-        previous = await mongoose.model('Chat').distinct('senderId', {
-          timestamp: { 
-            $gte: yesterday.setHours(0, 0, 0, 0),
-            $lt: today.setHours(0, 0, 0, 0)
-          }
-        }).countDocuments();
-        break;
-        
-      case 'messages':
-        current = await mongoose.model('Chat').countDocuments({
-          timestamp: { $gte: today.setHours(0, 0, 0, 0) }
-        });
-        
-        previous = await mongoose.model('Chat').countDocuments({
-          timestamp: { 
-            $gte: yesterday.setHours(0, 0, 0, 0),
-            $lt: today.setHours(0, 0, 0, 0)
-          }
-        });
-        break;
-        
-      case 'responseRate':
-        return 0; // Simplified - implement proper calculation
-    }
-    
-    if (previous === 0) return 100; // Avoid division by zero
-    return ((current - previous) / previous) * 100;
-  },
-
-  async fetchMessageVolume(timeRange = '7d') {
-    try {
-      let days;
-      switch(timeRange) {
-        case '7d': days = 7; break;
-        case '30d': days = 30; break;
-        case '3m': days = 90; break;
-        default: days = 7;
-      }
-      
-      const data = await mongoose.model('Chat').aggregate([
-        {
-          $match: {
-            timestamp: { $gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000) }
-          }
-        },
-        {
-          $group: {
-            _id: {
-              $dateToString: { format: "%Y-%m-%d", date: "$timestamp" }
-            },
-            count: { $sum: 1 }
-          }
-        },
-        { $sort: { _id: 1 } }
-      ]);
-      
-      // Format for chart
-      return data.map(item => ({
-        label: new Date(item._id).toLocaleDateString('en-US', { weekday: 'short' }),
-        value: item.count,
-        percentage: (item.count / Math.max(...data.map(d => d.count), 1)) * 100
-      }));
-    } catch (error) {
-      console.error('Error fetching message volume:', error);
-      return null;
-    }
-  },
-
-  async fetchPlatformDistribution() {
-    try {
-      const result = await mongoose.model('Chat').aggregate([
-        {
-          $group: {
-            _id: "$platform",
-            count: { $sum: 1 }
-          }
-        }
-      ]);
-      
-      const total = result.reduce((sum, item) => sum + item.count, 0);
-      
-      return result.map(item => ({
-        name: item._id,
-        percentage: ((item.count / total) * 100).toFixed(1)
-      }));
-    } catch (error) {
-      console.error('Error fetching platform distribution:', error);
-      return null;
-    }
-  },
-
-  async fetchResponseTimeTrend() {
-    try {
-      // This would need your actual response time data
-      // Using message timestamps as a proxy for this example
-      const data = await mongoose.model('Chat').aggregate([
-        {
-          $match: {
-            direction: 'outgoing',
-            'metadata.inReplyTo': { $exists: true }
-          }
-        },
-        {
-          $lookup: {
-            from: 'chats',
-            localField: 'metadata.inReplyTo',
-            foreignField: '_id',
-            as: 'incomingMessage'
-          }
-        },
-        {
-          $unwind: '$incomingMessage'
-        },
-        {
-          $project: {
-            responseTime: {
-              $divide: [
-                { $subtract: ["$timestamp", "$incomingMessage.timestamp"] },
-                1000 * 60 // Convert to minutes
-              ]
-            },
-            month: { $month: "$timestamp" }
-          }
-        },
-        {
-          $group: {
-            _id: "$month",
-            avgResponseTime: { $avg: "$responseTime" }
-          }
-        },
-        { $sort: { _id: 1 } }
-      ]);
-      
-      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"];
-      
-      return data.map(item => ({
-        label: monthNames[item._id - 1],
-        value: 100 - (item.avgResponseTime * 2) // Scale for visualization
-      }));
-    } catch (error) {
-      console.error('Error fetching response time trend:', error);
-      return null;
-    }
-  }
-};
-
-// Dashboard UI Updater (same as before, but with improved number formatting)
-const DashboardUpdater = {
-  async updateStats() {
-    const stats = await DashboardService.fetchStats();
-    if (!stats) return;
-
-    document.querySelectorAll('.stat-card').forEach(card => {
-      const type = card.querySelector('p').textContent.toLowerCase();
-      if (type.includes('users') && stats.totalUsers) {
-        this.updateStatCard(card, stats.totalUsers, stats.userGrowth);
-      } else if (type.includes('messages') && stats.messagesToday) {
-        this.updateStatCard(card, stats.messagesToday, stats.messageGrowth);
-      } else if (type.includes('rate') && stats.responseRate) {
-        this.updateStatCard(card, stats.responseRate, stats.responseRateChange);
-      } else if (type.includes('chats') && stats.activeChats) {
-        this.updateStatCard(card, stats.activeChats, stats.activeChatsGrowth);
-      }
-    });
-  },
-
-  updateStatCard(card, value, change) {
-    const valueEl = card.querySelector('h3');
-    const changeEl = card.querySelector('.stat-change');
-    
-    // Format value based on content
-    if (card.textContent.includes('%')) {
-      valueEl.textContent = `${value.toFixed(1)}%`;
-    } else {
-      valueEl.textContent = value.toLocaleString();
-    }
-    
-    // Update change indicator
-    if (change !== undefined) {
-      changeEl.textContent = `${change > 0 ? '+' : ''}${change.toFixed(1)}%`;
-      changeEl.className = `stat-change ${change >= 0 ? 'positive' : 'negative'}`;
-    }
-  },
-
-  // ... rest of the DashboardUpdater implementation remains the same ...
-};
-
-// Initialize dashboard
+// Load dashboard data with real data from MongoDB
 async function loadDashboardData() {
-  if (!mongoose.connection.readyState) {
-    console.error('Database not connected');
-    return;
-  }
-
   try {
-    await Promise.all([
-      DashboardUpdater.updateStats(),
-      DashboardUpdater.updateMessageVolumeChart(),
-      DashboardUpdater.updatePlatformDistribution(),
-      DashboardUpdater.updateResponseTimeTrend()
+    console.log("Loading dashboard data...");
+    
+    // Fetch all data in parallel
+    const [
+      totalUsers,
+      messagesToday,
+      activeChats,
+      platformDistribution,
+      messageVolume,
+      responseTimes
+    ] = await Promise.all([
+      getTotalUsers(),
+      getMessagesToday(),
+      getActiveChats(),
+      getPlatformDistribution(),
+      getMessageVolume(),
+      getResponseTimes()
     ]);
-
-    DashboardUpdater.initChartFilters();
-    setInterval(() => DashboardUpdater.updateStats(), 30000);
+    
+    // Update stats cards
+    updateStatCard('.stat-card:nth-child(1) h3', totalUsers);
+    updateStatCard('.stat-card:nth-child(2) h3', messagesToday);
+    updateStatCard('.stat-card:nth-child(4) h3', activeChats);
+    
+    // Update charts with real data
+    updateBarChart(messageVolume);
+    updatePieChart(platformDistribution);
+    updateLineChart(responseTimes);
+    
+    // Animate charts
+    animateCharts();
+    
+    // Update real-time data periodically
+    setInterval(updateRealTimeData, 30000);
+    
   } catch (error) {
-    console.error('Error loading dashboard:', error);
+    console.error("Error loading dashboard data:", error);
+    // You might want to show an error message to the user here
   }
 }
 
-document.addEventListener('DOMContentLoaded', loadDashboardData);
+// Helper function to update stat cards
+function updateStatCard(selector, value) {
+  const element = document.querySelector(selector);
+  if (element) {
+    element.textContent = value;
+  }
+}
+
+// Data fetching functions
+async function getTotalUsers() {
+  try {
+    const response = await fetch('/api/users/count');
+    const data = await response.json();
+    return data.count;
+  } catch (error) {
+    console.error("Error fetching total users:", error);
+    return "N/A";
+  }
+}
+
+async function getMessagesToday() {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const response = await fetch(`/api/chats/count?startDate=${today.toISOString()}`);
+    const data = await response.json();
+    return data.count;
+  } catch (error) {
+    console.error("Error fetching messages today:", error);
+    return "N/A";
+  }
+}
+
+async function getActiveChats() {
+  try {
+    // Active chats could be defined as chats with messages in the last 15 minutes
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+    
+    const response = await fetch(`/api/chats/active?since=${fifteenMinutesAgo.toISOString()}`);
+    const data = await response.json();
+    return data.count;
+  } catch (error) {
+    console.error("Error fetching active chats:", error);
+    return "N/A";
+  }
+}
+
+async function getPlatformDistribution() {
+  try {
+    const response = await fetch('/api/chats/platform-distribution');
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching platform distribution:", error);
+    return {
+      facebook: 0,
+      whatsapp: 0,
+      email: 0,
+      sms: 0
+    };
+  }
+}
+
+async function getMessageVolume() {
+  try {
+    const response = await fetch('/api/chats/message-volume?days=7');
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching message volume:", error);
+    return [];
+  }
+}
+
+async function getResponseTimes() {
+  try {
+    const response = await fetch('/api/chats/response-times?months=7');
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching response times:", error);
+    return [];
+  }
+}
+
+// Chart updating functions
+function updateBarChart(data) {
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const chartContainer = document.querySelector('.bar-chart-container');
+  
+  if (!chartContainer) return;
+  
+  // Clear existing bars
+  chartContainer.innerHTML = '';
+  
+  // Create new bars based on data
+  data.forEach((dayData, index) => {
+    const dayName = days[new Date(dayData.date).getDay()];
+    const maxValue = Math.max(...data.map(d => d.count));
+    const heightPercentage = (dayData.count / maxValue) * 100;
+    
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    bar.style.setProperty('--height', `${heightPercentage}%`);
+    bar.dataset.value = dayData.count;
+    
+    const label = document.createElement('span');
+    label.className = 'bar-label';
+    label.textContent = dayName;
+    
+    bar.appendChild(label);
+    chartContainer.appendChild(bar);
+  });
+}
+
+function updatePieChart(data) {
+  const pieContainer = document.querySelector('.pie-chart-container');
+  const legendContainer = document.querySelector('.pie-legend');
+  
+  if (!pieContainer || !legendContainer) return;
+  
+  // Clear existing slices and legend
+  pieContainer.innerHTML = '';
+  legendContainer.innerHTML = '';
+  
+  // Calculate total for percentages
+  const total = Object.values(data).reduce((sum, value) => sum + value, 0);
+  
+  // Create new slices
+  Object.entries(data).forEach(([platform, count]) => {
+    if (count > 0) {
+      const percentage = (count / total) * 100;
+      
+      // Add pie slice
+      const slice = document.createElement('div');
+      slice.className = `pie-slice ${platform}`;
+      slice.style.setProperty('--percentage', percentage);
+      pieContainer.appendChild(slice);
+      
+      // Add legend item
+      const legendItem = document.createElement('div');
+      legendItem.className = 'legend-item';
+      
+      const color = document.createElement('span');
+      color.className = `legend-color ${platform}`;
+      
+      const text = document.createElement('span');
+      text.textContent = `${platform.charAt(0).toUpperCase() + platform.slice(1)} (${percentage.toFixed(1)}%)`;
+      
+      legendItem.appendChild(color);
+      legendItem.appendChild(text);
+      legendContainer.appendChild(legendItem);
+    }
+  });
+}
+
+function updateLineChart(data) {
+  const svg = document.querySelector('.line-chart-svg');
+  const labelsContainer = document.querySelector('.line-chart-labels');
+  
+  if (!svg || !labelsContainer) return;
+  
+  // Clear existing content
+  svg.innerHTML = '';
+  labelsContainer.innerHTML = '';
+  
+  // Calculate dimensions and scaling
+  const width = 400;
+  const height = 200;
+  const padding = 20;
+  
+  const maxValue = Math.max(...data.map(d => d.avgResponseTime));
+  const xScale = (width - 2 * padding) / (data.length - 1);
+  const yScale = (height - 2 * padding) / maxValue;
+  
+  // Create path for line
+  let pathD = '';
+  let areaD = '';
+  
+  data.forEach((point, index) => {
+    const x = padding + index * xScale;
+    const y = height - padding - (point.avgResponseTime * yScale);
+    
+    if (index === 0) {
+      pathD += `M ${x} ${y}`;
+      areaD += `M ${x} ${y}`;
+    } else {
+      pathD += ` L ${x} ${y}`;
+      areaD += ` L ${x} ${y}`;
+    }
+  });
+  
+  // Close the area path
+  areaD += ` L ${width - padding} ${height - padding} L ${padding} ${height - padding} Z`;
+  
+  // Add gradient definition
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  const gradient = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+  gradient.setAttribute('id', 'lineGradient');
+  gradient.setAttribute('x1', '0%');
+  gradient.setAttribute('y1', '0%');
+  gradient.setAttribute('x2', '0%');
+  gradient.setAttribute('y2', '100%');
+  
+  const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+  stop1.setAttribute('offset', '0%');
+  stop1.setAttribute('style', 'stop-color:#4f46e5;stop-opacity:0.3');
+  
+  const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+  stop2.setAttribute('offset', '100%');
+  stop2.setAttribute('style', 'stop-color:#4f46e5;stop-opacity:0');
+  
+  gradient.appendChild(stop1);
+  gradient.appendChild(stop2);
+  defs.appendChild(gradient);
+  svg.appendChild(defs);
+  
+  // Add area
+  const area = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  area.setAttribute('d', areaD);
+  area.setAttribute('fill', 'url(#lineGradient)');
+  svg.appendChild(area);
+  
+  // Add line
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  line.setAttribute('d', pathD);
+  line.setAttribute('stroke', '#4f46e5');
+  line.setAttribute('stroke-width', '3');
+  line.setAttribute('fill', 'none');
+  svg.appendChild(line);
+  
+  // Add points
+  data.forEach((point, index) => {
+    const x = padding + index * xScale;
+    const y = height - padding - (point.avgResponseTime * yScale);
+    
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', x);
+    circle.setAttribute('cy', y);
+    circle.setAttribute('r', '4');
+    circle.setAttribute('fill', '#4f46e5');
+    svg.appendChild(circle);
+  });
+  
+  // Add labels
+  data.forEach((point, index) => {
+    const month = new Date(point.month).toLocaleString('default', { month: 'short' });
+    const label = document.createElement('span');
+    label.textContent = month;
+    labelsContainer.appendChild(label);
+  });
+}
+
+// Update real-time data
+async function updateRealTimeData() {
+  try {
+    const [messagesToday, activeChats] = await Promise.all([
+      getMessagesToday(),
+      getActiveChats()
+    ]);
+    
+    updateStatCard('.stat-card:nth-child(2) h3', messagesToday);
+    updateStatCard('.stat-card:nth-child(4) h3', activeChats);
+    
+  } catch (error) {
+    console.error("Error updating real-time data:", error);
+  }
+}
+
+// Animate charts (placeholder - implement your animation logic)
+function animateCharts() {
+  // Implement your chart animation logic here
+  console.log("Animating charts...");
+}
 
 // Load Facebook chats
 function loadFacebookChats() {
