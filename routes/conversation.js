@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const Conversation = require('../models/conversation');
 const Message = require('../models/message');
+const auth = require('../middleware/auth'); // Make sure this path is correct
 
 // Get all conversations for a user
-router.get('/', async (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
     const conversations = await Conversation.find({
       participants: req.user._id
@@ -20,7 +21,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get messages in a conversation
-router.get('/:id/messages', async (req, res) => {
+router.get('/:id/messages', auth, async (req, res) => {
   try {
     const messages = await Message.find({
       conversation: req.params.id
@@ -35,10 +36,10 @@ router.get('/:id/messages', async (req, res) => {
 });
 
 // Create new message in conversation
-router.post('/:id/messages', async (req, res) => {
+router.post('/:id/messages', auth, async (req, res) => {
   try {
     const { content, platform } = req.body;
-    
+
     const message = new Message({
       conversation: req.params.id,
       sender: req.user._id,
@@ -48,7 +49,6 @@ router.post('/:id/messages', async (req, res) => {
 
     const savedMessage = await message.save();
 
-    // Update conversation's last message
     await Conversation.findByIdAndUpdate(req.params.id, {
       lastMessage: savedMessage._id,
       $inc: { unreadCount: 1 }
