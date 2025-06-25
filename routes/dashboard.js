@@ -1,4 +1,7 @@
 // routes/dashboard.js
+const express = require('express');
+const router = express.Router();
+
 const UserStats = require('../models/userStats'); // Import your new model
 
 // Updated users/count endpoint
@@ -16,3 +19,5 @@ router.get('/users/count', async (req, res) => {
     });
   }
 });
+
+module.exports = router;
