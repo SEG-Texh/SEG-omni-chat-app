@@ -11,6 +11,7 @@ const connectDB = require('./config/database');
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
+const conversationRoutes = require('./routes/conversations');
 const messageRoutes = require('./routes/messages');
 const dashboardRoutes = require('./routes/dashboard');
 const User = require('./models/User');
@@ -40,6 +41,7 @@ app.use('/js', express.static(path.join(__dirname, '../js')));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/conversations', conversationRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
@@ -70,45 +72,63 @@ io.on('connection', async (socket) => {
 
   connectedUsers.set(socket.userId, { socketId: socket.id, user: socket.user });
   await User.findByIdAndUpdate(socket.userId, { isOnline: true });
-  socket.join(socket.userId);
+  socket.join(socket.userId); // Optional: for personal notifications
 
+  // Broadcast that user is online
   socket.broadcast.emit('userOnline', {
     userId: socket.userId,
     name: socket.user.name,
     role: socket.user.role
   });
 
-  socket.on('sendMessage', async ({ receiverId, content, messageType = 'direct' }) => {
+  // JOIN ALL CONVERSATION ROOMS
+  socket.on('joinConversations', async () => {
+    try {
+      const conversations = await Conversation.find({ participants: socket.user._id });
+      conversations.forEach(conv => {
+        socket.join(`conversation_${conv._id}`);
+      });
+    } catch (err) {
+      console.error('Error joining conversations:', err.message);
+    }
+  });
+
+  // SEND A MESSAGE
+  socket.on('sendMessage', async ({ conversationId, content, platform }) => {
     try {
       const message = new Message({
-        sender: socket.userId,
-        receiver: receiverId,
+        conversation: conversationId,
+        sender: socket.user._id,
         content,
-        messageType
+        platform
       });
-      await message.save();
-      await message.populate('sender', 'name email role');
-      await message.populate('receiver', 'name email role');
 
-      if (messageType === 'broadcast') {
-        io.emit('newMessage', message);
-      } else {
-        socket.to(receiverId).emit('newMessage', message);
-        socket.emit('newMessage', message);
-      }
+      const savedMessage = await message.save();
+      await savedMessage.populate('sender', 'name avatar');
+
+      // Update conversation metadata
+      await Conversation.findByIdAndUpdate(conversationId, {
+        lastMessage: savedMessage._id,
+        $inc: { unreadCount: 1 }
+      });
+
+      // Emit to all users in the conversation room
+      io.to(`conversation_${conversationId}`).emit('newMessage', savedMessage);
     } catch (err) {
       socket.emit('error', { message: 'Failed to send message' });
     }
   });
 
-  socket.on('typing', ({ receiverId, isTyping }) => {
-    socket.to(receiverId).emit('userTyping', {
+  // TYPING INDICATOR
+  socket.on('typing', ({ conversationId, isTyping }) => {
+    socket.to(`conversation_${conversationId}`).emit('userTyping', {
       userId: socket.userId,
       name: socket.user.name,
       isTyping
     });
   });
 
+  // DISCONNECT
   socket.on('disconnect', async () => {
     console.log(`🔴 User disconnected: ${socket.user.name}`);
     connectedUsers.delete(socket.userId);
@@ -123,6 +143,7 @@ io.on('connection', async (socket) => {
     });
   });
 });
+
 
 // UserStats initialization function
 async function initializeUserStats() {
