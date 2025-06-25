@@ -55,5 +55,14 @@ userSchema.pre('save', async function(next) {
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
-
+userSchema.pre('save', async function(next) {
+  if (this.isNew) { // Only increment if this is a new user
+    await UserStats.findOneAndUpdate(
+      {},
+      { $inc: { totalUsers: 1 }, $set: { lastUpdated: new Date() } },
+      { upsert: true }
+    );
+  }
+  next();
+});
 module.exports = mongoose.model('User', userSchema);
