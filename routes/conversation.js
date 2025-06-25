@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Conversation = require('../models/conversation');
 const Message = require('../models/message');
-const auth = require('../middleware/auth'); // Make sure this path is correct
+const { auth } = require('../middleware/auth');
 
 // Get all conversations for a user
 router.get('/', auth, async (req, res) => {
