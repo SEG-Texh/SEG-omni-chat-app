@@ -12,14 +12,24 @@ const connectDB = require('./config/database');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const messageRoutes = require('./routes/messages');
-const dashboardRoutes = require('./routes/dashboard'); // Add this line
+const dashboardRoutes = require('./routes/dashboard');
 const User = require('./models/User');
 const Message = require('./models/message');
+const UserStats = require('./models/userStats'); // Add this line
 
 const server = http.createServer(app);
 const io = socket.init(server);
 
-connectDB();
+// Initialize database and stats
+connectDB().then(async () => {
+  await initializeUserStats(); // Initialize UserStats after DB connection
+  
+  const PORT = process.env.PORT || 3000;
+  server.listen(PORT, async () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    await createDefaultAdmin();
+  });
+});
 
 app.use(cors());
 app.use(express.json());
@@ -31,7 +41,7 @@ app.use('/js', express.static(path.join(__dirname, '../js')));
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/messages', messageRoutes);
-app.use('/api/dashboard', dashboardRoutes); // Add this line
+app.use('/api/dashboard', dashboardRoutes);
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, './public/index.html')));
 app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, './public/dashboard.html')));
@@ -113,6 +123,23 @@ io.on('connection', async (socket) => {
     });
   });
 });
+
+// UserStats initialization function
+async function initializeUserStats() {
+  try {
+    const exists = await UserStats.findOne({});
+    if (!exists) {
+      const count = await User.countDocuments();
+      await UserStats.create({ totalUsers: count });
+      console.log('✅ UserStats initialized with', count, 'users');
+    } else {
+      console.log('ℹ️ UserStats already exists with', exists.totalUsers, 'users');
+    }
+  } catch (error) {
+    console.error('❌ Error initializing UserStats:', error.message);
+    // Consider whether you want to proceed with server startup or exit
+  }
+}
 
 const createDefaultAdmin = async () => {
   const exists = await User.findOne({ role: 'admin' });
