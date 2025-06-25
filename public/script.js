@@ -220,11 +220,15 @@ function updateStatCard(selector, value) {
   }
 }
 
-// Data fetching functions
+// Updated data fetching function
 async function getTotalUsers() {
   try {
-    const response = await fetch('/api/users/count');
+    const response = await fetch('/api/dashboard/users/count'); // Corrected endpoint
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
     const data = await response.json();
+    console.log('User count data:', data); // Debug log
     return data.count;
   } catch (error) {
     console.error("Error fetching total users:", error);
