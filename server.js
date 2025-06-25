@@ -11,7 +11,7 @@ const connectDB = require('./config/database');
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
-const conversationRoutes = require('./routes/conversations');
+const conversationRoutes = require('./routes/conversation');
 const messageRoutes = require('./routes/messages');
 const dashboardRoutes = require('./routes/dashboard');
 const User = require('./models/User');
@@ -41,7 +41,7 @@ app.use('/js', express.static(path.join(__dirname, '../js')));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/conversations', conversationRoutes);
+app.use('/api/conversation', conversationRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
