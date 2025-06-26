@@ -1,3 +1,4 @@
+// models/message.js
 const mongoose = require('mongoose');
 
 const messageSchema = new mongoose.Schema({
@@ -34,7 +35,15 @@ const messageSchema = new mongoose.Schema({
   timestamp: {
     type: Date,
     default: Date.now
-  }
-}, { timestamps: true });
+  },
+  // Additional fields for platform-specific IDs
+  platformMessageId: String,
+  platformSenderId: String,
+  platformRecipientId: String
+}, { 
+  timestamps: true,
+  // This helps with validation errors
+  strict: 'throw' 
+});
 
 module.exports = mongoose.model('Message', messageSchema);
