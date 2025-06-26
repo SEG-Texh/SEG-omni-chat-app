@@ -248,13 +248,15 @@ class FacebookController {
       if (!user) {
         // Get profile from Facebook if not found
         const profile = await this.getUserProfile(facebookId);
-        
+
         user = new User({
-          name: profile?.name || `Facebook User ${facebookId}`,
-          platformIds: { facebook: facebookId },
-          profilePic: profile?.profile_pic,
-          lastActive: new Date()
-        });
+  name: profile?.name || `Facebook User ${facebookId}`,
+  email: `${facebookId}@facebook.local`, // ✅ placeholder email
+  platformIds: { facebook: facebookId },
+  profilePic: profile?.profile_pic,
+  lastActive: new Date()
+});
+
         
         await user.save();
         console.log(`👤 Created new user: ${user._id}`);
