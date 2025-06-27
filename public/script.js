@@ -575,200 +575,27 @@ function animateCharts() {
 }
 
 // Load Facebook chats
-// Initialize Facebook Messages Component
-function initializeFacebookMessages() {
-  // DOM Elements
-  const facebookTab = document.getElementById('facebookTab');
-  const chatList = facebookTab.querySelector('.chat-list');
-  const chatMessages = facebookTab.querySelector('.chat-messages');
-  const chatInput = facebookTab.querySelector('.chat-input input');
-  const sendButton = facebookTab.querySelector('.chat-input button');
-  const chatHeader = facebookTab.querySelector('.chat-header .chat-user');
-  
-  let currentConversation = null;
-  let facebookConversations = [];
+// Example dynamic loading
+function loadFacebookConversations(conversations) {
+  const list = document.getElementById('facebookChatList');
+  list.innerHTML = ''; // clear old items
 
-  // Fetch Facebook Conversations
-  async function fetchFacebookConversations() {
-    try {
-      const response = await fetch('/api/facebook/conversations');
-      facebookConversations = await response.json();
-      renderConversationList();
-      
-      if (facebookConversations.length > 0) {
-        selectConversation(facebookConversations[0]);
-      }
-    } catch (error) {
-      console.error('Error loading Facebook conversations:', error);
-    }
-  }
-
-  // Render Conversation List
-  function renderConversationList() {
-    chatList.innerHTML = '';
-    
-    facebookConversations.forEach(conversation => {
-      const participant = conversation.participants.find(p => p._id !== currentUser._id);
-      const lastMessage = conversation.lastMessage || { content: { text: '' } };
-      
-      const chatItem = document.createElement('div');
-      chatItem.className = `chat-item ${currentConversation?._id === conversation._id ? 'active' : ''}`;
-      chatItem.dataset.conversationId = conversation._id;
-      chatItem.innerHTML = `
-        <div class="chat-avatar">${getAvatar(participant)}</div>
-        <div class="chat-info">
-          <div class="chat-name">${participant?.name || 'Facebook User'}</div>
-          <div class="chat-preview">${lastMessage.content.text.substring(0, 30)}${lastMessage.content.text.length > 30 ? '...' : ''}</div>
-        </div>
-        <div class="chat-time">${formatTime(lastMessage.createdAt || conversation.updatedAt)}</div>
-      `;
-      
-      chatItem.addEventListener('click', () => selectConversation(conversation));
-      chatList.appendChild(chatItem);
-    });
-  }
-
-  // Select Conversation
-  async function selectConversation(conversation) {
-    currentConversation = conversation;
-    renderConversationList();
-    
-    const participant = conversation.participants.find(p => p._id !== currentUser._id);
-    chatHeader.innerHTML = `
-      <div class="chat-avatar">${getAvatar(participant)}</div>
-      <div class="chat-details">
-        <div class="chat-name">${participant?.name || 'Facebook User'}</div>
-        <div class="chat-status">${participant?.isOnline ? 'Online' : 'Offline'}</div>
+  conversations.forEach(conv => {
+    const item = document.createElement('div');
+    item.classList.add('chat-item');
+    item.innerHTML = `
+      <div class="chat-avatar">👤</div>
+      <div class="chat-info">
+        <div class="chat-name">${conv.name}</div>
+        <div class="chat-preview">${conv.lastMessage}</div>
       </div>
+      <div class="chat-time">${conv.timeAgo}</div>
     `;
-    
-    loadMessages(conversation._id);
-  }
-
-  // Load Messages for Conversation
-  async function loadMessages(conversationId) {
-    try {
-      const response = await fetch(`/api/facebook/messages?conversation=${conversationId}`);
-      const messages = await response.json();
-      renderMessages(messages);
-    } catch (error) {
-      console.error('Error loading Facebook messages:', error);
-    }
-  }
-
-  // Render Messages
-  function renderMessages(messages) {
-    chatMessages.innerHTML = '';
-    messages.forEach(message => appendMessage(message));
-    scrollToBottom();
-  }
-
-  // Append Single Message
-  function appendMessage(message) {
-    const isCurrentUser = message.sender._id === currentUser._id;
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${isCurrentUser ? 'sent' : 'received'}`;
-    messageDiv.innerHTML = `
-      ${!isCurrentUser ? `<div class="message-sender">${message.sender.name}</div>` : ''}
-      <div class="message-content">${message.content.text}</div>
-      <div class="message-time">${formatTime(message.createdAt)}</div>
-    `;
-    chatMessages.appendChild(messageDiv);
-  }
-
-  // Send Message
-  async function sendFacebookMessage() {
-    const text = chatInput.value.trim();
-    if (!text || !currentConversation) return;
-    
-    try {
-      const response = await fetch('/api/facebook/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          conversationId: currentConversation._id,
-          message: text,
-          recipientId: currentConversation.participants.find(p => p._id !== currentUser._id)._id
-        })
-      });
-      
-      if (response.ok) {
-        chatInput.value = '';
-        const newMessage = await response.json();
-        appendMessage(newMessage);
-        scrollToBottom();
-      }
-    } catch (error) {
-      console.error('Error sending Facebook message:', error);
-    }
-  }
-
-  // Socket.IO Handlers for Facebook
-  function setupSocketHandlers() {
-    socket.on('facebookNewMessage', (message) => {
-      if (currentConversation?._id === message.conversation) {
-        appendMessage(message);
-        scrollToBottom();
-      }
-      updateConversationPreview(message);
-    });
-
-    socket.on('facebookUserStatus', ({ userId, isOnline }) => {
-      if (currentConversation?.participants.some(p => p._id === userId)) {
-        updateStatusIndicator(userId, isOnline);
-      }
-    });
-  }
-
-  // Helper Functions
-  function updateConversationPreview(message) {
-    const conversationItem = chatList.querySelector(`[data-conversation-id="${message.conversation}"]`);
-    if (conversationItem) {
-      const preview = conversationItem.querySelector('.chat-preview');
-      const time = conversationItem.querySelector('.chat-time');
-      
-      if (preview) preview.textContent = message.content.text.substring(0, 30);
-      if (time) time.textContent = formatTime(message.createdAt);
-    }
-  }
-
-  function updateStatusIndicator(userId, isOnline) {
-    if (currentConversation?.participants.some(p => p._id === userId)) {
-      const statusElement = chatHeader.querySelector('.chat-status');
-      if (statusElement) {
-        statusElement.textContent = isOnline ? 'Online' : 'Offline';
-        statusElement.className = `chat-status ${isOnline ? 'online' : 'offline'}`;
-      }
-    }
-  }
-
-  function scrollToBottom() {
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-  }
-
-  function getAvatar(user) {
-    return user?.profilePic 
-      ? `<img src="${user.profilePic}" alt="${user.name}" />`
-      : user?.name?.charAt(0).toUpperCase() || 'F';
-  }
-
-  function formatTime(dateString) {
-    return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }
-
-  // Event Listeners
-  sendButton.addEventListener('click', sendFacebookMessage);
-  chatInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendFacebookMessage();
+    item.addEventListener('click', () => openConversation(conv.id));
+    list.appendChild(item);
   });
-
-  // Initialization
-  setupSocketHandlers();
-  fetchFacebookConversations();
 }
 
-// Initialize when Facebook tab is selected
-document.querySelector('[data-tab="facebook"]').addEventListener('click', initializeFacebookMessages);
 
 // Load WhatsApp chats
 function loadWhatsAppChats() {
