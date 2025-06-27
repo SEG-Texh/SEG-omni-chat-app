@@ -225,10 +225,28 @@ class FacebookController {
   async sendMessage(recipientPsid, text, conversationId, senderId) {
     try {
       console.log(`✉️ Sending to ${recipientPsid}`);
-      
+
+      // Find or create a conversation between the logged-in user and the Facebook recipient
+      let conversation = await Conversation.findOne({
+        platform: 'facebook',
+        participants: { $all: [senderId], $size: 2 },
+        platformConversationId: { $regex: `${recipientPsid}|${senderId}` }
+      });
+      if (!conversation) {
+        // Create a new conversation with both participants
+        conversation = await Conversation.create({
+          participants: [senderId, recipientPsid],
+          platform: 'facebook',
+          platformConversationId: `${senderId}_${recipientPsid}`,
+          lastMessage: new Date(),
+          labels: ['facebook-inbox'],
+          status: 'active'
+        });
+      }
+
       // Create pending message first
       const pendingMessage = await Message.create({
-        conversation: conversationId,
+        conversation: conversation._id,
         sender: senderId,
         content: { text },
         platform: 'facebook',
@@ -266,7 +284,7 @@ class FacebookController {
 
         // Update conversation last message
         await Conversation.updateOne(
-          { _id: conversationId },
+          { _id: conversation._id },
           { $set: { lastMessage: new Date() } }
         );
 
@@ -276,7 +294,7 @@ class FacebookController {
 
         // Emit real-time event if using socket.io
         if (this.io) {
-          this.io.to(`conversation_${conversationId}`).emit('new_message', sentMessage);
+          this.io.to(`conversation_${conversation._id}`).emit('new_message', sentMessage);
         }
 
         return sentMessage;
@@ -303,8 +321,8 @@ class FacebookController {
   async getConversations(req, res) {
     try {
       const { status, label } = req.query;
+      // Show all Facebook conversations to all users
       const query = {
-        participants: req.user._id,
         platform: 'facebook'
       };
 
