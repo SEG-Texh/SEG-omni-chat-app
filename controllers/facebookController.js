@@ -4,6 +4,8 @@ const Message = require('../models/message');
 const User = require('../models/User');
 const Conversation = require('../models/conversation');
 
+let currentFacebookConversationId = null;
+
 class FacebookController {
   constructor() {
     // Method binding

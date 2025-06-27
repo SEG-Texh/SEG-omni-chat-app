@@ -10,6 +10,9 @@ const loginError = document.getElementById("loginError")
 const loginSpinner = document.getElementById("loginSpinner")
 const loginText = document.getElementById("loginText")
 
+// Store the currently selected Facebook conversation ID
+globalThis.currentFacebookConversationId = null;
+
 // Initialize the application
 document.addEventListener("DOMContentLoaded", () => {
   // Check if user is already logged in
@@ -617,7 +620,9 @@ async function loadFacebookConversations() {
   }
 }
 
+// Update loadFacebookMessages to set the current conversation ID
 async function loadFacebookMessages(conversationId) {
+  globalThis.currentFacebookConversationId = conversationId;
   try {
     const res = await fetch(`/api/facebook/conversations/${conversationId}/messages`, {
       headers: {
@@ -633,7 +638,7 @@ async function loadFacebookMessages(conversationId) {
       const div = document.createElement("div");
       div.className = "chat-message";
       div.innerHTML = `
-        <div><strong>${msg.sender.name}:</strong> ${msg.content.text}</div>
+        <div><strong>${msg.sender ? msg.sender.name : "Unknown"}:</strong> ${msg.content.text}</div>
       `;
       chatBox.appendChild(div);
     });
@@ -642,6 +647,55 @@ async function loadFacebookMessages(conversationId) {
   }
 }
 
+// Add event listener for the Facebook send button
+const facebookSendButton = document.getElementById("facebookSendButton");
+const facebookMessageInput = document.getElementById("facebookMessageInput");
+
+if (facebookSendButton && facebookMessageInput) {
+  facebookSendButton.addEventListener("click", async () => {
+    const text = facebookMessageInput.value.trim();
+    if (!text || !globalThis.currentFacebookConversationId) return;
+
+    // Fetch the conversation to get the recipient's Facebook ID
+    const res = await fetch(`/api/facebook/conversations`, {
+      headers: { Authorization: `Bearer ${currentUser.token}` }
+    });
+    const conversations = await res.json();
+    const conversation = conversations.find(c => c._id === globalThis.currentFacebookConversationId);
+    if (!conversation) return alert("Conversation not found.");
+
+    // Find the Facebook participant (not the current user)
+    const recipient = conversation.participants.find(p => p._id !== currentUser.id && p._id !== currentUser._id);
+    if (!recipient) return alert("Recipient not found.");
+
+    try {
+      const sendRes = await fetch('/api/facebook/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${currentUser.token}`,
+        },
+        body: JSON.stringify({
+          recipientId: recipient.facebookId || recipient.platformIds?.facebook, // fallback for different user schema
+          text,
+          conversationId: globalThis.currentFacebookConversationId,
+        }),
+      });
+
+      if (!sendRes.ok) {
+        const errData = await sendRes.json();
+        alert("Failed to send message: " + (errData.error || sendRes.status));
+        return;
+      }
+
+      facebookMessageInput.value = "";
+      // Reload messages
+      loadFacebookMessages(globalThis.currentFacebookConversationId);
+    } catch (err) {
+      alert("Failed to send message: " + err.message);
+    }
+  });
+}
 
 // Load WhatsApp chats
 function loadWhatsAppChats() {
