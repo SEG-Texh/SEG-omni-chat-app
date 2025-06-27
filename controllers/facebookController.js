@@ -86,7 +86,7 @@ class FacebookController {
         platformMessageId: message.mid,
         platformSenderId: senderPsid,
         platformRecipientId: pageId,
-        status: 'receivded'
+        status: 'received'
       };
 
       if (message.attachments) {
