@@ -156,7 +156,7 @@ function initializeSocket(token) {
   });
 
   // Facebook Specific Events
-  socket.on("facebookMessage", (message) => {
+  socket.on("new_message", (message) => {
     console.log("📨 New Facebook message:", message);
     if (currentConversation?._id === message.conversation) {
       appendFacebookMessage(message);
