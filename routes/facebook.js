@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const facebookController = require('../controllers/facebookController');
-const authMiddleware = require('../middleware/auth'); // Add authentication middleware
+const { auth } = require('../middleware/auth');
 
 // Webhook routes
 router.get('/webhook', facebookController.verifyWebhook);
 router.post('/webhook', facebookController.handleMessage);
 
 // Authenticated API routes
-router.use(authMiddleware); // All routes below require authentication
+router.use(auth); // ✅ Correct usage
 
 // Conversation routes
 router.get('/conversations', async (req, res) => {
