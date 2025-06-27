@@ -582,21 +582,21 @@ function animateCharts() {
 // Load Facebook chats
 async function loadFacebookConversations() {
   try {
-    const res = await fetch("/api/facebook/conversations", {
+    const res = await fetch("/api/conversations?platform=facebook", {
       headers: {
-        Authorization: `Bearer ${currentUser.token}`, // Replace if you use cookies
+        Authorization: `Bearer ${currentUser.token}`,
       },
-    })
+    });
 
-    const data = await res.json()
+    const data = await res.json();
 
-    const chatList = document.querySelector("#facebookTab .chat-list")
-    chatList.innerHTML = ""
+    const chatList = document.querySelector("#facebookTab .chat-list");
+    chatList.innerHTML = "";
 
     data.forEach((conv) => {
-      const participant = conv.participants[0]
-      const item = document.createElement("div")
-      item.className = "chat-item"
+      const participant = conv.participants[0];
+      const item = document.createElement("div");
+      item.className = "chat-item";
       item.innerHTML = `
         <div class="chat-avatar">👤</div>
         <div class="chat-info">
@@ -604,36 +604,41 @@ async function loadFacebookConversations() {
           <div class="chat-preview">${conv.lastMessage?.content?.text || ""}</div>
         </div>
         <div class="chat-time">just now</div>
-      `
-      item.onclick = () => loadFacebookMessages(conv._id)
-      chatList.appendChild(item)
-    })
+      `;
+      item.onclick = () => loadFacebookMessages(conv._id);
+      chatList.appendChild(item);
+    });
   } catch (err) {
-    console.error("Failed to load conversations", err)
+    console.error("Failed to load conversations", err);
   }
 }
+
 async function loadFacebookMessages(conversationId) {
   try {
-    const res = await fetch(`/api/facebook/conversations/${conversationId}/messages`, {
+    const res = await fetch(`/api/conversations/${conversationId}/messages`, {
       headers: {
-        Authorization: `Bearer ${currentUser.token}`, // or use cookie/session
+        Authorization: `Bearer ${currentUser.token}`,
       },
-    })
+    });
 
-    const messages = await res.json()
-    const chatBox = document.querySelector("#facebookTab .chat-messages")
-    chatBox.innerHTML = ""
+    const messages = await res.json();
+    const chatBox = document.querySelector("#facebookTab .chat-messages");
+    chatBox.innerHTML = "";
+
+    if (!messages.length) {
+      chatBox.innerHTML = "<div class='chat-message'>No messages yet</div>";
+    }
 
     messages.forEach((msg) => {
-      const div = document.createElement("div")
-      div.className = "chat-message"
+      const div = document.createElement("div");
+      div.className = "chat-message";
       div.innerHTML = `
         <div><strong>${msg.sender.name}:</strong> ${msg.content.text}</div>
-      `
-      chatBox.appendChild(div)
-    })
+      `;
+      chatBox.appendChild(div);
+    });
   } catch (err) {
-    console.error("Failed to load messages", err)
+    console.error("Failed to load messages", err);
   }
 }
 
