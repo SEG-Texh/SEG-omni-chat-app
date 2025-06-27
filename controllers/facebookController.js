@@ -345,18 +345,20 @@ class FacebookController {
   async getMessages(req, res) {
     try {
       console.log('Requested conversation ID:', req.params.id);
+
       let conversation;
       if (mongoose.Types.ObjectId.isValid(req.params.id)) {
         conversation = await Conversation.findById(req.params.id);
+        console.log('Found by _id:', conversation);
       }
       if (!conversation) {
         conversation = await Conversation.findOne({ platformConversationId: req.params.id });
+        console.log('Found by platformConversationId:', conversation);
       }
       if (!conversation) {
+        console.log('Conversation not found for ID:', req.params.id);
         return res.status(404).json({ error: 'Conversation not found' });
       }
-      console.log('Conversation found by _id:', conversation);
-      console.log('Conversation found by platformConversationId:', conversation);
 
       const messages = await Message.find({
         conversation: conversation._id
