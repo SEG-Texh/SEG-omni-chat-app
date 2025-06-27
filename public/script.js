@@ -504,12 +504,6 @@ function initFacebookChat() {
   // Load initial chats
   loadFacebookChats();
 }
-const token = localStorage.getItem('token');
-if (!token) {
-  console.warn('No token found in localStorage');
-  showError('You are not logged in. Please log in first.');
-  return;
-}
 
 // Load Facebook chats implementation
 async function loadFacebookChats() {
