@@ -350,8 +350,7 @@ class FacebookController {
 
       // Verify user has access to this conversation
       const conversation = await Conversation.findOne({
-        _id: req.params.id,
-        participants: req.user._id
+        _id: req.params.id
       });
 
       if (!conversation) {
