@@ -67,6 +67,16 @@ async function handleLogin(e) {
     loginText.textContent = "Login"
   }
 }
+function handleLoginSuccess(data) {
+  const { token, user } = data;
+  currentUser = { ...user, token }; // ✅ Set this globally
+
+  // Optional: store in localStorage
+  localStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+  initializeSocket(token);
+  loadFacebookConversations();
+}
 
 // Show the main application
 function showApp() {
@@ -576,14 +586,23 @@ function animateCharts() {
 
 // Load Facebook chats
 async function loadFacebookConversations() {
-  try {
-    const res = await fetch("/api/facebook/conversations", {
-      headers: {
-        Authorization: `Bearer ${currentUser.token}`, // Replace if you use cookies
-      },
-    })
+  if (!currentUser || !currentUser.token) {
+    console.error("No token found – cannot load conversations.");
+    return;
+  }
 
-    const data = await res.json()
+  try {
+    const res = await fetch('/api/facebook/conversations', {
+      headers: {
+        Authorization: `Bearer ${currentUser.token}`,
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Server responded with status ${res.status}`);
+    }
+
+    const conversations = await res.json();
 
     const chatList = document.querySelector("#facebookTab .chat-list")
     chatList.innerHTML = ""
@@ -746,4 +765,12 @@ function getRandomColor() {
 // Export functions for global access
 window.switchTab = switchTab
 window.logout = logout
+window.onload = () => {
+  const savedUser = localStorage.getItem('currentUser');
+  if (savedUser) {
+    currentUser = JSON.parse(savedUser);
+    initializeSocket(currentUser.token);
+    loadFacebookConversations();
+  }
+};
 
