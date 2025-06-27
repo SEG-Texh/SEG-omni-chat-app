@@ -39,26 +39,26 @@ async function handleLogin(e) {
   loginError.textContent = ""
 
   try {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    })
 
-    // Mock authentication - in real app, this would be an API call
-    if (email && password) {
-      currentUser = {
-        id: 1,
-        name: "Admin User",
-        email: email,
-        role: "admin",
-        avatar: email.charAt(0).toUpperCase(),
-      }
-
-      // Save user to localStorage
-      localStorage.setItem("omniChatUser", JSON.stringify(currentUser))
-
-      showApp()
-    } else {
+    if (!response.ok) {
       throw new Error("Invalid credentials")
     }
+
+    const data = await response.json()
+    // data should have { token, user }
+
+    // Store user and token in currentUser
+    currentUser = { ...data.user, token: data.token }
+
+    // Save to localStorage
+    localStorage.setItem('currentUser', JSON.stringify(currentUser))
+
+    showApp()
   } catch (error) {
     loginError.textContent = error.message || "Login failed. Please try again."
   } finally {
@@ -66,16 +66,6 @@ async function handleLogin(e) {
     loginSpinner.style.display = "none"
     loginText.textContent = "Login"
   }
-}
-function handleLoginSuccess(data) {
-  const { token, user } = data;
-  currentUser = { ...user, token }; // ✅ Set this globally
-
-  // Optional: store in localStorage
-  localStorage.setItem('currentUser', JSON.stringify(currentUser));
-
-  initializeSocket(token);
-  loadFacebookConversations();
 }
 
 // Show the main application
