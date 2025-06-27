@@ -6,7 +6,7 @@ const Conversation = require('../models/conversation');
 
 class FacebookController {
   constructor() {
-    // Proper method binding without duplicates
+    // Bind all methods
     this.verifyWebhook = this.verifyWebhook.bind(this);
     this.handleMessage = this.handleMessage.bind(this);
     this.processMessage = this.processMessage.bind(this);
@@ -37,13 +37,12 @@ class FacebookController {
   // Main message handler
   async handleMessage(req, res) {
     try {
-      console.log('📩 Incoming webhook');
+      console.log('📩 Incoming Facebook webhook');
       
-      if (!req.body?.object === 'page') {
+      if (req.body?.object !== 'page') {
         return res.status(400).json({ error: 'Invalid request format' });
       }
 
-      // Process entries sequentially to maintain order
       for (const entry of req.body.entry) {
         if (!entry.messaging) continue;
         
@@ -70,7 +69,7 @@ class FacebookController {
     }
   }
 
-  // Process messages
+  // Process incoming messages
   async processMessage(senderPsid, message, pageId) {
     try {
       console.log(`Processing message from ${senderPsid}`);
@@ -86,13 +85,14 @@ class FacebookController {
         platformMessageId: message.mid,
         platformSenderId: senderPsid,
         platformRecipientId: pageId,
-        status: 'received'
+        status: 'delivered', // Matches your schema enum
+        timestamp: new Date(message.timestamp || Date.now())
       };
 
       if (message.attachments) {
         messageData.content.attachments = message.attachments.map(att => ({
-          type: att.type,
-          url: att.payload?.url
+          url: att.payload?.url,
+          type: att.type // Will be validated against your enum
         }));
       }
 
@@ -102,6 +102,7 @@ class FacebookController {
         { $set: { lastMessage: new Date() } }
       );
 
+      console.log(`💾 Saved message ${newMessage._id}`);
       return newMessage;
     } catch (error) {
       console.error('❌ Message processing failed:', error.message);
@@ -109,14 +110,97 @@ class FacebookController {
     }
   }
 
+  // Process postbacks
+  async processPostback(senderPsid, postback, pageId) {
+    try {
+      console.log(`🔄 Postback from ${senderPsid}: ${postback.payload}`);
+      
+      const user = await this.findOrCreateUser(senderPsid);
+      const conversation = await this.findOrCreateConversation(user._id, pageId, senderPsid);
+      
+      const newMessage = await Message.create({
+        conversation: conversation._id,
+        sender: user._id,
+        content: { text: `[POSTBACK] ${postback.payload}` },
+        platform: 'facebook',
+        status: 'delivered', // Matches your schema enum
+        platformMessageId: postback.mid || `pb-${Date.now()}`,
+        platformSenderId: senderPsid,
+        platformRecipientId: pageId,
+        metadata: { postback },
+        timestamp: new Date(postback.timestamp || Date.now())
+      });
+
+      await Conversation.updateOne(
+        { _id: conversation._id },
+        { $set: { lastMessage: new Date() } }
+      );
+
+      return newMessage;
+    } catch (error) {
+      console.error('❌ Postback processing failed:', error);
+      return null;
+    }
+  }
+
+  // Send messages to users
+  async sendMessage(recipientPsid, text, conversationId, senderId) {
+    try {
+      console.log(`✉️ Sending to ${recipientPsid}: ${text.substring(0, 30)}...`);
+      
+      const response = await axios.post(
+        `https://graph.facebook.com/v13.0/me/messages`,
+        {
+          recipient: { id: recipientPsid },
+          message: { text }
+        },
+        {
+          params: { access_token: process.env.FACEBOOK_PAGE_ACCESS_TOKEN },
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 5000
+        }
+      );
+
+      const newMessage = await Message.create({
+        conversation: conversationId,
+        sender: senderId,
+        content: { text },
+        platform: 'facebook',
+        status: 'sent', // Matches your schema enum
+        platformMessageId: response.data.message_id,
+        platformRecipientId: recipientPsid,
+        timestamp: new Date()
+      });
+
+      return newMessage;
+    } catch (error) {
+      console.error('❌ Message send failed:', {
+        recipientPsid,
+        error: error.response?.data || error.message
+      });
+      
+      // Save failed message attempt
+      await Message.create({
+        conversation: conversationId,
+        sender: senderId,
+        content: { text },
+        platform: 'facebook',
+        status: 'failed',
+        platformRecipientId: recipientPsid,
+        timestamp: new Date(),
+        errorDetails: error.response?.data || error.message
+      });
+
+      return null;
+    }
+  }
+
   // User management
   async findOrCreateUser(facebookId) {
     try {
-      // Try to find by Facebook ID first
       let user = await User.findOne({ 'platformIds.facebook': facebookId });
       if (user) return user;
 
-      // Create new user without email to avoid duplicates
       user = await User.create({
         name: `FB-${facebookId}`,
         platformIds: { facebook: facebookId },
@@ -152,70 +236,6 @@ class FacebookController {
     } catch (error) {
       console.error('❌ Conversation error:', error);
       throw error;
-    }
-  }
-
-  // Postback handler
-  async processPostback(senderPsid, postback, pageId) {
-    try {
-      console.log(`🔄 Postback from ${senderPsid}`);
-      
-      const user = await this.findOrCreateUser(senderPsid);
-      const conversation = await this.findOrCreateConversation(user._id, pageId, senderPsid);
-      
-      const newMessage = await Message.create({
-        conversation: conversation._id,
-        sender: user._id,
-        content: { text: `[POSTBACK] ${postback.payload}` },
-        platform: 'facebook',
-        metadata: { postback },
-        status: 'received'
-      });
-
-      await Conversation.updateOne(
-        { _id: conversation._id },
-        { $set: { lastMessage: new Date() } }
-      );
-
-      return newMessage;
-    } catch (error) {
-      console.error('❌ Postback processing failed:', error);
-      return null;
-    }
-  }
-
-  // Message sending
-  async sendMessage(recipientPsid, text, conversationId, senderId) {
-    try {
-      console.log(`✉️ Sending to ${recipientPsid}`);
-      
-      const response = await axios.post(
-        `https://graph.facebook.com/v13.0/me/messages`,
-        {
-          recipient: { id: recipientPsid },
-          message: { text }
-        },
-        {
-          params: { access_token: process.env.FACEBOOK_PAGE_ACCESS_TOKEN },
-          headers: { 'Content-Type': 'application/json' },
-          timeout: 5000
-        }
-      );
-
-      await Message.create({
-        conversation: conversationId,
-        sender: senderId,
-        content: { text },
-        platform: 'facebook',
-        platformMessageId: response.data.message_id,
-        platformRecipientId: recipientPsid,
-        status: 'sent'
-      });
-
-      return true;
-    } catch (error) {
-      console.error('❌ Message send failed:', error.response?.data || error.message);
-      return false;
     }
   }
 }
