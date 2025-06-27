@@ -538,6 +538,7 @@ async function loadFacebookChats() {
         </div>
         <div class="chat-time">${formatTime(conversation.lastMessage?.timestamp)}</div>
       `;
+      chatItem.dataset.conversationId = conversation._id;
       chatItem.addEventListener('click', () => loadFacebookMessages(conversation._id));
       chatList.appendChild(chatItem);
     });
