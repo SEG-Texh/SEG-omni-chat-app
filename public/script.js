@@ -28,49 +28,45 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Handle login
 async function handleLogin(e) {
-  e.preventDefault();
+  e.preventDefault()
 
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
+  const email = document.getElementById("email").value
+  const password = document.getElementById("password").value
 
-  loginSpinner.style.display = "inline-block";
-  loginText.textContent = "Logging in...";
-  loginError.textContent = "";
+  // Show loading state
+  loginSpinner.style.display = "inline-block"
+  loginText.textContent = "Logging in..."
+  loginError.textContent = ""
 
   try {
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, password }),
-    });
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1500))
 
-    const data = await res.json();
+    // Mock authentication - in real app, this would be an API call
+    if (email && password) {
+      currentUser = {
+        id: 1,
+        name: "Admin User",
+        email: email,
+        role: "admin",
+        avatar: email.charAt(0).toUpperCase(),
+      }
 
-    if (!res.ok) {
-      throw new Error(data.error || "Login failed");
+      // Save user to localStorage
+      localStorage.setItem("omniChatUser", JSON.stringify(currentUser))
+
+      showApp()
+    } else {
+      throw new Error("Invalid credentials")
     }
-
-    const { token, user } = data;
-
-    currentUser = {
-      ...user,
-      token, // Save token for future use
-      avatar: user.name?.charAt(0).toUpperCase() || "U",
-    };
-
-    localStorage.setItem("omniChatUser", JSON.stringify(currentUser));
-
-    showApp(); // Call your main app loader
   } catch (error) {
-    loginError.textContent = error.message || "Login failed. Please try again.";
+    loginError.textContent = error.message || "Login failed. Please try again."
   } finally {
-    loginSpinner.style.display = "none";
-    loginText.textContent = "Login";
+    // Reset loading state
+    loginSpinner.style.display = "none"
+    loginText.textContent = "Login"
   }
 }
-
 
 // Show the main application
 function showApp() {
@@ -83,9 +79,8 @@ function showApp() {
   document.getElementById("userRole").textContent = currentUser.role
   document.getElementById("userRole").className = `badge ${currentUser.role}`
 
-// Initialize socket connection with token
-initializeSocket(currentUser.token)
-
+  // Initialize socket connection
+  initializeSocket()
 
   // Load dashboard data
   loadDashboardData()
@@ -582,21 +577,21 @@ function animateCharts() {
 // Load Facebook chats
 async function loadFacebookConversations() {
   try {
-    const res = await fetch("/api/conversations?platform=facebook", {
+    const res = await fetch("/api/facebook/conversations", {
       headers: {
-        Authorization: `Bearer ${currentUser.token}`,
+        Authorization: `Bearer ${currentUser.token}`, // Replace if you use cookies
       },
-    });
+    })
 
-    const data = await res.json();
+    const data = await res.json()
 
-    const chatList = document.querySelector("#facebookTab .chat-list");
-    chatList.innerHTML = "";
+    const chatList = document.querySelector("#facebookTab .chat-list")
+    chatList.innerHTML = ""
 
     data.forEach((conv) => {
-      const participant = conv.participants[0];
-      const item = document.createElement("div");
-      item.className = "chat-item";
+      const participant = conv.participants[0]
+      const item = document.createElement("div")
+      item.className = "chat-item"
       item.innerHTML = `
         <div class="chat-avatar">👤</div>
         <div class="chat-info">
@@ -604,41 +599,36 @@ async function loadFacebookConversations() {
           <div class="chat-preview">${conv.lastMessage?.content?.text || ""}</div>
         </div>
         <div class="chat-time">just now</div>
-      `;
-      item.onclick = () => loadFacebookMessages(conv._id);
-      chatList.appendChild(item);
-    });
+      `
+      item.onclick = () => loadFacebookMessages(conv._id)
+      chatList.appendChild(item)
+    })
   } catch (err) {
-    console.error("Failed to load conversations", err);
+    console.error("Failed to load conversations", err)
   }
 }
-
 async function loadFacebookMessages(conversationId) {
   try {
-    const res = await fetch(`/api/conversations/${conversationId}/messages`, {
+    const res = await fetch(`/api/facebook/conversations/${conversationId}/messages`, {
       headers: {
-        Authorization: `Bearer ${currentUser.token}`,
+        Authorization: `Bearer ${currentUser.token}`, // or use cookie/session
       },
-    });
+    })
 
-    const messages = await res.json();
-    const chatBox = document.querySelector("#facebookTab .chat-messages");
-    chatBox.innerHTML = "";
-
-    if (!messages.length) {
-      chatBox.innerHTML = "<div class='chat-message'>No messages yet</div>";
-    }
+    const messages = await res.json()
+    const chatBox = document.querySelector("#facebookTab .chat-messages")
+    chatBox.innerHTML = ""
 
     messages.forEach((msg) => {
-      const div = document.createElement("div");
-      div.className = "chat-message";
+      const div = document.createElement("div")
+      div.className = "chat-message"
       div.innerHTML = `
         <div><strong>${msg.sender.name}:</strong> ${msg.content.text}</div>
-      `;
-      chatBox.appendChild(div);
-    });
+      `
+      chatBox.appendChild(div)
+    })
   } catch (err) {
-    console.error("Failed to load messages", err);
+    console.error("Failed to load messages", err)
   }
 }
 

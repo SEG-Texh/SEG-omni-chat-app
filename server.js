@@ -11,6 +11,7 @@ const connectDB = require('./config/database');
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
+const facebookRoutes = require('./routes/facebook'); // ✅
 const conversationRoutes = require('./routes/conversation');
 const messageRoutes = require('./routes/messages');
 const dashboardRoutes = require('./routes/dashboard');
@@ -41,6 +42,7 @@ app.use('/js', express.static(path.join(__dirname, '../js')));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/facebook', facebookRoutes); // ✅
 app.use('/api/conversation', conversationRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/dashboard', dashboardRoutes);
