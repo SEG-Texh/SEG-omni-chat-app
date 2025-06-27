@@ -111,27 +111,40 @@ class FacebookController {
 
   // User management
   async findOrCreateUser(facebookId) {
-    try {
-      // Try to find by Facebook ID first
-      let user = await User.findOne({ 'platformIds.facebook': facebookId });
-      if (user) return user;
+  try {
+    const email = `${facebookId}@facebook.local`;
 
-      // Create new user without email to avoid duplicates
-      user = await User.create({
-        name: `FB-${facebookId}`,
+    // Try to find user by platform ID or email
+    let user = await User.findOne({
+      $or: [
+        { 'platformIds.facebook': facebookId },
+        { email: email }
+      ]
+    });
+
+    if (!user) {
+      // Fetch Facebook profile (optional)
+      const profile = await this.getUserProfile(facebookId);
+
+      user = new User({
+        name: profile?.name || `Facebook User ${facebookId}`,
+        email,
         platformIds: { facebook: facebookId },
+        profilePic: profile?.profile_pic || null,
         lastActive: new Date()
       });
 
-      return user;
-    } catch (error) {
-      console.error('⚠️ User creation fallback:', error.message);
-      return {
-        _id: new mongoose.Types.ObjectId(),
-        platformIds: { facebook: facebookId }
-      };
+      await user.save();
+      console.log(`👤 Created new user: ${user._id}`);
     }
+
+    return user;
+  } catch (error) {
+    console.error('⚠️ User creation fallback:', error.message);
+    throw error;
   }
+}
+
 
   // Conversation management
   async findOrCreateConversation(userId, pageId, senderPsid) {
