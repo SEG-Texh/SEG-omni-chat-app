@@ -12,7 +12,6 @@ class FacebookController {
     this.processMessage = this.processMessage.bind(this);
     this.processPostback = this.processPostback.bind(this);
     this.sendMessage = this.sendMessage.bind(this);
-    //this.getUserProfile = this.getUserProfile.bind(this);
     this.findOrCreateUser = this.findOrCreateUser.bind(this);
     this.findOrCreateConversation = this.findOrCreateConversation.bind(this);
   }
@@ -72,11 +71,7 @@ class FacebookController {
       
       res.sendStatus(200);
     } catch (error) {
-      console.error('❌ Error in handleMessage:', {
-        message: error.message,
-        stack: error.stack,
-        body: req.body
-      });
+      console.error('❌ Error in handleMessage:', error);
       res.status(500).json({ 
         error: 'Internal server error',
         details: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -89,7 +84,7 @@ class FacebookController {
     try {
       console.log(`📩 Processing message from ${senderPsid}`);
       
-      // 1. Find or create user
+      // 1. Find or create basic user record
       const user = await this.findOrCreateUser(senderPsid);
       
       // 2. Find or create conversation
@@ -121,24 +116,9 @@ class FacebookController {
         lastMessage: new Date()
       });
 
-      // 5. Auto-reply if needed
-      if (message.text?.toLowerCase().includes('hello')) {
-        await this.sendMessage(
-          senderPsid,
-          'Hello! How can I help you today?',
-          conversation._id,
-          user._id
-        );
-      }
-
       return newMessage;
     } catch (error) {
-      console.error('❌ Error in processMessage:', {
-        senderPsid,
-        message,
-        error: error.message,
-        stack: error.stack
-      });
+      console.error('❌ Error in processMessage:', error);
       throw error;
     }
   }
@@ -148,7 +128,7 @@ class FacebookController {
     try {
       console.log(`🔄 Processing postback from ${senderPsid}: ${postback.payload}`);
       
-      // 1. Find or create user
+      // 1. Find or create basic user record
       const user = await this.findOrCreateUser(senderPsid);
       
       // 2. Find or create conversation
@@ -171,17 +151,6 @@ class FacebookController {
       });
 
       await newMessage.save();
-
-      // 4. Handle specific postbacks
-      if (postback.payload === 'GET_STARTED') {
-        await this.sendMessage(
-          senderPsid,
-          'Welcome! How can I assist you today?',
-          conversation._id,
-          user._id
-        );
-      }
-
       return newMessage;
     } catch (error) {
       console.error('❌ Error processing postback:', error);
@@ -194,7 +163,6 @@ class FacebookController {
     try {
       console.log(`✉️ Sending message to ${recipientPsid}: ${text.substring(0, 30)}...`);
       
-      // 1. Send via Facebook API
       const messagePayload = {
         recipient: { id: recipientPsid },
         message: { text }
@@ -213,7 +181,7 @@ class FacebookController {
         }
       );
 
-      // 2. Save outgoing message
+      // Save outgoing message
       const newMessage = new Message({
         conversation: conversationId,
         sender: senderId,
@@ -225,41 +193,26 @@ class FacebookController {
       });
 
       await newMessage.save();
-      console.log(`💾 Outgoing message saved: ${newMessage._id}`);
-
       return newMessage;
     } catch (error) {
-      console.error('❌ Error sending message:', {
-        status: error.response?.status,
-        error: error.response?.data?.error || error.message,
-        recipientPsid,
-        text
-      });
+      console.error('❌ Error sending message:', error);
       throw error;
     }
   }
 
-  // Helper: Find or create user
+  // Simple user creation without profile
   async findOrCreateUser(facebookId) {
     try {
-      // Try to find existing user
       let user = await User.findOne({ 'platformIds.facebook': facebookId });
       
       if (!user) {
-        // Get profile from Facebook if not found
-        const profile = await this.getUserProfile(facebookId);
-
         user = new User({
-  name: profile?.name || `Facebook User ${facebookId}`,
-  email: `${facebookId}@facebook.local`, // ✅ placeholder email
-  platformIds: { facebook: facebookId },
-  profilePic: profile?.profile_pic,
-  lastActive: new Date()
-});
-
-        
+          name: `User-${facebookId}`,
+          email: `${facebookId}@facebook.local`,
+          platformIds: { facebook: facebookId },
+          lastActive: new Date()
+        });
         await user.save();
-        console.log(`👤 Created new user: ${user._id}`);
       }
       
       return user;
@@ -269,7 +222,7 @@ class FacebookController {
     }
   }
 
-  // Helper: Find or create conversation
+  // Find or create conversation
   async findOrCreateConversation(userId, pageId, senderPsid) {
     try {
       const conversationId = `${pageId}_${senderPsid}`;
@@ -285,64 +238,12 @@ class FacebookController {
           platformConversationId: conversationId,
           lastMessage: new Date()
         });
-        
         await conversation.save();
-        console.log(`💬 Created new conversation: ${conversation._id}`);
       }
       
       return conversation;
     } catch (error) {
       console.error('❌ Error in findOrCreateConversation:', error);
-      throw error;
-    }
-  }
-
-  // Get user profile from Facebook
-  //async getUserProfile(userId) {
-    //try {
-      //console.log(`🔍 Fetching Facebook profile for ${userId}`);
-      
-      //const response = await axios.get(
-        //`https://graph.facebook.com/v13.0/${userId}`,
-        //{
-          //params: {
-            //fields: 'name,first_name,last_name,profile_pic',
-            //access_token: process.env.FACEBOOK_PAGE_ACCESS_TOKEN
-         // }
-        //}
-      //);
-      
-      //return response.data;
-    //} catch (error) {
-      //console.error('❌ Error getting Facebook profile:', {
-        //userId,
-        //error: error.response?.data || error.message
-     // });
-      //return null;
-    //}
-  //}
-
-  // Fetch conversation history from Facebook
-  async fetchConversationHistory(userId, limit = 10) {
-    try {
-      console.log(`📜 Fetching conversation history for ${userId}`);
-      
-      const response = await axios.get(
-        `https://graph.facebook.com/v13.0/${userId}/conversations`,
-        {
-          params: {
-            fields: 'messages.limit(10){message,from,created_time}',
-            access_token: process.env.FACEBOOK_PAGE_ACCESS_TOKEN
-          }
-        }
-      );
-      
-      return response.data.data?.[0]?.messages?.data || [];
-    } catch (error) {
-      console.error('❌ Error fetching conversation history:', {
-        userId,
-        error: error.response?.data || error.message
-      });
       throw error;
     }
   }
