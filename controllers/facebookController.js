@@ -344,33 +344,24 @@ class FacebookController {
   // New method: Get messages for API endpoint
   async getMessages(req, res) {
     try {
-      if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ error: 'Invalid conversation ID' });
+      let conversation;
+      if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+        conversation = await Conversation.findById(req.params.id);
       }
-
-      // Verify user has access to this conversation
-      const conversation = await Conversation.findOne({
-        _id: req.params.id
-      });
-
+      // Fallback: try platformConversationId if not found
+      if (!conversation) {
+        conversation = await Conversation.findOne({ platformConversationId: req.params.id });
+      }
       if (!conversation) {
         return res.status(404).json({ error: 'Conversation not found' });
       }
 
       const messages = await Message.find({
-        conversation: req.params.id
+        conversation: conversation._id
       })
       .populate('sender', 'name profilePic')
       .sort('timestamp')
       .lean();
-
-      // Mark conversation as read if viewing messages
-      if (req.user.roles.includes('agent') || req.user.roles.includes('admin')) {
-        await Conversation.updateOne(
-          { _id: req.params.id },
-          { $set: { unreadCount: 0 } }
-        );
-      }
 
       res.json(messages);
     } catch (error) {
