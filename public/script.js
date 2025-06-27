@@ -493,9 +493,225 @@ function animateCharts() {
 }
 
 // Load Facebook chats
-function loadFacebookChats() {
-  console.log("Loading Facebook chats...")
-  // Implementation for loading Facebook chat data
+// Initialize Facebook chat functionality
+function initFacebookChat() {
+  // Set up event listeners
+  document.querySelector('#facebookTab .chat-input button').addEventListener('click', sendFacebookMessage);
+  document.querySelector('#facebookTab .chat-input input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') sendFacebookMessage();
+  });
+
+  // Load initial chats
+  loadFacebookChats();
+}
+
+// Load Facebook chats implementation
+async function loadFacebookChats() {
+  try {
+    console.log("Loading Facebook chats...");
+    
+    // Show loading state
+    const chatList = document.querySelector('#facebookTab .chat-list');
+    chatList.innerHTML = '<div class="loading">Loading conversations...</div>';
+    
+    // Fetch conversations from your API
+    const response = await fetch('/api/facebook/conversations', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+    
+    if (!response.ok) throw new Error('Failed to load conversations');
+    
+    const conversations = await response.json();
+    
+    // Render conversations
+    chatList.innerHTML = '';
+    conversations.forEach(conversation => {
+      const chatItem = document.createElement('div');
+      chatItem.className = 'chat-item';
+      chatItem.innerHTML = `
+        <div class="chat-avatar">${getInitials(conversation.participants[0].name)}</div>
+        <div class="chat-info">
+          <div class="chat-name">${conversation.participants[0].name}</div>
+          <div class="chat-preview">${conversation.lastMessage?.text || 'No messages yet'}</div>
+        </div>
+        <div class="chat-time">${formatTime(conversation.lastMessage?.timestamp)}</div>
+      `;
+      chatItem.addEventListener('click', () => loadFacebookMessages(conversation._id));
+      chatList.appendChild(chatItem);
+    });
+    
+    // Load first conversation by default
+    if (conversations.length > 0) {
+      loadFacebookMessages(conversations[0]._id);
+    }
+  } catch (error) {
+    console.error("Error loading Facebook chats:", error);
+    showError('Failed to load Facebook conversations');
+  }
+}
+
+// Load messages for a specific conversation
+async function loadFacebookMessages(conversationId) {
+  try {
+    const messagesContainer = document.querySelector('#facebookTab .chat-messages');
+    messagesContainer.innerHTML = '<div class="loading">Loading messages...</div>';
+    
+    const response = await fetch(`/api/facebook/conversations/${conversationId}/messages`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+    
+    if (!response.ok) throw new Error('Failed to load messages');
+    
+    const messages = await response.json();
+    
+    // Render messages
+    messagesContainer.innerHTML = '';
+    messages.forEach(message => {
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${message.sender._id === currentUser._id ? 'outgoing' : 'incoming'}`;
+      messageDiv.innerHTML = `
+        <div class="message-content">${message.content.text}</div>
+        <div class="message-time">${formatTime(message.timestamp)}</div>
+      `;
+      messagesContainer.appendChild(messageDiv);
+    });
+    
+    // Scroll to bottom
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    
+    // Set up real-time updates for this conversation
+    setupFacebookRealtime(conversationId);
+  } catch (error) {
+    console.error("Error loading Facebook messages:", error);
+    showError('Failed to load messages');
+  }
+}
+
+// Send Facebook message
+async function sendFacebookMessage() {
+  const input = document.querySelector('#facebookTab .chat-input input');
+  const message = input.value.trim();
+  
+  if (!message) return;
+  
+  try {
+    // Optimistic UI update
+    const messagesContainer = document.querySelector('#facebookTab .chat-messages');
+    const tempId = `temp-${Date.now()}`;
+    
+    const tempMessage = document.createElement('div');
+    tempMessage.className = 'message outgoing temp';
+    tempMessage.id = tempId;
+    tempMessage.innerHTML = `
+      <div class="message-content">${message}</div>
+      <div class="message-time">Sending...</div>
+    `;
+    messagesContainer.appendChild(tempMessage);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    
+    input.value = '';
+    
+    // Send to server
+    const response = await fetch('/api/facebook/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({
+        conversationId: getActiveFacebookConversationId(),
+        text: message
+      })
+    });
+    
+    if (!response.ok) throw new Error('Failed to send message');
+    
+    const sentMessage = await response.json();
+    
+    // Replace temp message with real one
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message outgoing';
+    messageDiv.innerHTML = `
+      <div class="message-content">${sentMessage.content.text}</div>
+      <div class="message-time">${formatTime(sentMessage.timestamp)}</div>
+    `;
+    
+    const tempElement = document.getElementById(tempId);
+    tempElement.replaceWith(messageDiv);
+  } catch (error) {
+    console.error("Error sending message:", error);
+    showError('Failed to send message');
+    
+    // Show error on temp message
+    const tempElement = document.getElementById(tempId);
+    if (tempElement) {
+      tempElement.querySelector('.message-time').textContent = 'Failed to send';
+      tempElement.classList.add('error');
+    }
+  }
+}
+
+// Helper function to get active conversation ID
+function getActiveFacebookConversationId() {
+  const activeItem = document.querySelector('#facebookTab .chat-item.active');
+  return activeItem?.dataset.conversationId;
+}
+
+// Set up real-time updates for Facebook messages
+function setupFacebookRealtime(conversationId) {
+  if (socket) {
+    socket.disconnect();
+  }
+  
+  socket = io('/facebook', {
+    auth: {
+      token: localStorage.getItem('token')
+    },
+    query: {
+      conversationId: conversationId
+    }
+  });
+  
+  socket.on('new_message', (message) => {
+    if (message.conversation === conversationId) {
+      const messagesContainer = document.querySelector('#facebookTab .chat-messages');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${message.sender._id === currentUser._id ? 'outgoing' : 'incoming'}`;
+      messageDiv.innerHTML = `
+        <div class="message-content">${message.content.text}</div>
+        <div class="message-time">${formatTime(message.timestamp)}</div>
+      `;
+      messagesContainer.appendChild(messageDiv);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+  });
+  
+  socket.on('message_status', (update) => {
+    // Update message status in UI if needed
+  });
+}
+
+// Helper functions
+function formatTime(timestamp) {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function getInitials(name) {
+  return name.split(' ').map(n => n[0]).join('').toUpperCase();
+}
+
+function showError(message) {
+  const errorDiv = document.createElement('div');
+  errorDiv.className = 'error-message';
+  errorDiv.textContent = message;
+  document.querySelector('#facebookTab .chat-container').prepend(errorDiv);
+  setTimeout(() => errorDiv.remove(), 5000);
 }
 
 // Load WhatsApp chats
