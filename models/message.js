@@ -27,11 +27,11 @@ const messageSchema = new mongoose.Schema({
     enum: ['facebook', 'whatsapp', 'email', 'sms'],
     required: true
   },
-  status: {
-    type: String,
-    enum: ['sent', 'delivered', 'read', 'failed'],
-    default: 'sent'
-  },
+status: {
+  type: String,
+  enum: ['sent', 'delivered', 'read', 'received'], // add 'received'
+  default: 'sent'
+},
   timestamp: {
     type: Date,
     default: Date.now
