@@ -13,7 +13,7 @@ const loginText = document.getElementById("loginText")
 // Initialize the application
 document.addEventListener("DOMContentLoaded", () => {
   // Check if user is already logged in
-  const savedUser = localStorage.getItem("omniChatUser")
+  const savedUser = localStorage.getItem("currentUser")
   if (savedUser) {
     currentUser = JSON.parse(savedUser)
     showApp()
@@ -80,7 +80,7 @@ function showApp() {
   document.getElementById("userRole").className = `badge ${currentUser.role}`
 
   // Initialize socket connection
-  initializeSocket()
+  initializeSocket(currentUser.token)
 
   // Load dashboard data
   loadDashboardData()
@@ -88,7 +88,7 @@ function showApp() {
 
 // Handle logout
 function logout() {
-  localStorage.removeItem("omniChatUser")
+  localStorage.removeItem("currentUser")
   currentUser = null
 
   if (socket) {
@@ -594,13 +594,13 @@ async function loadFacebookConversations() {
 
     const conversations = await res.json();
 
-    const chatList = document.querySelector("#facebookTab .chat-list")
-    chatList.innerHTML = ""
+    const chatList = document.getElementById("facebookChatList");
+    chatList.innerHTML = "";
 
-    data.forEach((conv) => {
-      const participant = conv.participants[0]
-      const item = document.createElement("div")
-      item.className = "chat-item"
+    conversations.forEach((conv) => {
+      const participant = conv.participants[0];
+      const item = document.createElement("div");
+      item.className = "chat-item";
       item.innerHTML = `
         <div class="chat-avatar">👤</div>
         <div class="chat-info">
@@ -608,36 +608,37 @@ async function loadFacebookConversations() {
           <div class="chat-preview">${conv.lastMessage?.content?.text || ""}</div>
         </div>
         <div class="chat-time">just now</div>
-      `
-      item.onclick = () => loadFacebookMessages(conv._id)
-      chatList.appendChild(item)
-    })
+      `;
+      item.onclick = () => loadFacebookMessages(conv._id);
+      chatList.appendChild(item);
+    });
   } catch (err) {
-    console.error("Failed to load conversations", err)
+    console.error("Failed to load conversations", err);
   }
 }
+
 async function loadFacebookMessages(conversationId) {
   try {
     const res = await fetch(`/api/facebook/conversations/${conversationId}/messages`, {
       headers: {
-        Authorization: `Bearer ${currentUser.token}`, // or use cookie/session
+        Authorization: `Bearer ${currentUser.token}`,
       },
-    })
+    });
 
-    const messages = await res.json()
-    const chatBox = document.querySelector("#facebookTab .chat-messages")
-    chatBox.innerHTML = ""
+    const messages = await res.json();
+    const chatBox = document.getElementById("facebookChatMessages");
+    chatBox.innerHTML = "";
 
     messages.forEach((msg) => {
-      const div = document.createElement("div")
-      div.className = "chat-message"
+      const div = document.createElement("div");
+      div.className = "chat-message";
       div.innerHTML = `
         <div><strong>${msg.sender.name}:</strong> ${msg.content.text}</div>
-      `
-      chatBox.appendChild(div)
-    })
+      `;
+      chatBox.appendChild(div);
+    });
   } catch (err) {
-    console.error("Failed to load messages", err)
+    console.error("Failed to load messages", err);
   }
 }
 
