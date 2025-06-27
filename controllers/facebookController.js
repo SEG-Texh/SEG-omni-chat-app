@@ -12,7 +12,7 @@ class FacebookController {
     this.processMessage = this.processMessage.bind(this);
     this.processPostback = this.processPostback.bind(this);
     this.sendMessage = this.sendMessage.bind(this);
-    this.getUserProfile = this.getUserProfile.bind(this);
+    //this.getUserProfile = this.getUserProfile.bind(this);
     this.findOrCreateUser = this.findOrCreateUser.bind(this);
     this.findOrCreateConversation = this.findOrCreateConversation.bind(this);
   }
@@ -298,29 +298,29 @@ class FacebookController {
   }
 
   // Get user profile from Facebook
-  async getUserProfile(userId) {
-    try {
-      console.log(`🔍 Fetching Facebook profile for ${userId}`);
+  //async getUserProfile(userId) {
+    //try {
+      //console.log(`🔍 Fetching Facebook profile for ${userId}`);
       
-      const response = await axios.get(
-        `https://graph.facebook.com/v13.0/${userId}`,
-        {
-          params: {
-            fields: 'name,first_name,last_name,profile_pic',
-            access_token: process.env.FACEBOOK_PAGE_ACCESS_TOKEN
-          }
-        }
-      );
+      //const response = await axios.get(
+        //`https://graph.facebook.com/v13.0/${userId}`,
+        //{
+          //params: {
+            //fields: 'name,first_name,last_name,profile_pic',
+            //access_token: process.env.FACEBOOK_PAGE_ACCESS_TOKEN
+         // }
+        //}
+      //);
       
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error getting Facebook profile:', {
-        userId,
-        error: error.response?.data || error.message
-      });
-      return null;
-    }
-  }
+      //return response.data;
+    //} catch (error) {
+      //console.error('❌ Error getting Facebook profile:', {
+        //userId,
+        //error: error.response?.data || error.message
+     // });
+      //return null;
+    //}
+  //}
 
   // Fetch conversation history from Facebook
   async fetchConversationHistory(userId, limit = 10) {
