@@ -122,7 +122,7 @@ function switchTab(tabName) {
   if (tabName === "dashboard") {
     loadDashboardData()
   } else if (tabName === "facebook") {
-    loadFacebookChats()
+     loadFacebookConversations();
   } else if (tabName === "whatsapp") {
     loadWhatsAppChats()
   }
@@ -741,8 +741,9 @@ function getRandomColor() {
   const colors = ["#4f46e5", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"]
   return colors[Math.floor(Math.random() * colors.length)]
 }
-loadFacebookConversations()
+
 
 // Export functions for global access
 window.switchTab = switchTab
 window.logout = logout
+
