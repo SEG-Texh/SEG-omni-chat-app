@@ -575,25 +575,61 @@ function animateCharts() {
 }
 
 // Load Facebook chats
-// Example dynamic loading
-function loadFacebookConversations(conversations) {
-  const list = document.getElementById('facebookChatList');
-  list.innerHTML = ''; // clear old items
+async function loadFacebookConversations() {
+  try {
+    const res = await fetch("/api/facebook/conversations", {
+      headers: {
+        Authorization: `Bearer ${currentUser.token}`, // Replace if you use cookies
+      },
+    })
 
-  conversations.forEach(conv => {
-    const item = document.createElement('div');
-    item.classList.add('chat-item');
-    item.innerHTML = `
-      <div class="chat-avatar">👤</div>
-      <div class="chat-info">
-        <div class="chat-name">${conv.name}</div>
-        <div class="chat-preview">${conv.lastMessage}</div>
-      </div>
-      <div class="chat-time">${conv.timeAgo}</div>
-    `;
-    item.addEventListener('click', () => openConversation(conv.id));
-    list.appendChild(item);
-  });
+    const data = await res.json()
+
+    const chatList = document.querySelector("#facebookTab .chat-list")
+    chatList.innerHTML = ""
+
+    data.forEach((conv) => {
+      const participant = conv.participants[0]
+      const item = document.createElement("div")
+      item.className = "chat-item"
+      item.innerHTML = `
+        <div class="chat-avatar">👤</div>
+        <div class="chat-info">
+          <div class="chat-name">${participant.name}</div>
+          <div class="chat-preview">${conv.lastMessage?.content?.text || ""}</div>
+        </div>
+        <div class="chat-time">just now</div>
+      `
+      item.onclick = () => loadFacebookMessages(conv._id)
+      chatList.appendChild(item)
+    })
+  } catch (err) {
+    console.error("Failed to load conversations", err)
+  }
+}
+async function loadFacebookMessages(conversationId) {
+  try {
+    const res = await fetch(`/api/facebook/conversations/${conversationId}/messages`, {
+      headers: {
+        Authorization: `Bearer ${currentUser.token}`, // or use cookie/session
+      },
+    })
+
+    const messages = await res.json()
+    const chatBox = document.querySelector("#facebookTab .chat-messages")
+    chatBox.innerHTML = ""
+
+    messages.forEach((msg) => {
+      const div = document.createElement("div")
+      div.className = "chat-message"
+      div.innerHTML = `
+        <div><strong>${msg.sender.name}:</strong> ${msg.content.text}</div>
+      `
+      chatBox.appendChild(div)
+    })
+  } catch (err) {
+    console.error("Failed to load messages", err)
+  }
 }
 
 
@@ -705,6 +741,7 @@ function getRandomColor() {
   const colors = ["#4f46e5", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"]
   return colors[Math.floor(Math.random() * colors.length)]
 }
+loadFacebookConversations()
 
 // Export functions for global access
 window.switchTab = switchTab
