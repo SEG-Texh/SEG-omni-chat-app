@@ -344,19 +344,17 @@ class FacebookController {
   // New method: Get messages for API endpoint
   async getMessages(req, res) {
     try {
-      console.log('Requested conversation ID:', req.params.id);
+      const id = req.params.id || req.params.conversationId;
+      console.log('Requested conversation ID:', id);
 
       let conversation;
-      if (mongoose.Types.ObjectId.isValid(req.params.id)) {
-        conversation = await Conversation.findById(req.params.id);
-        console.log('Found by _id:', conversation);
+      if (mongoose.Types.ObjectId.isValid(id)) {
+        conversation = await Conversation.findById(id);
       }
       if (!conversation) {
-        conversation = await Conversation.findOne({ platformConversationId: req.params.id });
-        console.log('Found by platformConversationId:', conversation);
+        conversation = await Conversation.findOne({ platformConversationId: id });
       }
       if (!conversation) {
-        console.log('Conversation not found for ID:', req.params.id);
         return res.status(404).json({ error: 'Conversation not found' });
       }
 
