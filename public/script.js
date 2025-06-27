@@ -27,7 +27,6 @@ document.addEventListener("DOMContentLoaded", () => {
 })
 
 // Handle login
-// Update your handleLogin function to get a real token
 async function handleLogin(e) {
   e.preventDefault()
 
@@ -40,33 +39,28 @@ async function handleLogin(e) {
   loginError.textContent = ""
 
   try {
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ email, password })
-    })
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1500))
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || 'Login failed')
+    // Mock authentication - in real app, this would be an API call
+    if (email && password) {
+      currentUser = {
+        id: 1,
+        name: "Admin User",
+        email: email,
+        role: "admin",
+        avatar: email.charAt(0).toUpperCase(),
+      }
+
+      // Save user to localStorage
+      localStorage.setItem("omniChatUser", JSON.stringify(currentUser))
+
+      showApp()
+    } else {
+      throw new Error("Invalid credentials")
     }
-
-    const { user, token } = await response.json()
-    
-    // Store user and token
-    currentUser = user
-    localStorage.setItem("omniChatUser", JSON.stringify(user))
-    localStorage.setItem("token", token)
-
-    // Initialize socket with the new token
-    initializeSocket(token)
-    
-    showApp()
   } catch (error) {
     loginError.textContent = error.message || "Login failed. Please try again."
-    console.error("Login error:", error)
   } finally {
     // Reset loading state
     loginSpinner.style.display = "none"
@@ -136,68 +130,122 @@ function switchTab(tabName) {
 
 // Initialize socket connection
 function initializeSocket(token) {
-  if (socket) {
-    socket.disconnect()
-  }
-
   socket = io('https://chat-app-omni-33e1e5eaa993.herokuapp.com', {
     auth: {
       token: token
     },
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
-    timeout: 20000
-  })
+    transports: ['websocket'], // Force WebSocket for better reliability
+    reconnectionAttempts: 5, // Number of reconnect attempts
+    reconnectionDelay: 1000, // Time between reconnections
+  });
 
+  // Connection Events
   socket.on("connect", () => {
-    console.log("✅ Socket connected:", socket.id)
-    // Join user-specific room
-    socket.emit('joinUserRoom', currentUser.id)
-  })
+    console.log("✅ Socket connected:", socket.id);
+    joinFacebookRooms(); // Join relevant rooms after connection
+  });
 
-  socket.on("disconnect", (reason) => {
-    console.log("🔌 Disconnected:", reason)
-    if (reason === 'io server disconnect') {
-      // Try to reconnect
-      socket.connect()
+  // Facebook Specific Events
+  socket.on("facebookMessage", (message) => {
+    console.log("📨 New Facebook message:", message);
+    if (currentConversation?._id === message.conversation) {
+      appendFacebookMessage(message);
     }
-  })
+    updateConversationList(message);
+  });
+
+  socket.on("facebookConversationUpdate", (conversation) => {
+    console.log("🔄 Conversation updated:", conversation);
+    refreshConversationList();
+  });
+
+  socket.on("facebookUserStatus", ({ userId, isOnline }) => {
+    console.log(`👤 User ${userId} is now ${isOnline ? 'online' : 'offline'}`);
+    updateUserStatus(userId, isOnline);
+  });
+
+  // Existing Events (keep these)
+  socket.on("newMessage", (msg) => {
+    console.log("📨 New message:", msg);
+    updateChatUI(msg); // Your existing handler
+  });
+
+  socket.on("userTyping", (data) => {
+    console.log(`${data.name} is typing...`);
+    showTypingIndicator(data); // Your existing handler
+  });
+
+  socket.on("userOnline", (data) => {
+    console.log(`${data.name} is online`);
+    updateOnlineStatus(data, true); // Your existing handler
+  });
+
+  socket.on("userOffline", (data) => {
+    console.log(`${data.name} went offline`);
+    updateOnlineStatus(data, false); // Your existing handler
+  });
+
+  socket.on("disconnect", () => {
+    console.log("🔌 Disconnected from socket");
+  });
 
   socket.on("connect_error", (err) => {
-    console.error("❌ Connection error:", err.message)
-    // Try to reconnect with fresh token
-    setTimeout(() => {
-      initializeSocket(localStorage.getItem("token"))
-    }, 5000)
-  })
-
-  // Handle incoming messages
-  socket.on("newMessage", (message) => {
-    if (message.platform === 'facebook') {
-      handleIncomingFacebookMessage(message)
+    console.error("❌ Connection error:", err.message);
+    if (err.message.includes("invalid token")) {
+      // Handle token refresh here if needed
     }
-    // Handle other platforms...
-  })
+  });
 }
 
-function handleIncomingFacebookMessage(message) {
-  const activeConversationId = getActiveFacebookConversationId()
+// Facebook-specific functions
+function joinFacebookRooms() {
+  // Join general Facebook room
+  socket.emit("joinFacebookRoom");
   
-  // If message belongs to currently viewed conversation
-  if (activeConversationId === message.conversation) {
-    const messagesContainer = document.querySelector('#facebookTab .chat-messages')
-    const messageDiv = document.createElement('div')
-    messageDiv.className = `message ${message.direction === 'outbound' ? 'outgoing' : 'incoming'}`
-    messageDiv.innerHTML = `
-      <div class="message-content">${message.content.text}</div>
-      <div class="message-time">${formatTime(message.timestamp)}</div>
-    `
-    messagesContainer.appendChild(messageDiv)
-    messagesContainer.scrollTop = messagesContainer.scrollHeight
+  // Join all user-specific conversation rooms
+  if (currentUser?.facebookId) {
+    socket.emit("joinUserFacebookRooms", currentUser.facebookId);
   }
-  
-  // Update conversation list if needed
-  updateConversationList(message)
+}
+
+function appendFacebookMessage(message) {
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message ${message.sender === currentUser._id ? 'sent' : 'received'}`;
+  messageDiv.innerHTML = `
+    <div class="message-content">${message.content.text}</div>
+    <div class="message-time">${formatTime(message.createdAt)}</div>
+  `;
+  document.querySelector('.facebook-chat .chat-messages').appendChild(messageDiv);
+}
+
+function updateConversationList(message) {
+  const conversationElement = document.querySelector(`.conversation[data-id="${message.conversation}"]`);
+  if (conversationElement) {
+    conversationElement.querySelector('.last-message').textContent = 
+      message.content.text.substring(0, 30) + (message.content.text.length > 30 ? '...' : '');
+    conversationElement.querySelector('.message-time').textContent = formatTime(message.createdAt);
+  }
+}
+
+function refreshConversationList() {
+  fetch('/api/facebook/conversations')
+    .then(response => response.json())
+    .then(conversations => {
+      renderConversationList(conversations);
+    });
+}
+
+function updateUserStatus(userId, isOnline) {
+  const statusElement = document.querySelector(`.user-status[data-user="${userId}"]`);
+  if (statusElement) {
+    statusElement.textContent = isOnline ? 'Online' : 'Offline';
+    statusElement.className = `user-status ${isOnline ? 'online' : 'offline'}`;
+  }
+}
+
+// Utility function
+function formatTime(dateString) {
+  return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 
@@ -527,321 +575,200 @@ function animateCharts() {
 }
 
 // Load Facebook chats
-// Initialize Facebook chat functionality
-function initFacebookChat() {
-  // Set up event listeners
-  document.querySelector('#facebookTab .chat-input button').addEventListener('click', sendFacebookMessage);
-  document.querySelector('#facebookTab .chat-input input').addEventListener('keypress', function(e) {
+// Initialize Facebook Messages Component
+function initializeFacebookMessages() {
+  // DOM Elements
+  const facebookTab = document.getElementById('facebookTab');
+  const chatList = facebookTab.querySelector('.chat-list');
+  const chatMessages = facebookTab.querySelector('.chat-messages');
+  const chatInput = facebookTab.querySelector('.chat-input input');
+  const sendButton = facebookTab.querySelector('.chat-input button');
+  const chatHeader = facebookTab.querySelector('.chat-header .chat-user');
+  
+  let currentConversation = null;
+  let facebookConversations = [];
+
+  // Fetch Facebook Conversations
+  async function fetchFacebookConversations() {
+    try {
+      const response = await fetch('/api/facebook/conversations');
+      facebookConversations = await response.json();
+      renderConversationList();
+      
+      if (facebookConversations.length > 0) {
+        selectConversation(facebookConversations[0]);
+      }
+    } catch (error) {
+      console.error('Error loading Facebook conversations:', error);
+    }
+  }
+
+  // Render Conversation List
+  function renderConversationList() {
+    chatList.innerHTML = '';
+    
+    facebookConversations.forEach(conversation => {
+      const participant = conversation.participants.find(p => p._id !== currentUser._id);
+      const lastMessage = conversation.lastMessage || { content: { text: '' } };
+      
+      const chatItem = document.createElement('div');
+      chatItem.className = `chat-item ${currentConversation?._id === conversation._id ? 'active' : ''}`;
+      chatItem.dataset.conversationId = conversation._id;
+      chatItem.innerHTML = `
+        <div class="chat-avatar">${getAvatar(participant)}</div>
+        <div class="chat-info">
+          <div class="chat-name">${participant?.name || 'Facebook User'}</div>
+          <div class="chat-preview">${lastMessage.content.text.substring(0, 30)}${lastMessage.content.text.length > 30 ? '...' : ''}</div>
+        </div>
+        <div class="chat-time">${formatTime(lastMessage.createdAt || conversation.updatedAt)}</div>
+      `;
+      
+      chatItem.addEventListener('click', () => selectConversation(conversation));
+      chatList.appendChild(chatItem);
+    });
+  }
+
+  // Select Conversation
+  async function selectConversation(conversation) {
+    currentConversation = conversation;
+    renderConversationList();
+    
+    const participant = conversation.participants.find(p => p._id !== currentUser._id);
+    chatHeader.innerHTML = `
+      <div class="chat-avatar">${getAvatar(participant)}</div>
+      <div class="chat-details">
+        <div class="chat-name">${participant?.name || 'Facebook User'}</div>
+        <div class="chat-status">${participant?.isOnline ? 'Online' : 'Offline'}</div>
+      </div>
+    `;
+    
+    loadMessages(conversation._id);
+  }
+
+  // Load Messages for Conversation
+  async function loadMessages(conversationId) {
+    try {
+      const response = await fetch(`/api/facebook/messages?conversation=${conversationId}`);
+      const messages = await response.json();
+      renderMessages(messages);
+    } catch (error) {
+      console.error('Error loading Facebook messages:', error);
+    }
+  }
+
+  // Render Messages
+  function renderMessages(messages) {
+    chatMessages.innerHTML = '';
+    messages.forEach(message => appendMessage(message));
+    scrollToBottom();
+  }
+
+  // Append Single Message
+  function appendMessage(message) {
+    const isCurrentUser = message.sender._id === currentUser._id;
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${isCurrentUser ? 'sent' : 'received'}`;
+    messageDiv.innerHTML = `
+      ${!isCurrentUser ? `<div class="message-sender">${message.sender.name}</div>` : ''}
+      <div class="message-content">${message.content.text}</div>
+      <div class="message-time">${formatTime(message.createdAt)}</div>
+    `;
+    chatMessages.appendChild(messageDiv);
+  }
+
+  // Send Message
+  async function sendFacebookMessage() {
+    const text = chatInput.value.trim();
+    if (!text || !currentConversation) return;
+    
+    try {
+      const response = await fetch('/api/facebook/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: currentConversation._id,
+          message: text,
+          recipientId: currentConversation.participants.find(p => p._id !== currentUser._id)._id
+        })
+      });
+      
+      if (response.ok) {
+        chatInput.value = '';
+        const newMessage = await response.json();
+        appendMessage(newMessage);
+        scrollToBottom();
+      }
+    } catch (error) {
+      console.error('Error sending Facebook message:', error);
+    }
+  }
+
+  // Socket.IO Handlers for Facebook
+  function setupSocketHandlers() {
+    socket.on('facebookNewMessage', (message) => {
+      if (currentConversation?._id === message.conversation) {
+        appendMessage(message);
+        scrollToBottom();
+      }
+      updateConversationPreview(message);
+    });
+
+    socket.on('facebookUserStatus', ({ userId, isOnline }) => {
+      if (currentConversation?.participants.some(p => p._id === userId)) {
+        updateStatusIndicator(userId, isOnline);
+      }
+    });
+  }
+
+  // Helper Functions
+  function updateConversationPreview(message) {
+    const conversationItem = chatList.querySelector(`[data-conversation-id="${message.conversation}"]`);
+    if (conversationItem) {
+      const preview = conversationItem.querySelector('.chat-preview');
+      const time = conversationItem.querySelector('.chat-time');
+      
+      if (preview) preview.textContent = message.content.text.substring(0, 30);
+      if (time) time.textContent = formatTime(message.createdAt);
+    }
+  }
+
+  function updateStatusIndicator(userId, isOnline) {
+    if (currentConversation?.participants.some(p => p._id === userId)) {
+      const statusElement = chatHeader.querySelector('.chat-status');
+      if (statusElement) {
+        statusElement.textContent = isOnline ? 'Online' : 'Offline';
+        statusElement.className = `chat-status ${isOnline ? 'online' : 'offline'}`;
+      }
+    }
+  }
+
+  function scrollToBottom() {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  function getAvatar(user) {
+    return user?.profilePic 
+      ? `<img src="${user.profilePic}" alt="${user.name}" />`
+      : user?.name?.charAt(0).toUpperCase() || 'F';
+  }
+
+  function formatTime(dateString) {
+    return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  // Event Listeners
+  sendButton.addEventListener('click', sendFacebookMessage);
+  chatInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') sendFacebookMessage();
   });
 
-  // Load initial chats
-  loadFacebookChats();
+  // Initialization
+  setupSocketHandlers();
+  fetchFacebookConversations();
 }
 
-// Load Facebook chats implementation
-async function loadFacebookChats() {
-  try {
-    console.log("Loading Facebook chats...")
-    
-    const token = localStorage.getItem("token")
-    if (!token) {
-      throw new Error("Not authenticated")
-    }
-
-    const chatList = document.querySelector('#facebookTab .chat-list')
-    chatList.innerHTML = '<div class="loading">Loading conversations...</div>'
-    
-    const response = await fetch('/api/facebook/conversations', {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    })
-    
-    if (response.status === 401) {
-      // Token expired, try to refresh
-      await refreshToken()
-      return loadFacebookChats()
-    }
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-    
-    const conversations = await response.json()
-    
-    chatList.innerHTML = ''
-    conversations.forEach(conversation => {
-      const chatItem = document.createElement('div')
-      chatItem.className = 'chat-item'
-      chatItem.dataset.conversationId = conversation._id
-      chatItem.innerHTML = `
-        <div class="chat-avatar">${getInitials(conversation.participants[0].name)}</div>
-        <div class="chat-info">
-          <div class="chat-name">${conversation.participants[0].name}</div>
-          <div class="chat-preview">${conversation.lastMessage?.content?.text?.substring(0, 30) || 'No messages'}...</div>
-        </div>
-        <div class="chat-time">${formatTime(conversation.lastMessage?.timestamp)}</div>
-        ${conversation.unreadCount > 0 ? `<div class="unread-badge">${conversation.unreadCount}</div>` : ''}
-      `
-      chatItem.addEventListener('click', () => {
-        // Mark as read when clicked
-        markConversationAsRead(conversation._id)
-        loadFacebookMessages(conversation._id)
-      })
-      chatList.appendChild(chatItem)
-    })
-    
-    if (conversations.length > 0) {
-      loadFacebookMessages(conversations[0]._id)
-    }
-  } catch (error) {
-    console.error("Error loading Facebook chats:", error)
-    showError(error.message)
-    if (error.message.includes('Unauthorized')) {
-      // Redirect to login if token is invalid
-      logout()
-    }
-  }
-}
-
-async function refreshToken() {
-  try {
-    const response = await fetch('/api/auth/refresh', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    })
-    
-    if (!response.ok) {
-      throw new Error('Failed to refresh token')
-    }
-    
-    const { token } = await response.json()
-    localStorage.setItem('token', token)
-    return token
-  } catch (error) {
-    console.error('Token refresh failed:', error)
-    logout()
-    throw error
-  }
-}
-
-async function markConversationAsRead(conversationId) {
-  try {
-    await fetch(`/api/facebook/conversations/${conversationId}/read`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    })
-  } catch (error) {
-    console.error('Error marking as read:', error)
-  }
-}
-
-// Load messages for a specific conversation
-async function sendFacebookMessage() {
-  const input = document.querySelector('#facebookTab .chat-input input')
-  const message = input.value.trim()
-  
-  if (!message) return
-  
-  const token = localStorage.getItem('token')
-  if (!token) {
-    showError('Please login again')
-    return logout()
-  }
-
-  const messagesContainer = document.querySelector('#facebookTab .chat-messages')
-  const tempId = `temp-${Date.now()}`
-  
-  // Optimistic UI update
-  const tempMessage = document.createElement('div')
-  tempMessage.className = 'message outgoing temp'
-  tempMessage.id = tempId
-  tempMessage.innerHTML = `
-    <div class="message-content">${message}</div>
-    <div class="message-time">Sending...</div>
-  `
-  messagesContainer.appendChild(tempMessage)
-  messagesContainer.scrollTop = messagesContainer.scrollHeight
-  
-  input.value = ''
-  
-  try {
-    const conversationId = getActiveFacebookConversationId()
-    if (!conversationId) throw new Error('No active conversation')
-    
-    const response = await fetch('/api/facebook/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        conversationId,
-        text: message
-      })
-    })
-    
-    if (response.status === 401) {
-      // Token expired, try to refresh
-      const newToken = await refreshToken()
-      return sendFacebookMessage() // Retry with new token
-    }
-    
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || 'Failed to send message')
-    }
-    
-    const sentMessage = await response.json()
-    
-    // Replace temp message with real one
-    const messageDiv = document.createElement('div')
-    messageDiv.className = 'message outgoing'
-    messageDiv.innerHTML = `
-      <div class="message-content">${sentMessage.content.text}</div>
-      <div class="message-time">${formatTime(sentMessage.timestamp)}</div>
-    `
-    
-    document.getElementById(tempId)?.replaceWith(messageDiv)
-  } catch (error) {
-    console.error("Error sending message:", error)
-    const tempElement = document.getElementById(tempId)
-    if (tempElement) {
-      tempElement.querySelector('.message-time').textContent = 'Failed to send'
-      tempElement.classList.add('error')
-    }
-    showError(error.message)
-  }
-}
-
-// Send Facebook message
-async function sendFacebookMessage() {
-  const input = document.querySelector('#facebookTab .chat-input input');
-  const message = input.value.trim();
-  
-  if (!message) return;
-  
-  try {
-    // Optimistic UI update
-    const messagesContainer = document.querySelector('#facebookTab .chat-messages');
-    const tempId = `temp-${Date.now()}`;
-    
-    const tempMessage = document.createElement('div');
-    tempMessage.className = 'message outgoing temp';
-    tempMessage.id = tempId;
-    tempMessage.innerHTML = `
-      <div class="message-content">${message}</div>
-      <div class="message-time">Sending...</div>
-    `;
-    messagesContainer.appendChild(tempMessage);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    
-    input.value = '';
-    
-    // Send to server
-    const response = await fetch('/api/facebook/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
-      body: JSON.stringify({
-        conversationId: getActiveFacebookConversationId(),
-        text: message
-      })
-    });
-    
-    if (!response.ok) throw new Error('Failed to send message');
-    
-    const sentMessage = await response.json();
-    
-    // Replace temp message with real one
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'message outgoing';
-    messageDiv.innerHTML = `
-      <div class="message-content">${sentMessage.content.text}</div>
-      <div class="message-time">${formatTime(sentMessage.timestamp)}</div>
-    `;
-    
-    const tempElement = document.getElementById(tempId);
-    tempElement.replaceWith(messageDiv);
-  } catch (error) {
-    console.error("Error sending message:", error);
-    showError('Failed to send message');
-    
-    // Show error on temp message
-    const tempElement = document.getElementById(tempId);
-    if (tempElement) {
-      tempElement.querySelector('.message-time').textContent = 'Failed to send';
-      tempElement.classList.add('error');
-    }
-  }
-}
-
-// Helper function to get active conversation ID
-function getActiveFacebookConversationId() {
-  const activeItem = document.querySelector('#facebookTab .chat-item.active');
-  return activeItem?.dataset.conversationId;
-}
-
-// Set up real-time updates for Facebook messages
-function setupFacebookRealtime(conversationId) {
-  if (socket) {
-    socket.disconnect();
-  }
-  
-  socket = io('/facebook', {
-    auth: {
-      token: localStorage.getItem('token')
-    },
-    query: {
-      conversationId: conversationId
-    }
-  });
-  
-  socket.on('new_message', (message) => {
-    if (message.conversation === conversationId) {
-      const messagesContainer = document.querySelector('#facebookTab .chat-messages');
-      const messageDiv = document.createElement('div');
-      messageDiv.className = `message ${message.sender._id === currentUser._id ? 'outgoing' : 'incoming'}`;
-      messageDiv.innerHTML = `
-        <div class="message-content">${message.content.text}</div>
-        <div class="message-time">${formatTime(message.timestamp)}</div>
-      `;
-      messagesContainer.appendChild(messageDiv);
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-  });
-  
-  socket.on('message_status', (update) => {
-    // Update message status in UI if needed
-  });
-}
-
-// Helper functions
-function formatTime(timestamp) {
-  if (!timestamp) return '';
-  const date = new Date(timestamp);
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-function getInitials(name) {
-  return name.split(' ').map(n => n[0]).join('').toUpperCase();
-}
-
-function showError(message) {
-  const errorDiv = document.createElement('div');
-  errorDiv.className = 'error-message';
-  errorDiv.textContent = message;
-  document.querySelector('#facebookTab .chat-container').prepend(errorDiv);
-  setTimeout(() => errorDiv.remove(), 5000);
-}
+// Initialize when Facebook tab is selected
+document.querySelector('[data-tab="facebook"]').addEventListener('click', initializeFacebookMessages);
 
 // Load WhatsApp chats
 function loadWhatsAppChats() {
