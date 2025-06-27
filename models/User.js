@@ -1,72 +1,104 @@
-// server/models/user.js
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+const Message = require('../models/message');
+const User = require('../models/User');
+const Conversation = require('../models/conversation');
 
-const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true
-  },
-email: {
-  type: String,
-  required: false, // ✅ allow creation without email
-  unique: true,
-  lowercase: true,
-  trim: true,
-  sparse: true // required when `unique: true` + `required: false`
-},
-  password: {
-    type: String,
-    minlength: 6,
-    select: false
-  },
-  facebookId: {
-    type: String,
-    unique: true,
-    sparse: true
-  },
-  whatsappId: {
-    type: String,
-    unique: true,
-    sparse: true
-  },
-  role: {
-    type: String,
-    enum: ['admin', 'supervisor', 'agent', 'user'],
-    default: 'user'
-  },
-  supervisor: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  isOnline: {
-    type: Boolean,
-    default: false
-  },
-  lastSeen: {
-    type: Date,
-    default: Date.now
-  },
-  profilePic: String,
-  permissions: [String]
-}, {
-  timestamps: true,
-  toJSON: { virtuals: true }
-});
+class FacebookController {
+  // ... (other methods remain the same)
 
-// Password hashing middleware
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 12);
-  next();
-});
+  async findOrCreateUser(facebookId) {
+    try {
+      // First try to find by facebookId field
+      let user = await User.findOne({ facebookId });
+      
+      if (!user) {
+        // Try to find by platform ID if using different schema
+        user = await User.findOne({ 'platformIds.facebook': facebookId });
+      }
 
-// Password comparison method
-userSchema.methods.comparePassword = async function(candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
-};
+      if (!user) {
+        // Create new user with consistent but non-unique email
+        user = await User.create({
+          name: `FB-${facebookId}`,
+          email: `fb-${facebookId}@facebook.local`,  // Non-unique pattern
+          facebookId: facebookId,
+          role: 'user',
+          isOnline: false,
+          lastSeen: new Date()
+        });
+      }
 
-const User = mongoose.model('User', userSchema);
+      return user;
+    } catch (error) {
+      console.error('User creation fallback:', error.message);
+      // Fallback minimal user object
+      return {
+        _id: new mongoose.Types.ObjectId(),
+        name: `FB-${facebookId}`,
+        facebookId: facebookId
+      };
+    }
+  }
 
-module.exports = User;
+  async findOrCreateConversation(userId, pageId, senderPsid) {
+    try {
+      // Consistent conversation ID generation
+      const conversationId = `fbconv-${pageId}-${senderPsid}`;
+      
+      // Atomic findOrCreate operation
+      const conversation = await Conversation.findOneAndUpdate(
+        { platformConversationId: conversationId },
+        { 
+          $setOnInsert: {
+            participants: [userId],
+            platform: 'facebook',
+            platformConversationId: conversationId
+          },
+          $set: { lastMessage: new Date() }
+        },
+        { 
+          upsert: true,
+          new: true 
+        }
+      );
+
+      return conversation;
+    } catch (error) {
+      console.error('Conversation error:', error);
+      throw error;
+    }
+  }
+
+  async processMessage(senderPsid, message, pageId) {
+    try {
+      const user = await this.findOrCreateUser(senderPsid);
+      const conversation = await this.findOrCreateConversation(user._id, pageId, senderPsid);
+
+      const messageData = {
+        conversation: conversation._id,
+        sender: user._id,
+        content: { text: message.text },
+        platform: 'facebook',
+        status: 'delivered',
+        platformMessageId: message.mid,
+        platformSenderId: senderPsid,
+        platformRecipientId: pageId
+      };
+
+      if (message.attachments) {
+        messageData.content.attachments = message.attachments.map(att => ({
+          type: att.type,
+          url: att.payload?.url
+        }));
+      }
+
+      const newMessage = await Message.create(messageData);
+      return newMessage;
+    } catch (error) {
+      console.error('Message processing failed:', error);
+      return null;
+    }
+  }
+}
+
+module.exports = new FacebookController();
