@@ -164,11 +164,13 @@ async function initializeServer() {
     await connectDB();
     console.log('✅ MongoDB connected successfully');
 
-    // 2. Initialize statistics
-    await initializeUserStats();
-    
-    // 3. Create default admin if needed
-    await createDefaultAdmin();
+    // 2. Get model references
+    const User = require('./models/User');
+    const UserStats = require('./models/userStats');
+
+    // 3. Initialize in proper sequence
+    await initializeUserStats(User);
+    await createDefaultAdmin(User);
     
     // 4. Start server
     const PORT = process.env.PORT || 3000;
@@ -176,35 +178,34 @@ async function initializeServer() {
       console.log(`🚀 Server running on port ${PORT}`);
     });
   } catch (error) {
-    console.error('❌ Server initialization failed:', error.message);
+    console.error('❌ Server initialization failed:', error);
     process.exit(1);
   }
 }
 
-// Helper Functions
-async function initializeUserStats() {
+async function initializeUserStats(User) {
   try {
-    const stats = await UserStats.findOneAndUpdate(
+    const count = await User.countUsers();
+    await UserStats.findOneAndUpdate(
       {},
-      { $setOnInsert: { totalUsers: await User.countDocuments() } },
+      { $setOnInsert: { totalUsers: count } },
       { upsert: true, new: true }
     );
-    console.log(`ℹ️ UserStats initialized with ${stats.totalUsers} users`);
+    console.log(`ℹ️ UserStats initialized with ${count} users`);
   } catch (error) {
     console.error('❌ UserStats initialization error:', error.message);
   }
 }
 
-async function createDefaultAdmin() {
+async function createDefaultAdmin(User) {
   try {
-    const adminExists = await User.exists({ role: 'admin' });
+    const adminExists = await User.adminExists();
     if (!adminExists) {
       const admin = new User({
         name: 'Admin',
         email: 'admin@example.com',
         password: 'admin123',
-        role: 'admin',
-        isOnline: false
+        role: 'admin'
       });
       await admin.save();
       console.log('✅ Default admin created');
