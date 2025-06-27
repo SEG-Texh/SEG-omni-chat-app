@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const socket = require('./config/socket');
 const connectDB = require('./config/database');
+const bcrypt = require('bcryptjs');
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
