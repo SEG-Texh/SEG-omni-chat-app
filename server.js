@@ -64,7 +64,53 @@ io.use(async (socket, next) => {
     next(new Error('Authentication error'));
   }
 });
+socket.on('joinFacebookConversations', async () => {
+    try {
+      const conversations = await Conversation.find({
+        participants: socket.user._id,
+        platform: 'facebook'
+      });
+      conversations.forEach(conv => {
+        socket.join(`facebook_${conv._id}`);
+      });
+    } catch (err) {
+      console.error('Error joining Facebook conversations:', err.message);
+    }
+  });
 
+  socket.on('sendFacebookMessage', async ({ conversationId, message }) => {
+    try {
+      const conversation = await Conversation.findById(conversationId);
+      if (!conversation) throw new Error('Conversation not found');
+
+      const newMessage = new Message({
+        conversation: conversationId,
+        sender: socket.user._id,
+        content: { text: message },
+        platform: 'facebook',
+        status: 'delivered'
+      });
+
+      const savedMessage = await newMessage.save();
+      await savedMessage.populate('sender', 'name profilePic');
+
+      // Update conversation
+      await Conversation.findByIdAndUpdate(conversationId, {
+        lastMessage: savedMessage._id,
+        lastMessageAt: new Date(),
+        $inc: { unreadCount: 1 }
+      });
+
+      // Emit to conversation room
+      io.to(`facebook_${conversationId}`).emit('facebookNewMessage', savedMessage);
+      
+      // Also emit to generic message channel if needed
+      io.to(`conversation_${conversationId}`).emit('newMessage', savedMessage);
+    } catch (err) {
+      console.error('Facebook message send error:', err);
+      socket.emit('facebookMessageError', { error: err.message });
+    }
+  });
 const connectedUsers = new Map();
 
 io.on('connection', async (socket) => {
