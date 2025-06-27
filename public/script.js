@@ -28,45 +28,49 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Handle login
 async function handleLogin(e) {
-  e.preventDefault()
+  e.preventDefault();
 
-  const email = document.getElementById("email").value
-  const password = document.getElementById("password").value
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
-  // Show loading state
-  loginSpinner.style.display = "inline-block"
-  loginText.textContent = "Logging in..."
-  loginError.textContent = ""
+  loginSpinner.style.display = "inline-block";
+  loginText.textContent = "Logging in...";
+  loginError.textContent = "";
 
   try {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, password }),
+    });
 
-    // Mock authentication - in real app, this would be an API call
-    if (email && password) {
-      currentUser = {
-        id: 1,
-        name: "Admin User",
-        email: email,
-        role: "admin",
-        avatar: email.charAt(0).toUpperCase(),
-      }
+    const data = await res.json();
 
-      // Save user to localStorage
-      localStorage.setItem("omniChatUser", JSON.stringify(currentUser))
-
-      showApp()
-    } else {
-      throw new Error("Invalid credentials")
+    if (!res.ok) {
+      throw new Error(data.error || "Login failed");
     }
+
+    const { token, user } = data;
+
+    currentUser = {
+      ...user,
+      token, // Save token for future use
+      avatar: user.name?.charAt(0).toUpperCase() || "U",
+    };
+
+    localStorage.setItem("omniChatUser", JSON.stringify(currentUser));
+
+    showApp(); // Call your main app loader
   } catch (error) {
-    loginError.textContent = error.message || "Login failed. Please try again."
+    loginError.textContent = error.message || "Login failed. Please try again.";
   } finally {
-    // Reset loading state
-    loginSpinner.style.display = "none"
-    loginText.textContent = "Login"
+    loginSpinner.style.display = "none";
+    loginText.textContent = "Login";
   }
 }
+
 
 // Show the main application
 function showApp() {
@@ -79,8 +83,9 @@ function showApp() {
   document.getElementById("userRole").textContent = currentUser.role
   document.getElementById("userRole").className = `badge ${currentUser.role}`
 
-  // Initialize socket connection
-  initializeSocket()
+// Initialize socket connection with token
+initializeSocket(currentUser.token)
+
 
   // Load dashboard data
   loadDashboardData()
