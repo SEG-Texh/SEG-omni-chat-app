@@ -129,7 +129,7 @@ function switchTab(tabName) {
   } else if (tabName === "facebook") {
      loadFacebookConversations();
   } else if (tabName === "whatsapp") {
-    loadWhatsAppChats()
+    loadWhatsAppConversations()
   }
 }
 
@@ -758,9 +758,117 @@ if (facebookSendButton && facebookMessageInput) {
 }
 
 // Load WhatsApp chats
-function loadWhatsAppChats() {
-  console.log("Loading WhatsApp chats...")
-  // Implementation for loading WhatsApp chat data
+async function loadWhatsAppConversations() {
+  if (!currentUser || !currentUser.token) {
+    console.error("No token found – cannot load WhatsApp conversations.");
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/conversation?platform=whatsapp', {
+      headers: {
+        Authorization: `Bearer ${currentUser.token}`,
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Server responded with status ${res.status}`);
+    }
+
+    const conversations = await res.json();
+    const chatList = document.getElementById("whatsappChatList");
+    if (chatList) chatList.innerHTML = "";
+
+    conversations.forEach((conv) => {
+      const participant = conv.participants[0];
+      const item = document.createElement("div");
+      item.className = "chat-item";
+      item.innerHTML = `
+        <div class="chat-avatar">👤</div>
+        <div class="chat-info">
+          <div class="chat-name">${participant.name}</div>
+          <div class="chat-preview">${conv.lastMessage?.content?.text || ""}</div>
+        </div>
+        <div class="chat-time">just now</div>
+      `;
+      item.onclick = () => loadWhatsAppMessages(conv._id);
+      if (chatList) chatList.appendChild(item);
+    });
+  } catch (err) {
+    console.error("Failed to load WhatsApp conversations", err);
+  }
+}
+
+async function loadWhatsAppMessages(conversationId) {
+  window.currentWhatsAppConversationId = conversationId;
+  try {
+    const res = await fetch(`/api/conversation/${conversationId}/messages`, {
+      headers: {
+        Authorization: `Bearer ${currentUser.token}`,
+      },
+    });
+    const messages = await res.json();
+    const chatBox = document.getElementById("whatsappChatMessages");
+    if (chatBox) chatBox.innerHTML = "";
+
+    messages.forEach((msg) => {
+      const div = document.createElement("div");
+      const isFromCurrentUser = msg.sender && (msg.sender._id === currentUser.id || msg.sender._id === currentUser._id);
+      div.className = isFromCurrentUser ? "chat-message from-me" : "chat-message from-them";
+      const senderName = msg.sender && msg.sender.name ? msg.sender.name : "Unknown";
+      div.innerHTML = `<div class="bubble"><strong>${senderName}:</strong> ${msg.content && msg.content.text ? msg.content.text : ''}</div>`;
+      if (chatBox) chatBox.appendChild(div);
+    });
+    if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+  } catch (err) {
+    console.error("Failed to load WhatsApp messages", err);
+  }
+}
+
+const whatsappSendButton = document.getElementById("whatsappSendButton");
+const whatsappMessageInput = document.getElementById("whatsappMessageInput");
+
+if (whatsappSendButton && whatsappMessageInput) {
+  whatsappSendButton.addEventListener("click", async () => {
+    const text = whatsappMessageInput.value.trim();
+    if (!text) {
+      alert("Please enter a message");
+      return;
+    }
+    if (!window.currentWhatsAppConversationId) {
+      alert("Please select a conversation first");
+      return;
+    }
+    try {
+      const sendRes = await fetch('/api/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${currentUser.token}`,
+        },
+        body: JSON.stringify({
+          conversationId: window.currentWhatsAppConversationId,
+          content: { text },
+          platform: 'whatsapp',
+        }),
+      });
+      if (sendRes.ok) {
+        whatsappMessageInput.value = "";
+        const chatBox = document.getElementById("whatsappChatMessages");
+        const div = document.createElement("div");
+        div.className = "chat-message from-me";
+        div.innerHTML = `<div class="bubble"><strong>${currentUser.name}:</strong> ${text}</div>`;
+        if (chatBox) chatBox.appendChild(div);
+        if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+        loadWhatsAppMessages(window.currentWhatsAppConversationId);
+      } else {
+        const errData = await sendRes.json();
+        alert("Failed to send message: " + (errData.error || sendRes.status));
+      }
+    } catch (err) {
+      alert("Failed to send message: " + err.message);
+    }
+  });
 }
 
 // Initialize dashboard animations
