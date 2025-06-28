@@ -672,11 +672,27 @@ async function loadFacebookMessages(conversationId) {
     messages.forEach((msg) => {
       const div = document.createElement("div");
       div.className = "chat-message";
-      div.innerHTML = `
-        <div><strong>${msg.sender ? msg.sender.name : "Unknown"}:</strong> ${msg.content.text}</div>
-      `;
+      
+      // Check if message is from current user or recipient
+      const isFromCurrentUser = msg.sender && (msg.sender._id === currentUser.id || msg.sender._id === currentUser._id);
+      
+      if (isFromCurrentUser) {
+        // Show sender name for messages from current user
+        div.innerHTML = `
+          <div><strong>${msg.sender ? msg.sender.name : "You"}:</strong> ${msg.content.text}</div>
+        `;
+      } else {
+        // Show only message text for recipient messages
+        div.innerHTML = `
+          <div>${msg.content.text}</div>
+        `;
+      }
+      
       chatBox.appendChild(div);
     });
+    
+    // Scroll to bottom to show latest messages
+    chatBox.scrollTop = chatBox.scrollHeight;
   } catch (err) {
     console.error("Failed to load messages", err);
   }
@@ -725,15 +741,31 @@ if (facebookSendButton && facebookMessageInput) {
         }),
       });
 
-      if (!sendRes.ok) {
+      if (sendRes.ok) {
+        const result = await sendRes.json();
+        console.log("Message sent successfully:", result);
+        
+        // Clear the input field
+        facebookMessageInput.value = "";
+        
+        // Immediately append the sent message to the chat
+        const chatBox = document.getElementById("facebookChatMessages");
+        const div = document.createElement("div");
+        div.className = "chat-message";
+        div.innerHTML = `
+          <div><strong>${currentUser.name}:</strong> ${text}</div>
+        `;
+        chatBox.appendChild(div);
+        
+        // Scroll to bottom to show the new message
+        chatBox.scrollTop = chatBox.scrollHeight;
+        
+        // Reload messages to get the updated list
+        loadFacebookMessages(currentFacebookConversationId);
+      } else {
         const errData = await sendRes.json();
         alert("Failed to send message: " + (errData.error || sendRes.status));
-        return;
       }
-
-      facebookMessageInput.value = "";
-      // Reload messages
-      loadFacebookMessages(currentFacebookConversationId);
     } catch (err) {
       alert("Failed to send message: " + err.message);
     }
