@@ -1,5 +1,6 @@
 const axios = require('axios');
 const Chat = require('../models/message');
+const mongoose = require('mongoose');
 
 class WhatsAppController {
   // Verify webhook
@@ -69,10 +70,9 @@ class WhatsAppController {
       // Save to database
       const chat = new Chat({
         platform: 'whatsapp',
-        senderId: phoneNumber,
-        message: text,
-        direction: 'incoming',
-        timestamp: new Date(),
+        sender: null,
+        content: { text },
+        direction: 'inbound',
         responseTo: responseTo,
         responseTime: responseTime
       });
@@ -110,10 +110,11 @@ class WhatsAppController {
       // Save outgoing message to database
       const chat = new Chat({
         platform: 'whatsapp',
-        senderId: phoneNumber,
-        message: text,
+        sender: null,
+        content: { text },
         direction: 'outgoing',
-        timestamp: new Date()
+        responseTo: null,
+        responseTime: null
       });
       await chat.save();
       
