@@ -673,7 +673,7 @@ async function loadFacebookMessages(conversationId) {
       const div = document.createElement("div");
       const isFromCurrentUser = msg.sender && (msg.sender._id === currentUser.id || msg.sender._id === currentUser._id);
       div.className = isFromCurrentUser ? "chat-message from-me" : "chat-message from-them";
-      div.innerHTML = `<div class="bubble">${msg.content.text}</div>`;
+      div.innerHTML = `<div class="bubble">${msg.content && msg.content.text ? msg.content.text : ''}</div>`;
       chatBox.appendChild(div);
     });
     
