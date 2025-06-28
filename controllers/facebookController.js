@@ -252,6 +252,7 @@ class FacebookController {
         content: { text },
         platform: 'facebook',
         platformRecipientId: recipientPsid,
+        platformMessageId: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         status: 'pending',
         direction: 'outbound'
       });
