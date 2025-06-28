@@ -94,6 +94,11 @@ class WhatsAppController {
         });
       }
   
+      // Always set a unique platformMessageId
+      const platformMessageId =
+        (message.id) ||
+        `wa_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
       // Save to database
       const chat = new Chat({
         conversation: conversation._id,
@@ -102,7 +107,8 @@ class WhatsAppController {
         platform: 'whatsapp',
         direction: 'inbound',
         responseTo: responseTo,
-        responseTime: responseTime
+        responseTime: responseTime,
+        platformMessageId
       });
       await chat.save();
   
@@ -136,13 +142,16 @@ class WhatsAppController {
       );
       
       // Save outgoing message to database
+      const platformMessageId = `wa_out_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const chat = new Chat({
-        platform: 'whatsapp',
-        sender: null,
+        conversation: conversationId,
+        sender: userId,
         content: { text },
-        direction: 'outgoing',
+        platform: 'whatsapp',
+        direction: 'outbound',
         responseTo: null,
-        responseTime: null
+        responseTime: null,
+        platformMessageId
       });
       await chat.save();
       
