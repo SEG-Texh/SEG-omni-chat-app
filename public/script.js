@@ -673,7 +673,9 @@ async function loadFacebookMessages(conversationId) {
       const div = document.createElement("div");
       const isFromCurrentUser = msg.sender && (msg.sender._id === currentUser.id || msg.sender._id === currentUser._id);
       div.className = isFromCurrentUser ? "chat-message from-me" : "chat-message from-them";
-      div.innerHTML = `<div class="bubble">${msg.content && msg.content.text ? msg.content.text : ''}</div>`;
+      // Use sender name if available, otherwise fallback
+      const senderName = msg.sender && msg.sender.name ? msg.sender.name : "Unknown";
+      div.innerHTML = `<div class="bubble"><strong>${senderName}:</strong> ${msg.content && msg.content.text ? msg.content.text : ''}</div>`;
       chatBox.appendChild(div);
     });
     
@@ -738,7 +740,7 @@ if (facebookSendButton && facebookMessageInput) {
         const chatBox = document.getElementById("facebookChatMessages");
         const div = document.createElement("div");
         div.className = "chat-message from-me";
-        div.innerHTML = `<div class="bubble">${text}</div>`;
+        div.innerHTML = `<div class="bubble"><strong>${currentUser.name}:</strong> ${text}</div>`;
         chatBox.appendChild(div);
         
         // Scroll to bottom to show the new message
