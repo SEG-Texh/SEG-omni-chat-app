@@ -673,7 +673,6 @@ async function loadFacebookMessages(conversationId) {
       const div = document.createElement("div");
       const isFromCurrentUser = msg.sender && (msg.sender._id === currentUser.id || msg.sender._id === currentUser._id);
       div.className = isFromCurrentUser ? "chat-message from-me" : "chat-message from-them";
-      // Use sender name if available, otherwise fallback
       const senderName = msg.sender && msg.sender.name ? msg.sender.name : "Unknown";
       div.innerHTML = `<div class="bubble"><strong>${senderName}:</strong> ${msg.content && msg.content.text ? msg.content.text : ''}</div>`;
       chatBox.appendChild(div);
@@ -914,6 +913,54 @@ style.textContent = `
     .from-them {
       margin-left: 0;
       margin-right: 20%;
+    }
+
+    .chat-main {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;
+    }
+
+    .chat-messages {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      min-height: 0;
+      max-height: 60vh; /* or adjust as needed */
+      padding: 1rem;
+      background: var(--bg-primary);
+    }
+
+    .chat-input {
+      display: flex;
+      gap: 0.75rem;
+      padding: 1rem;
+      border-top: 1px solid var(--border-color);
+      background: var(--bg-primary);
+    }
+
+    .chat-input input[type=\"text\"] {
+      flex: 1 1 auto;
+      padding: 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      font-size: 1rem;
+    }
+
+    .chat-input button {
+      padding: 0.75rem 1.5rem;
+      border-radius: var(--border-radius);
+      font-size: 1rem;
+      font-weight: 500;
+      background: var(--primary-color);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .chat-input button:hover {
+      background: var(--primary-dark);
     }
 `
 document.head.appendChild(style)
