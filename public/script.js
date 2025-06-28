@@ -641,15 +641,19 @@ async function loadFacebookMessages(conversationId) {
       );
       
       if (recipient) {
-        // Store the recipient's Facebook ID
+        // Try multiple ways to get the Facebook ID
         currentFacebookRecipientId = recipient.facebookId || 
                                     (recipient.platformIds && recipient.platformIds.facebook) ||
-                                    recipient.platformSenderId;
+                                    recipient.platformSenderId ||
+                                    // Extract from platformConversationId as fallback
+                                    (conversation.platformConversationId && 
+                                     conversation.platformConversationId.split('_')[1]);
         
         console.log('Selected conversation:', {
           conversationId,
           recipientId: currentFacebookRecipientId,
-          recipient: recipient
+          recipient: recipient,
+          platformConversationId: conversation.platformConversationId
         });
       }
     }
