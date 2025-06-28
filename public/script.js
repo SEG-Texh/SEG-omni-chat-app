@@ -671,15 +671,9 @@ async function loadFacebookMessages(conversationId) {
 
     messages.forEach((msg) => {
       const div = document.createElement("div");
-      // Check if the message is from the current user
       const isFromCurrentUser = msg.sender && (msg.sender._id === currentUser.id || msg.sender._id === currentUser._id);
-
-      // Assign the correct class for alignment and color
       div.className = isFromCurrentUser ? "chat-message from-me" : "chat-message from-them";
-
-      // Only show the message text in the bubble
       div.innerHTML = `<div class="bubble">${msg.content.text}</div>`;
-
       chatBox.appendChild(div);
     });
     
