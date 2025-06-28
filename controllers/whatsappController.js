@@ -69,7 +69,12 @@ class WhatsAppController {
   
       // Find or create User
       const User = require('../models/User');
-      let user = await User.findOne({ 'platformIds.whatsapp': phoneNumber });
+      let user = await User.findOne({
+        $or: [
+          { 'platformIds.whatsapp': phoneNumber },
+          { email: `${phoneNumber}@whatsapp.local` }
+        ]
+      });
       if (!user) {
         user = await User.create({
           name: `WhatsApp User ${phoneNumber}`,
