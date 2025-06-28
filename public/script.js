@@ -849,34 +849,28 @@ style.textContent = `
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
     }
 
+    .chat-messages {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-bottom: 16px;
+    }
+
     .chat-message {
       display: flex;
       align-items: flex-end;
-      margin: 12px 0;
       max-width: 80%;
+      margin-bottom: 2px;
     }
 
     .from-me {
-      flex-direction: row;
+      align-self: flex-end;
       justify-content: flex-end;
-      margin-left: auto;
-      margin-right: 0;
     }
 
     .from-them {
-      flex-direction: row;
+      align-self: flex-start;
       justify-content: flex-start;
-      margin-left: 0;
-      margin-right: auto;
-    }
-
-    .chat-message .avatar {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      margin: 0 8px;
-      object-fit: cover;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     }
 
     .bubble {
@@ -886,19 +880,38 @@ style.textContent = `
       line-height: 1.4;
       max-width: 350px;
       word-break: break-word;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin: 2px 0;
+      position: relative;
+      transition: background 0.2s;
     }
 
     .from-me .bubble {
       background: #1877f2;
       color: #fff;
       border-bottom-right-radius: 6px;
+      border-bottom-left-radius: 20px;
+      border-top-right-radius: 20px;
+      border-top-left-radius: 20px;
     }
 
     .from-them .bubble {
       background: #f0f2f5;
       color: #23272f;
       border-bottom-left-radius: 6px;
+      border-bottom-right-radius: 20px;
+      border-top-right-radius: 20px;
+      border-top-left-radius: 20px;
+    }
+
+    /* Optional: Add a little spacing on the left/right for clarity */
+    .from-me {
+      margin-left: 20%;
+      margin-right: 0;
+    }
+    .from-them {
+      margin-left: 0;
+      margin-right: 20%;
     }
 `
 document.head.appendChild(style)
