@@ -235,9 +235,9 @@ class FacebookController {
         platformConversationId: { $regex: `${recipientPsid}|${senderId}` }
       });
       if (!conversation) {
-        // Create a new conversation with both participants
+        // Create a new conversation with only the sender as participant
         conversation = await Conversation.create({
-          participants: [senderId, recipientPsid],
+          participants: [senderId],
           platform: 'facebook',
           platformConversationId: `${senderId}_${recipientPsid}`,
           lastMessage: new Date(),
