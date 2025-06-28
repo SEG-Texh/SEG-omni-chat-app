@@ -49,10 +49,11 @@ router.post('/:id/messages', auth, async (req, res) => {
 
     const savedMessage = await message.save();
 
-    await Conversation.findByIdAndUpdate(req.params.id, {
-      lastMessage: savedMessage._id,
-      $inc: { unreadCount: 1 }
-    });
+    // Add sender to participants if not already present
+    await Conversation.findByIdAndUpdate(
+      req.params.id,
+      { $addToSet: { participants: req.user._id }, lastMessage: savedMessage._id, $inc: { unreadCount: 1 } }
+    );
 
     res.status(201).json(savedMessage);
   } catch (error) {
