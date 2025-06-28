@@ -1,6 +1,8 @@
 // Global variables
 let currentUser = null
 let socket = null
+let currentFacebookConversationId = null;
+let currentFacebookRecipientId = null;
 
 // DOM elements
 const loginContainer = document.getElementById("loginContainer")
@@ -622,8 +624,37 @@ async function loadFacebookConversations() {
 
 // Update loadFacebookMessages to set the current conversation ID
 async function loadFacebookMessages(conversationId) {
-  globalThis.currentFacebookConversationId = conversationId;
+  currentFacebookConversationId = conversationId;
+  
   try {
+    // Get the conversation details to extract recipient ID
+    const convRes = await fetch(`/api/facebook/conversations`, {
+      headers: { Authorization: `Bearer ${currentUser.token}` }
+    });
+    const conversations = await convRes.json();
+    const conversation = conversations.find(c => c._id === conversationId);
+    
+    if (conversation) {
+      // Find the Facebook participant (not the current user)
+      const recipient = conversation.participants.find(
+        p => p._id !== currentUser.id && p._id !== currentUser._id
+      );
+      
+      if (recipient) {
+        // Store the recipient's Facebook ID
+        currentFacebookRecipientId = recipient.facebookId || 
+                                    (recipient.platformIds && recipient.platformIds.facebook) ||
+                                    recipient.platformSenderId;
+        
+        console.log('Selected conversation:', {
+          conversationId,
+          recipientId: currentFacebookRecipientId,
+          recipient: recipient
+        });
+      }
+    }
+
+    // Load messages
     const res = await fetch(`/api/facebook/conversations/${conversationId}/messages`, {
       headers: {
         Authorization: `Bearer ${currentUser.token}`,
@@ -654,19 +685,27 @@ const facebookMessageInput = document.getElementById("facebookMessageInput");
 if (facebookSendButton && facebookMessageInput) {
   facebookSendButton.addEventListener("click", async () => {
     const text = facebookMessageInput.value.trim();
-    if (!text || !globalThis.currentFacebookConversationId) return;
+    
+    if (!text) {
+      alert("Please enter a message");
+      return;
+    }
+    
+    if (!currentFacebookConversationId) {
+      alert("Please select a conversation first");
+      return;
+    }
+    
+    if (!currentFacebookRecipientId) {
+      alert("Recipient ID not found. Please select the conversation again.");
+      return;
+    }
 
-    // Fetch the conversation to get the recipient's Facebook ID
-    const res = await fetch(`/api/facebook/conversations`, {
-      headers: { Authorization: `Bearer ${currentUser.token}` }
+    console.log('Sending message:', {
+      recipientId: currentFacebookRecipientId,
+      text,
+      conversationId: currentFacebookConversationId
     });
-    const conversations = await res.json();
-    const conversation = conversations.find(c => c._id === globalThis.currentFacebookConversationId);
-    if (!conversation) return alert("Conversation not found.");
-
-    // Find the Facebook participant (not the current user)
-    const recipient = conversation.participants.find(p => p._id !== currentUser.id && p._id !== currentUser._id);
-    if (!recipient) return alert("Recipient not found.");
 
     try {
       const sendRes = await fetch('/api/facebook/messages', {
@@ -676,9 +715,9 @@ if (facebookSendButton && facebookMessageInput) {
           Authorization: `Bearer ${currentUser.token}`,
         },
         body: JSON.stringify({
-          recipientId: recipient.facebookId || recipient.platformIds?.facebook, // fallback for different user schema
+          recipientId: currentFacebookRecipientId,
           text,
-          conversationId: globalThis.currentFacebookConversationId,
+          conversationId: currentFacebookConversationId,
         }),
       });
 
@@ -690,7 +729,7 @@ if (facebookSendButton && facebookMessageInput) {
 
       facebookMessageInput.value = "";
       // Reload messages
-      loadFacebookMessages(globalThis.currentFacebookConversationId);
+      loadFacebookMessages(currentFacebookConversationId);
     } catch (err) {
       alert("Failed to send message: " + err.message);
     }
