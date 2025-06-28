@@ -671,7 +671,7 @@ async function loadFacebookMessages(conversationId) {
 
     messages.forEach((msg) => {
       const div = document.createElement("div");
-      div.className = "chat-message";
+      div.className = "chat-message from-them";
       
       // Check if message is from current user or recipient
       const isFromCurrentUser = msg.sender && (msg.sender._id === currentUser.id || msg.sender._id === currentUser._id);
@@ -751,7 +751,7 @@ if (facebookSendButton && facebookMessageInput) {
         // Immediately append the sent message to the chat
         const chatBox = document.getElementById("facebookChatMessages");
         const div = document.createElement("div");
-        div.className = "chat-message";
+        div.className = "chat-message from-me";
         div.innerHTML = `
           <div><strong>${currentUser.name}:</strong> ${text}</div>
         `;
@@ -863,6 +863,64 @@ style.textContent = `
     
     .chart-card:hover {
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+
+    .chat-message {
+      display: flex;
+      align-items: flex-end;
+      margin: 12px 0;
+      max-width: 80%;
+    }
+
+    .from-me {
+      flex-direction: row;
+      justify-content: flex-start;
+      margin-left: 0;
+      margin-right: auto;
+    }
+
+    .from-them {
+      flex-direction: row-reverse;
+      justify-content: flex-end;
+      margin-left: auto;
+      margin-right: 0;
+    }
+
+    .chat-message .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      margin: 0 8px;
+      object-fit: cover;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+
+    .bubble {
+      padding: 12px 18px;
+      border-radius: 20px;
+      font-size: 1rem;
+      line-height: 1.4;
+      max-width: 350px;
+      word-break: break-word;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+
+    .from-me .bubble {
+      background: #23272f;
+      color: #fff;
+      border-bottom-left-radius: 6px;
+      border-bottom-right-radius: 20px;
+      border-top-right-radius: 20px;
+      border-top-left-radius: 20px;
+    }
+
+    .from-them .bubble {
+      background: #f5f6fa;
+      color: #23272f;
+      border-bottom-right-radius: 6px;
+      border-bottom-left-radius: 20px;
+      border-top-right-radius: 20px;
+      border-top-left-radius: 20px;
     }
 `
 document.head.appendChild(style)
