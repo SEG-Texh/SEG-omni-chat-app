@@ -817,7 +817,7 @@ async function loadWhatsAppMessages(conversationId) {
       div.className = isFromCurrentUser ? "chat-message from-me" : "chat-message from-them";
       const senderName = msg.sender && msg.sender.name ? msg.sender.name : "Unknown";
       div.innerHTML = `<div class="bubble"><strong>${senderName}:</strong> ${msg.content && msg.content.text ? msg.content.text : ''}</div>`;
-      if (chatBox) chatBox.appendChild(div);
+      chatBox.appendChild(div);
     });
     if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
   } catch (err) {
