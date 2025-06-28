@@ -47,6 +47,7 @@ app.use('/api/facebook', facebookRoutes); // ✅
 app.use('/api/conversation', conversationRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/chats', dashboardRoutes);
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, './public/index.html')));
 app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, './public/dashboard.html')));
