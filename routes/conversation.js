@@ -5,7 +5,7 @@ const Message = require('../models/message');
 const { auth } = require('../middleware/auth');
 
 // Get all conversations for a user
-router.get('/', auth, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const conversations = await Conversation.find({
       participants: req.user._id
