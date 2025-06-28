@@ -63,15 +63,43 @@ class WhatsAppController {
         responseTo = message.context.id;
         const originalMessage = await Chat.findOne({ _id: responseTo });
         if (originalMessage) {
-          responseTime = Date.now() - new Date(originalMessage.timestamp).getTime();
+          responseTime = Date.now() - new Date(originalMessage.createdAt).getTime();
         }
+      }
+  
+      // Find or create User
+      const User = require('../models/User');
+      let user = await User.findOne({ 'platformIds.whatsapp': phoneNumber });
+      if (!user) {
+        user = await User.create({
+          name: `WhatsApp User ${phoneNumber}`,
+          email: `${phoneNumber}@whatsapp.local`,
+          platformIds: { whatsapp: phoneNumber },
+          roles: ['customer']
+        });
+      }
+  
+      // Find or create Conversation
+      const Conversation = require('../models/conversation');
+      let conversation = await Conversation.findOne({
+        platform: 'whatsapp',
+        platformConversationId: phoneNumber
+      });
+      if (!conversation) {
+        conversation = await Conversation.create({
+          participants: [user._id],
+          platform: 'whatsapp',
+          platformConversationId: phoneNumber,
+          status: 'active'
+        });
       }
   
       // Save to database
       const chat = new Chat({
-        platform: 'whatsapp',
-        sender: null,
+        conversation: conversation._id,
+        sender: user._id,
         content: { text },
+        platform: 'whatsapp',
         direction: 'inbound',
         responseTo: responseTo,
         responseTime: responseTime
