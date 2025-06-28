@@ -171,6 +171,7 @@ class FacebookController {
   // Enhanced conversation management with labels and status
   async findOrCreateConversation(userId, pageId, senderPsid) {
     try {
+      // Use consistent format: pageId_recipientPsid
       const conversationId = `${pageId}_${senderPsid}`;
       let conversation = await Conversation.findOne({ platformConversationId: conversationId })
         .populate('participants', 'name profilePic');
@@ -228,21 +229,54 @@ class FacebookController {
     try {
       console.log(`✉️ Sending to ${recipientPsid}`);
 
-      // Find or create a conversation between the logged-in user and the Facebook recipient
-      let conversation = await Conversation.findOne({
-        platform: 'facebook',
-        platformConversationId: `${senderId}_${recipientPsid}`
-      });
+      let conversation;
+      
+      // If conversationId is provided, try to use that conversation first
+      if (conversationId) {
+        conversation = await Conversation.findById(conversationId);
+        if (conversation) {
+          console.log(`Using existing conversation: ${conversationId}`);
+        }
+      }
+      
+      // If no conversation found, create or find one using consistent format
       if (!conversation) {
-        // Create a new conversation with only the sender as participant
-        conversation = await Conversation.create({
-          participants: [senderId],
+        // Get the page ID from the Facebook API to ensure consistency
+        let pageId;
+        try {
+          const pageResponse = await axios.get(
+            `https://graph.facebook.com/me`,
+            {
+              params: { access_token: process.env.FACEBOOK_PAGE_ACCESS_TOKEN },
+              timeout: 5000
+            }
+          );
+          pageId = pageResponse.data.id;
+        } catch (error) {
+          console.error('Failed to get page ID, using environment variable:', error.message);
+          pageId = process.env.FACEBOOK_PAGE_ID;
+        }
+
+        // Use the same conversation ID format as incoming messages: pageId_recipientPsid
+        const conversationIdToUse = `${pageId}_${recipientPsid}`;
+        
+        // Find or create a conversation using the same format as incoming messages
+        conversation = await Conversation.findOne({
           platform: 'facebook',
-          platformConversationId: `${senderId}_${recipientPsid}`,
-          lastMessage: new Date(),
-          labels: ['facebook-inbox'],
-          status: 'active'
+          platformConversationId: conversationIdToUse
         });
+        
+        if (!conversation) {
+          // Create a new conversation with only the sender as participant
+          conversation = await Conversation.create({
+            participants: [senderId],
+            platform: 'facebook',
+            platformConversationId: conversationIdToUse,
+            lastMessage: new Date(),
+            labels: ['facebook-inbox'],
+            status: 'active'
+          });
+        }
       }
 
       // Create pending message first
