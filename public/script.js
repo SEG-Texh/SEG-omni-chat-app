@@ -671,9 +671,15 @@ async function loadFacebookMessages(conversationId) {
 
     messages.forEach((msg) => {
       const div = document.createElement("div");
+      // Check if the message is from the current user
       const isFromCurrentUser = msg.sender && (msg.sender._id === currentUser.id || msg.sender._id === currentUser._id);
+
+      // Assign the correct class for alignment and color
       div.className = isFromCurrentUser ? "chat-message from-me" : "chat-message from-them";
+
+      // Only show the message text in the bubble
       div.innerHTML = `<div class="bubble">${msg.content.text}</div>`;
+
       chatBox.appendChild(div);
     });
     
@@ -858,16 +864,16 @@ style.textContent = `
 
     .from-me {
       flex-direction: row;
-      justify-content: flex-start;
-      margin-left: 0;
-      margin-right: auto;
-    }
-
-    .from-them {
-      flex-direction: row-reverse;
       justify-content: flex-end;
       margin-left: auto;
       margin-right: 0;
+    }
+
+    .from-them {
+      flex-direction: row;
+      justify-content: flex-start;
+      margin-left: 0;
+      margin-right: auto;
     }
 
     .chat-message .avatar {
@@ -890,21 +896,15 @@ style.textContent = `
     }
 
     .from-me .bubble {
-      background: #23272f;
+      background: #1877f2;
       color: #fff;
-      border-bottom-left-radius: 6px;
-      border-bottom-right-radius: 20px;
-      border-top-right-radius: 20px;
-      border-top-left-radius: 20px;
+      border-bottom-right-radius: 6px;
     }
 
     .from-them .bubble {
-      background: #f5f6fa;
+      background: #f0f2f5;
       color: #23272f;
-      border-bottom-right-radius: 6px;
-      border-bottom-left-radius: 20px;
-      border-top-right-radius: 20px;
-      border-top-left-radius: 20px;
+      border-bottom-left-radius: 6px;
     }
 `
 document.head.appendChild(style)
