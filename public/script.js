@@ -671,23 +671,11 @@ async function loadFacebookMessages(conversationId) {
 
     messages.forEach((msg) => {
       const div = document.createElement("div");
-      div.className = "chat-message from-them";
-      
-      // Check if message is from current user or recipient
       const isFromCurrentUser = msg.sender && (msg.sender._id === currentUser.id || msg.sender._id === currentUser._id);
-      
-      if (isFromCurrentUser) {
-        // Show sender name for messages from current user
-        div.innerHTML = `
-          <div><strong>${msg.sender ? msg.sender.name : "You"}:</strong> ${msg.content.text}</div>
-        `;
-      } else {
-        // Show only message text for recipient messages
-        div.innerHTML = `
-          <div>${msg.content.text}</div>
-        `;
-      }
-      
+      div.className = isFromCurrentUser ? "chat-message from-me" : "chat-message from-them";
+      div.innerHTML = `
+        <div class="bubble">${msg.content.text}</div>
+      `;
       chatBox.appendChild(div);
     });
     
@@ -753,7 +741,7 @@ if (facebookSendButton && facebookMessageInput) {
         const div = document.createElement("div");
         div.className = "chat-message from-me";
         div.innerHTML = `
-          <div><strong>${currentUser.name}:</strong> ${text}</div>
+          <div class="bubble">${text}</div>
         `;
         chatBox.appendChild(div);
         
