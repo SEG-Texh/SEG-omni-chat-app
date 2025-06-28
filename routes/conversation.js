@@ -5,17 +5,22 @@ const Message = require('../models/message');
 const { auth } = require('../middleware/auth');
 
 // Get all conversations for a user
-router.get('/', async (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
-    const conversations = await Conversation.find({
-      participants: req.user._id
-    })
-    .populate('participants', 'name email avatar')
-    .populate('lastMessage')
-    .sort({ updatedAt: -1 });
+    let filter = {};
+    if (req.query.platform) {
+      filter.platform = req.query.platform;
+    }
+    filter.participants = req.user._id;
+    console.log('Conversation filter:', filter);
+    const conversations = await Conversation.find(filter)
+      .populate('participants', 'name email avatar')
+      .populate('lastMessage')
+      .sort({ updatedAt: -1 });
 
     res.json(conversations);
   } catch (error) {
+    console.error('Error in /api/conversation:', error);
     res.status(500).json({ error: error.message });
   }
 });
