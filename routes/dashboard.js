@@ -55,5 +55,51 @@ router.get('/platform-distribution', async (req, res) => {
   results.forEach(r => { distribution[r._id] = r.count; });
   res.json(distribution);
 });
+// GET /api/chats/message-volume?days=7
+router.get('/message-volume', async (req, res) => {
+  const days = parseInt(req.query.days) || 7;
+  const since = new Date();
+  since.setDate(since.getDate() - days);
 
+  // Group by day
+  const pipeline = [
+    { $match: { createdAt: { $gte: since } } },
+    {
+      $group: {
+        _id: {
+          $dateToString: { format: "%Y-%m-%d", date: "$createdAt" }
+        },
+        count: { $sum: 1 }
+      }
+    },
+    { $sort: { _id: 1 } }
+  ];
+
+  const results = await Message.aggregate(pipeline);
+  res.json(results.map(r => ({ date: r._id, count: r.count })));
+});
+
+// GET /api/chats/response-times?months=7
+router.get('/response-times', async (req, res) => {
+  const months = parseInt(req.query.months) || 7;
+  const since = new Date();
+  since.setMonth(since.getMonth() - months);
+
+  // Only consider messages with a responseTo field (i.e., replies)
+  const pipeline = [
+    { $match: { createdAt: { $gte: since }, responseTo: { $exists: true, $ne: null } } },
+    {
+      $group: {
+        _id: {
+          $dateToString: { format: "%Y-%m", date: "$createdAt" }
+        },
+        avgResponseTime: { $avg: "$responseTime" }
+      }
+    },
+    { $sort: { _id: 1 } }
+  ];
+
+  const results = await Message.aggregate(pipeline);
+  res.json(results.map(r => ({ month: r._id, avgResponseTime: r.avgResponseTime })));
+});
 module.exports = router;
