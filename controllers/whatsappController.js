@@ -46,7 +46,9 @@ class WhatsAppController {
   async processMessage(phoneNumber, message) {
     try {
       let text = '';
-      
+      let responseTo = null;
+      let responseTime = null;
+  
       if (message.type === 'text') {
         text = message.text.body;
       } else if (message.type === 'interactive') {
@@ -54,17 +56,28 @@ class WhatsAppController {
                message.interactive.list_reply?.title || 
                'Interactive message received';
       }
-      
+  
+      // If this message is a reply, calculate response time
+      if (message.context && message.context.id) {
+        responseTo = message.context.id;
+        const originalMessage = await Chat.findOne({ _id: responseTo });
+        if (originalMessage) {
+          responseTime = Date.now() - new Date(originalMessage.timestamp).getTime();
+        }
+      }
+  
       // Save to database
       const chat = new Chat({
         platform: 'whatsapp',
         senderId: phoneNumber,
         message: text,
         direction: 'incoming',
-        timestamp: new Date()
+        timestamp: new Date(),
+        responseTo: responseTo,
+        responseTime: responseTime
       });
       await chat.save();
-      
+  
       // Auto reply example
       if (text.toLowerCase().includes('hello')) {
         await this.sendMessage(phoneNumber, 'Hello! Thanks for reaching out. How can I assist you?');
