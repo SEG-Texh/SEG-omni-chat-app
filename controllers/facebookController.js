@@ -231,8 +231,7 @@ class FacebookController {
       // Find or create a conversation between the logged-in user and the Facebook recipient
       let conversation = await Conversation.findOne({
         platform: 'facebook',
-        participants: { $all: [senderId], $size: 2 },
-        platformConversationId: { $regex: `${recipientPsid}|${senderId}` }
+        platformConversationId: `${senderId}_${recipientPsid}`
       });
       if (!conversation) {
         // Create a new conversation with only the sender as participant
