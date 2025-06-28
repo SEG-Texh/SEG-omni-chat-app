@@ -31,6 +31,14 @@ const messageSchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'sent', 'delivered', 'read', 'received', 'failed'],
     default: 'sent'
+  },  responseTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Message',
+    default: null
+  },
+  responseTime: {
+    type: Number, // milliseconds
+    default: null
   },
   direction: {  // Added direction field
     type: String,
