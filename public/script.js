@@ -776,6 +776,7 @@ async function loadWhatsAppConversations() {
     }
 
     const conversations = await res.json();
+    console.log('WhatsApp conversations:', conversations);
     const chatList = document.getElementById("whatsappChatList");
     if (chatList) chatList.innerHTML = "";
 
@@ -808,6 +809,7 @@ async function loadWhatsAppMessages(conversationId) {
       },
     });
     const messages = await res.json();
+    console.log('WhatsApp messages:', messages);
     const chatBox = document.getElementById("whatsappChatMessages");
     if (chatBox) chatBox.innerHTML = "";
 
