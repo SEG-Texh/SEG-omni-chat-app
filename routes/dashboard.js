@@ -119,4 +119,38 @@ router.get('/stats/response-rate', async (req, res) => {
   }
 });
 
+router.get('/response-rate', async (req, res) => {
+  try {
+    // Get today's date range
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // 1. Total incoming messages today
+    const totalIncoming = await Message.countDocuments({
+      direction: 'inbound',
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
+    });
+
+    // 2. Messages responded to within a day
+    // Assuming you have a field like responseTime (in ms) on outbound messages
+    const respondedWithinDay = await Message.countDocuments({
+      direction: 'outbound',
+      responseTime: { $lte: 24 * 60 * 60 * 1000 }, // responded within 24 hours
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
+    });
+
+    // 3. Calculate response rate
+    const responseRate = totalIncoming === 0
+      ? 0
+      : Math.round((respondedWithinDay / totalIncoming) * 100);
+
+    res.json({ responseRate, totalIncoming, respondedWithinDay });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to calculate response rate' });
+  }
+});
+
 module.exports = router;
