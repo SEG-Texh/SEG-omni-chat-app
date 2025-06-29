@@ -347,7 +347,7 @@ async function getMessagesToday() {
 
 async function getActiveChats() {
   try {
-    const response = await fetch('/api/active-chats');
+    const response = await fetch('/api/dashboard/active-chats');
     const data = await response.json();
     return data.activeChats;
   } catch (error) {
@@ -1416,7 +1416,7 @@ async function loadResponseRate() {
 
 async function loadActiveChats() {
   try {
-    const response = await fetch('/api/active-chats', {
+    const response = await fetch('/api/dashboard/active-chats', {
       headers: { 'Authorization': `Bearer ${currentUser.token}` }
     });
     if (!response.ok) throw new Error('Failed to fetch active chats');
