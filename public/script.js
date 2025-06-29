@@ -1313,7 +1313,17 @@ function showMessage(messageId, text) {
         }, 3000);
     }
 }
-
+        // Toggle role selection
+        function toggleRole(element) {
+          const checkbox = element.querySelector('input[type="checkbox"]');
+          checkbox.checked = !checkbox.checked;
+          
+          if (checkbox.checked) {
+              element.classList.add('checked');
+          } else {
+              element.classList.remove('checked');
+          }
+      }
 // Load accounts data
 async function loadAccountsData() {
     try {
