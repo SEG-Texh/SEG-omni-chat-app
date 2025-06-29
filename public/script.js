@@ -289,7 +289,7 @@ async function loadDashboardData() {
     // Update charts with real data
     updateBarChart(messageVolume);
     updatePieChart(platformDistribution);
-    const responseTimes = await getResponseTimes();
+    const responseTimes = await getResponseRateTrend();
     updateLineChart(responseTimes);
     
     // Animate charts
@@ -470,7 +470,7 @@ function updateLineChart(data) {
   const height = 200;
   const padding = 20;
   
-  const maxValue = Math.max(...data.map(d => d.avgResponseTime));
+  const maxValue = Math.max(...data.map(d => d.responseRate));
   const xScale = (width - 2 * padding) / (data.length - 1);
   const yScale = (height - 2 * padding) / maxValue;
   
@@ -480,7 +480,7 @@ function updateLineChart(data) {
   
   data.forEach((point, index) => {
     const x = padding + index * xScale;
-    const y = height - padding - (point.avgResponseTime * yScale);
+    const y = height - padding - (point.responseRate * yScale);
     
     if (index === 0) {
       pathD += `M ${x} ${y}`;
@@ -505,11 +505,11 @@ function updateLineChart(data) {
   
   const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
   stop1.setAttribute('offset', '0%');
-  stop1.setAttribute('style', 'stop-color:#4f46e5;stop-opacity:0.3');
+  stop1.setAttribute('style', 'stop-color:#10b981;stop-opacity:0.3');
   
   const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
   stop2.setAttribute('offset', '100%');
-  stop2.setAttribute('style', 'stop-color:#4f46e5;stop-opacity:0');
+  stop2.setAttribute('style', 'stop-color:#10b981;stop-opacity:0');
   
   gradient.appendChild(stop1);
   gradient.appendChild(stop2);
@@ -525,7 +525,7 @@ function updateLineChart(data) {
   // Add line
   const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
   line.setAttribute('d', pathD);
-  line.setAttribute('stroke', '#4f46e5');
+  line.setAttribute('stroke', '#10b981');
   line.setAttribute('stroke-width', '3');
   line.setAttribute('fill', 'none');
   svg.appendChild(line);
@@ -533,25 +533,30 @@ function updateLineChart(data) {
   // Add points
   data.forEach((point, index) => {
     const x = padding + index * xScale;
-    const y = height - padding - (point.avgResponseTime * yScale);
+    const y = height - padding - (point.responseRate * yScale);
     
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('cx', x);
     circle.setAttribute('cy', y);
     circle.setAttribute('r', '4');
-    circle.setAttribute('fill', '#4f46e5');
+    circle.setAttribute('fill', '#10b981');
     svg.appendChild(circle);
+    
+    // Add tooltip with response rate percentage
+    const tooltip = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    tooltip.textContent = `${point.responseRate}%`;
+    circle.appendChild(tooltip);
   });
   
   // Add labels
   data.forEach((point, index) => {
-    const month = new Date(point.month).toLocaleString('default', { month: 'short' });
+    const month = new Date(point.month + '-01').toLocaleString('default', { month: 'short' });
     const label = document.createElement('span');
     label.textContent = month;
     labelsContainer.appendChild(label);
   });
 
-  console.log('Line chart data:', data);
+  console.log('Response rate trend data:', data);
 }
 
 // Update real-time data
@@ -1393,7 +1398,7 @@ async function loadUsersTable() {
     }
 }
 
-async function getResponseTimes() {
+async function getResponseRateTrend() {
   const res = await fetch('/api/dashboard/response-times', {
     headers: { 'Authorization': `Bearer ${currentUser.token}` }
   });

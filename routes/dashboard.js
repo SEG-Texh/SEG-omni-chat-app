@@ -69,28 +69,52 @@ router.get('/message-volume', async (req, res) => {
   res.json(results.map(r => ({ date: r._id, count: r.count })));
 });
 
-// GET /api/chats/response-times?months=7
+// GET /api/chats/response-rate-trend?months=7
 router.get('/response-times', async (req, res) => {
   const months = parseInt(req.query.months) || 7;
   const since = new Date();
   since.setMonth(since.getMonth() - months);
 
-  // Only consider messages with a responseTo field (i.e., replies)
-  const pipeline = [
-    { $match: { createdAt: { $gte: since }, responseTo: { $exists: true, $ne: null } } },
-    {
-      $group: {
-        _id: {
-          $dateToString: { format: "%Y-%m", date: "$createdAt" }
-        },
-        avgResponseTime: { $avg: "$responseTime" }
-      }
-    },
-    { $sort: { _id: 1 } }
-  ];
+  try {
+    // Calculate response rate trend by month
+    const pipeline = [
+      { $match: { createdAt: { $gte: since } } },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m", date: "$createdAt" }
+          },
+          totalMessages: { $sum: 1 },
+          deliveredMessages: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "delivered"] }, 1, 0]
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          month: "$_id",
+          responseRate: {
+            $cond: [
+              { $eq: ["$totalMessages", 0] },
+              0,
+              { $multiply: [{ $divide: ["$deliveredMessages", "$totalMessages"] }, 100] }
+            ]
+          }
+        }
+      },
+      { $sort: { month: 1 } }
+    ];
 
-  const results = await Message.aggregate(pipeline);
-  res.json(results.map(r => ({ month: r._id, avgResponseTime: r.avgResponseTime })));
+    const results = await Message.aggregate(pipeline);
+    res.json(results.map(r => ({ 
+      month: r.month, 
+      responseRate: Math.round(r.responseRate) 
+    })));
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to calculate response rate trend' });
+  }
 });
 
 // GET /api/stats/response-rate
