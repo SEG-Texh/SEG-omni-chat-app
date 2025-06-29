@@ -336,7 +336,7 @@ async function getMessagesToday() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const response = await fetch(`/api/chats/count?startDate=${today.toISOString()}`);
+    const response = await fetch(`/api/dashboard/count?startDate=${today.toISOString()}`);
     const data = await response.json();
     return data.count;
   } catch (error) {
@@ -358,7 +358,7 @@ async function getActiveChats() {
 
 async function getPlatformDistribution() {
   try {
-    const response = await fetch('/api/chats/platform-distribution');
+    const response = await fetch('/api/dashboard/platform-distribution');
     const data = await response.json();
     return data;
   } catch (error) {
@@ -373,7 +373,7 @@ async function getPlatformDistribution() {
 }
 
 async function getMessageVolume() {
-  const response = await fetch('/api/chats/message-volume?days=7');
+  const response = await fetch('/api/dashboard/message-volume?days=7');
   const data = await response.json();
   return data;
 }
@@ -1132,7 +1132,7 @@ function updateOnlineStatus() {
   // Placeholder: implement online status update if needed
 }
 
-fetch('/api/chats/message-volume?days=7')
+fetch('/api/dashboard/message-volume?days=7')
   .then(res => res.json())
   .then(data => console.log('Backend response:', data));
 
@@ -1394,7 +1394,7 @@ async function loadUsersTable() {
 }
 
 async function getResponseTimes() {
-  const res = await fetch('/api/response-times', {
+  const res = await fetch('/api/dashboard/response-times', {
     headers: { 'Authorization': `Bearer ${currentUser.token}` }
   });
   return await res.json();
@@ -1402,7 +1402,7 @@ async function getResponseTimes() {
 
 async function loadResponseRate() {
   try {
-    const response = await fetch('/api/response-rate', {
+    const response = await fetch('/api/dashboard/response-rate', {
       headers: { 'Authorization': `Bearer ${currentUser.token}` }
     });
     if (!response.ok) throw new Error('Failed to fetch response rate');
