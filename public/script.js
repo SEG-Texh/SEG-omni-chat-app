@@ -298,6 +298,9 @@ async function loadDashboardData() {
     // Update real-time data periodically
     setInterval(updateRealTimeData, 30000);
     
+    // Load response rate
+    await loadResponseRate();
+    
   } catch (error) {
     console.error("Error loading dashboard data:", error);
     // You might want to show an error message to the user here
@@ -1401,10 +1404,16 @@ async function getResponseTimes() {
 }
 
 async function loadResponseRate() {
-  const response = await fetch('/api/response-rate', {
-    headers: { 'Authorization': `Bearer ${currentUser.token}` }
-  });
-  const data = await response.json();
-  document.getElementById('responseRate').textContent = data.responseRate + '%';
+  try {
+    const response = await fetch('/api/response-rate', {
+      headers: { 'Authorization': `Bearer ${currentUser.token}` }
+    });
+    if (!response.ok) throw new Error('Failed to fetch response rate');
+    const data = await response.json();
+    document.getElementById('responseRate').textContent = data.responseRate + '%';
+  } catch (error) {
+    document.getElementById('responseRate').textContent = 'N/A';
+    console.error('Error loading response rate:', error);
+  }
 }
 
