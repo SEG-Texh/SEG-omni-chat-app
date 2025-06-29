@@ -938,44 +938,41 @@ body {
 
 .role-selection {
   display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  gap: 2rem;
   margin-top: 0.5rem;
 }
 
-.role-item {
+.role-checkbox {
+  display: none;
+}
+
+.role-card {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: var(--bg-secondary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--border-radius);
+  justify-content: center;
+  min-width: 200px;
+  min-height: 70px;
+  padding: 1rem 2rem;
+  border: 2px solid #d1d5db; /* light gray */
+  border-radius: 12px;
+  background: #f8fafc;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #555;
   cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.role-item:hover {
-  background: var(--bg-tertiary);
-  border-color: var(--primary-color);
-}
-
-.role-item input[type="checkbox"] {
-  width: auto;
+  transition: border 0.2s, background 0.2s, color 0.2s;
+  box-sizing: border-box;
   margin: 0;
 }
 
-.role-item input[type="checkbox"]:checked + label {
-  color: var(--primary-color);
-  font-weight: 600;
+.role-checkbox:checked + .role-card {
+  border: 2px solid #4f46e5; /* primary color */
+  background: #eef2ff;
+  color: #3730a3;
 }
 
-.role-item.selected {
-  background: rgba(79, 70, 229, 0.1);
-  border-color: var(--primary-color);
-  color: var(--primary-color);
+.role-card strong {
+  font-weight: 700;
 }
 
 .users-table {
