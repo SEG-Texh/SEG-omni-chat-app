@@ -63,5 +63,6 @@ messageSchema.index({ conversation: 1 });
 messageSchema.index({ sender: 1 });
 messageSchema.index({ timestamp: -1 });
 messageSchema.index({ platform: 1, status: 1 });
+messageSchema.index({ platformMessageId: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Message', messageSchema);

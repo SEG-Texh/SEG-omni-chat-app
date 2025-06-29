@@ -21,6 +21,9 @@ router.post('/', auth, async (req, res) => {
       });
     }
 
+    // Generate a unique platformMessageId
+    const platformMessageId = `${platform}_out_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
     // Create the message
     const message = new Message({
       conversation: conversationId,
@@ -28,7 +31,8 @@ router.post('/', auth, async (req, res) => {
       content,
       platform,
       direction: 'outbound',
-      status: 'sent'
+      status: 'sent',
+      platformMessageId: platformMessageId
     });
 
     const savedMessage = await message.save();
