@@ -12,6 +12,7 @@ const router = express.Router();
 // @access  Public
 router.get('/', async (req, res) => {
   try {
+    // Only return users that can login (internal users)
     const users = await User.find({ type: 'internal' });
     res.json(users);
   } catch (err) {
