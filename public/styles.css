@@ -915,6 +915,32 @@ body {
 }
 
 /* ACCOUNT MANAGEMENT STYLES */
+/* Account Management Header Styles */
+#accountsTab .header {
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  border-radius: 18px;
+  padding: 2.5rem 2rem 2rem 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 24px 0 rgba(76, 81, 255, 0.08);
+  text-align: left;
+}
+
+#accountsTab .header h1 {
+  font-size: 2.6rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+  letter-spacing: -1px;
+  color: #fff;
+}
+
+#accountsTab .header p {
+  font-size: 1.15rem;
+  font-weight: 400;
+  color: #e0e7ff;
+  margin-bottom: 0;
+  opacity: 0.95;
+}
 .success-message {
   background: rgba(16, 185, 129, 0.1);
   border: 1px solid var(--success-color);
