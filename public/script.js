@@ -1108,3 +1108,7 @@ function updateOnlineStatus() {
   // Placeholder: implement online status update if needed
 }
 
+fetch('/api/chats/message-volume?days=7')
+  .then(res => res.json())
+  .then(data => console.log('Backend response:', data));
+
