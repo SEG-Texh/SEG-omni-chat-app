@@ -39,7 +39,6 @@ router.post('/', auth, async (req, res) => {
     const savedMessage = await message.save();
 
     // Add sender to participants if not already present
-    // This makes the conversation "claimed" by the user when they reply
     await Conversation.findByIdAndUpdate(
       conversationId,
       { 
@@ -51,11 +50,19 @@ router.post('/', auth, async (req, res) => {
     // Populate sender info for response
     await savedMessage.populate('sender', 'name avatar');
 
+    // If WhatsApp, send the message via WhatsApp API
     if (platform === 'whatsapp') {
-      // Find the conversation and recipient
       const conversation = await Conversation.findById(conversationId).populate('participants');
-      // Find the customer (not the agent/admin)
-      const recipient = conversation.participants.find(p => !p.roles.includes('agent') && !p.roles.includes('admin'));
+      // Find the recipient: not the sender, and not an agent/admin if possible
+      let recipient = conversation.participants.find(
+        p => p._id.toString() !== req.user._id.toString() && Array.isArray(p.roles) && !p.roles.includes('agent') && !p.roles.includes('admin')
+      );
+      // Fallback: just not the sender
+      if (!recipient) {
+        recipient = conversation.participants.find(
+          p => p._id.toString() !== req.user._id.toString()
+        );
+      }
       if (recipient && recipient.platformIds && recipient.platformIds.whatsapp) {
         const phoneNumber = recipient.platformIds.whatsapp;
         try {
