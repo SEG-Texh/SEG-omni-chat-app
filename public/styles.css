@@ -1180,3 +1180,7 @@ body {
   gap: 2rem;
   flex-wrap: wrap;
 }
+
+.account-main-cards {
+  margin-bottom: 2.5rem;
+}
