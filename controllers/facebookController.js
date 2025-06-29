@@ -278,7 +278,7 @@ class FacebookController {
       }
 
       // Create pending message first
-      const pendingMessage = await Message.create({
+      const newMessage = await Message.create({
         conversation: conversation._id,
         sender: senderId,
         content: { text },
@@ -306,7 +306,7 @@ class FacebookController {
 
         // Update message with platform ID and sent status
         await Message.updateOne(
-          { _id: pendingMessage._id },
+          { _id: newMessage._id },
           { 
             $set: { 
               platformMessageId: response.data.message_id,
@@ -323,7 +323,7 @@ class FacebookController {
         );
 
         // Return populated message for real-time updates
-        const sentMessage = await Message.findById(pendingMessage._id)
+        const sentMessage = await Message.findById(newMessage._id)
           .populate('sender', 'name profilePic');
 
         // Emit real-time event if using socket.io
@@ -335,7 +335,7 @@ class FacebookController {
       } catch (error) {
         // Update message with error status if send fails
         await Message.updateOne(
-          { _id: pendingMessage._id },
+          { _id: newMessage._id },
           { 
             $set: { 
               status: 'failed',
