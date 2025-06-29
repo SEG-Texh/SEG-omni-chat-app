@@ -1417,3 +1417,17 @@ async function loadResponseRate() {
   }
 }
 
+async function loadActiveChats() {
+  try {
+    const response = await fetch('/api/active-chats', {
+      headers: { 'Authorization': `Bearer ${currentUser.token}` }
+    });
+    if (!response.ok) throw new Error('Failed to fetch active chats');
+    const data = await response.json();
+    document.getElementById('activeChats').textContent = data.activeChats;
+  } catch (error) {
+    document.getElementById('activeChats').textContent = 'N/A';
+    console.error('Error loading active chats:', error);
+  }
+}
+

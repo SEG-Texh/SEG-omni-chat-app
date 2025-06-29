@@ -4,6 +4,7 @@ const router = express.Router();
 
 const UserStats = require('../models/userStats');
 const Message = require('../models/message'); // Add this line
+const Conversation = require('../models/conversation');
 
 // Users count endpoint (already present)
 router.get('/users/count', async (req, res) => {
@@ -119,21 +120,25 @@ router.get('/stats/response-rate', async (req, res) => {
   }
 });
 
+// GET /api/response-rate
 router.get('/response-rate', async (req, res) => {
   try {
-    // Total number of messages (inbound + outbound)
     const totalMessages = await Message.countDocuments();
-
-    // Total number of messages with status 'delivered'
     const deliveredMessages = await Message.countDocuments({ status: 'delivered' });
-
-    // Calculate response rate
     const responseRate = totalMessages === 0 ? 0 : Math.round((deliveredMessages / totalMessages) * 100);
-
     res.json({ responseRate, deliveredMessages, totalMessages });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'Failed to calculate response rate' });
+  }
+});
+
+// GET /api/active-chats
+router.get('/active-chats', async (req, res) => {
+  try {
+    const activeChats = await Conversation.countDocuments({ status: 'active' });
+    res.json({ activeChats });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch active chats' });
   }
 });
 
