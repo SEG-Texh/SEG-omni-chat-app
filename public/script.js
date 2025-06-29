@@ -462,6 +462,14 @@ function updateLineChart(data) {
   // Handle empty data
   if (!data || data.length === 0) {
     console.log('No data for line chart');
+    // Display a message when no data is available
+    const noDataText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    noDataText.setAttribute('x', '200');
+    noDataText.setAttribute('y', '100');
+    noDataText.setAttribute('text-anchor', 'middle');
+    noDataText.setAttribute('fill', '#6b7280');
+    noDataText.textContent = 'No data available';
+    svg.appendChild(noDataText);
     return;
   }
   
@@ -470,7 +478,21 @@ function updateLineChart(data) {
   const height = 200;
   const padding = 20;
   
-  const maxValue = Math.max(...data.map(d => d.responseRate));
+  const maxValue = Math.max(...data.map(d => d.responseRate || 0));
+  
+  // Handle case where maxValue is 0 or NaN
+  if (maxValue <= 0 || isNaN(maxValue)) {
+    console.log('No valid response rate data for line chart');
+    const noDataText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    noDataText.setAttribute('x', '200');
+    noDataText.setAttribute('y', '100');
+    noDataText.setAttribute('text-anchor', 'middle');
+    noDataText.setAttribute('fill', '#6b7280');
+    noDataText.textContent = 'No response rate data available';
+    svg.appendChild(noDataText);
+    return;
+  }
+  
   const xScale = (width - 2 * padding) / (data.length - 1);
   const yScale = (height - 2 * padding) / maxValue;
   
@@ -479,8 +501,9 @@ function updateLineChart(data) {
   let areaD = '';
   
   data.forEach((point, index) => {
+    const responseRate = point.responseRate || 0;
     const x = padding + index * xScale;
-    const y = height - padding - (point.responseRate * yScale);
+    const y = height - padding - (responseRate * yScale);
     
     if (index === 0) {
       pathD += `M ${x} ${y}`;
@@ -532,8 +555,9 @@ function updateLineChart(data) {
   
   // Add points
   data.forEach((point, index) => {
+    const responseRate = point.responseRate || 0;
     const x = padding + index * xScale;
-    const y = height - padding - (point.responseRate * yScale);
+    const y = height - padding - (responseRate * yScale);
     
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('cx', x);
@@ -544,16 +568,23 @@ function updateLineChart(data) {
     
     // Add tooltip with response rate percentage
     const tooltip = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-    tooltip.textContent = `${point.responseRate}%`;
+    tooltip.textContent = `${responseRate}%`;
     circle.appendChild(tooltip);
   });
   
   // Add labels
   data.forEach((point, index) => {
-    const month = new Date(point.month + '-01').toLocaleString('default', { month: 'short' });
-    const label = document.createElement('span');
-    label.textContent = month;
-    labelsContainer.appendChild(label);
+    try {
+      const month = new Date(point.month + '-01').toLocaleString('default', { month: 'short' });
+      const label = document.createElement('span');
+      label.textContent = month;
+      labelsContainer.appendChild(label);
+    } catch (error) {
+      console.warn('Error parsing date for point:', point, error);
+      const label = document.createElement('span');
+      label.textContent = point.month || 'Unknown';
+      labelsContainer.appendChild(label);
+    }
   });
 
   console.log('Response rate trend data:', data);
@@ -1399,10 +1430,17 @@ async function loadUsersTable() {
 }
 
 async function getResponseRateTrend() {
-  const res = await fetch('/api/dashboard/response-times', {
-    headers: { 'Authorization': `Bearer ${currentUser.token}` }
-  });
-  return await res.json();
+  try {
+    const res = await fetch('/api/dashboard/response-times', {
+      headers: { 'Authorization': `Bearer ${currentUser.token}` }
+    });
+    const data = await res.json();
+    console.log('Response rate trend data from backend:', data);
+    return data;
+  } catch (error) {
+    console.error('Error fetching response rate trend:', error);
+    return [];
+  }
 }
 
 async function loadResponseRate() {

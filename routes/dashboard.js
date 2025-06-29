@@ -76,6 +76,8 @@ router.get('/response-times', async (req, res) => {
   since.setMonth(since.getMonth() - months);
 
   try {
+    console.log('Calculating response rate trend for months:', months, 'since:', since);
+    
     // Calculate response rate trend by month
     const pipeline = [
       { $match: { createdAt: { $gte: since } } },
@@ -108,11 +110,17 @@ router.get('/response-times', async (req, res) => {
     ];
 
     const results = await Message.aggregate(pipeline);
-    res.json(results.map(r => ({ 
+    console.log('Raw aggregation results:', results);
+    
+    const formattedResults = results.map(r => ({ 
       month: r.month, 
       responseRate: Math.round(r.responseRate) 
-    })));
+    }));
+    
+    console.log('Formatted response rate trend data:', formattedResults);
+    res.json(formattedResults);
   } catch (err) {
+    console.error('Error in response-times endpoint:', err);
     res.status(500).json({ error: 'Failed to calculate response rate trend' });
   }
 });
