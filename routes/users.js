@@ -23,6 +23,22 @@ router.get('/', async (req, res) => {
 // @route   POST api/users
 // @desc    Create A User
 // @access  Public
+// @route   GET /api/users/stats
+// @desc    Get user statistics
+// @access  Private (or Public, as you wish)
+router.get('/stats', async (req, res) => {
+  try {
+    const totalUsers = await User.countDocuments();
+    const activeUsers = await User.countDocuments({ status: 'active' });
+    const inactiveUsers = await User.countDocuments({ status: 'inactive' });
+    const admins = await User.countDocuments({ role: 'admin' });
+    const supervisors = await User.countDocuments({ role: 'supervisor' });
+    const users = await User.countDocuments({ role: 'user' });
+    res.json({ totalUsers, activeUsers, inactiveUsers, admins, supervisors, users });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
 router.post('/', async (req, res) => {
   const newUser = new User({
     name: req.body.name,
