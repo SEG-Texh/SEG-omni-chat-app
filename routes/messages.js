@@ -14,7 +14,7 @@ router.get('/', (req, res) => {
 // POST /api/messages - Send a new message
 router.post('/', auth, async (req, res) => {
   try {
-    const { conversationId, content, platform } = req.body;
+    const { conversationId, content, platform, to } = req.body;
 
     if (!conversationId || !content?.text || !platform) {
       return res.status(400).json({ 
@@ -50,26 +50,29 @@ router.post('/', auth, async (req, res) => {
     // Populate sender info for response
     await savedMessage.populate('sender', 'name avatar');
 
-    // If WhatsApp, send the message via WhatsApp API
+    // If WhatsApp, send the message via WhatsApp API using the 'to' field if provided
     if (platform === 'whatsapp') {
-      const conversation = await Conversation.findById(conversationId).populate('participants');
-      // Find the recipient: not the sender, and not an agent/admin if possible
-      let recipient = conversation.participants.find(
-        p => p._id.toString() !== req.user._id.toString() && Array.isArray(p.roles) && !p.roles.includes('agent') && !p.roles.includes('admin')
-      );
-      // Fallback: just not the sender
-      if (!recipient) {
-        recipient = conversation.participants.find(
-          p => p._id.toString() !== req.user._id.toString()
+      let phoneNumber = to;
+      if (!phoneNumber) {
+        // fallback to old logic if 'to' is not provided
+        const conversation = await Conversation.findById(conversationId).populate('participants');
+        let recipient = conversation.participants.find(
+          p => p._id.toString() !== req.user._id.toString() && Array.isArray(p.roles) && !p.roles.includes('agent') && !p.roles.includes('admin')
         );
+        if (!recipient) {
+          recipient = conversation.participants.find(
+            p => p._id.toString() !== req.user._id.toString()
+          );
+        }
+        if (recipient && recipient.platformIds && recipient.platformIds.whatsapp) {
+          phoneNumber = recipient.platformIds.whatsapp;
+        }
       }
-      if (recipient && recipient.platformIds && recipient.platformIds.whatsapp) {
-        const phoneNumber = recipient.platformIds.whatsapp;
+      if (phoneNumber) {
         try {
           await whatsappController.sendMessage(phoneNumber, content.text);
         } catch (err) {
           console.error('Failed to send WhatsApp message:', err);
-          // Optionally, update the message status to 'failed'
         }
       }
     }

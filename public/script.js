@@ -798,7 +798,12 @@ async function loadWhatsAppConversations() {
         </div>
         <div class="chat-time">just now</div>
       `;
-      item.onclick = () => loadWhatsAppMessages(conv._id);
+      item.onclick = () => {
+        window.currentWhatsAppConversationId = conv._id;
+        // Store the WhatsApp number (from participant or conv)
+        window.currentWhatsAppNumber = (participant.platformIds && participant.platformIds.whatsapp) || conv.platformConversationId;
+        loadWhatsAppMessages(conv._id);
+      };
       if (chatList) chatList.appendChild(item);
     });
   } catch (err) {
@@ -858,6 +863,7 @@ if (whatsappSendButton && whatsappMessageInput) {
           conversationId: window.currentWhatsAppConversationId,
           content: { text },
           platform: 'whatsapp',
+          to: window.currentWhatsAppNumber
         }),
       });
       if (sendRes.ok) {
