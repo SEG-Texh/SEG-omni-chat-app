@@ -283,8 +283,8 @@ async function loadDashboardData() {
     // Update charts with real data
     updateBarChart(messageVolume);
     updatePieChart(platformDistribution);
-    // For the line chart, use message volume as a trend
-    updateLineChart(messageVolume.map(d => ({ month: d.date, avgResponseTime: d.count })));
+    const responseTimes = await getResponseTimes();
+    updateLineChart(responseTimes);
     
     // Animate charts
     animateCharts();
