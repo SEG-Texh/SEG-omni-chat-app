@@ -277,14 +277,13 @@ body {
 }
 
 /* TAB CONTENT */
-#whatsapp-tab {
-  padding-top: 1.4rem;
-}
 
 #whatsappTab.tab-content {
   padding: 1.4rem;
 }
-
+#facebookTab.tab-content {
+  padding: 1.4rem;
+}
 .tab-content {
   display: none;
   padding: 2rem;
