@@ -1184,3 +1184,11 @@ body {
 .account-main-cards {
   margin-bottom: 2.5rem;
 }
+
+.card {
+  background: var(--bg-primary);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
