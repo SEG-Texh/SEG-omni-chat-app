@@ -12,7 +12,7 @@ const router = express.Router();
 // @access  Public
 router.get('/', async (req, res) => {
   try {
-    const users = await User.find();
+    const users = await User.find({ type: 'internal' });
     res.json(users);
   } catch (err) {
     console.error(err.message);
@@ -28,12 +28,12 @@ router.get('/', async (req, res) => {
 // @access  Private (or Public, as you wish)
 router.get('/stats', async (req, res) => {
   try {
-    const totalUsers = await User.countDocuments();
-    const activeUsers = await User.countDocuments({ status: 'active' });
-    const inactiveUsers = await User.countDocuments({ status: 'inactive' });
-    const admins = await User.countDocuments({ role: 'admin' });
-    const supervisors = await User.countDocuments({ role: 'supervisor' });
-    const users = await User.countDocuments({ role: 'user' });
+    const totalUsers = await User.countDocuments({ type: 'internal' });
+    const activeUsers = await User.countDocuments({ type: 'internal', status: 'active' });
+    const inactiveUsers = await User.countDocuments({ type: 'internal', status: 'inactive' });
+    const admins = await User.countDocuments({ type: 'internal', role: 'admin' });
+    const supervisors = await User.countDocuments({ type: 'internal', role: 'supervisor' });
+    const users = await User.countDocuments({ type: 'internal', role: 'user' });
     res.json({ totalUsers, activeUsers, inactiveUsers, admins, supervisors, users });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch stats' });

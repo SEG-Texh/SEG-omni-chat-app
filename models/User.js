@@ -47,6 +47,11 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  type: {
+    type: String,
+    enum: ['internal', 'platform'],
+    default: 'internal'
+  },
   profilePic: String,
   permissions: [String]
 }, {
