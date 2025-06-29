@@ -22,8 +22,8 @@ const conversationSchema = new mongoose.Schema({
     default: 'active'
   },
   lastMessage: {
-    type: Date,
-    default: Date.now
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Message'
   },
   labels: [String],
   metadata: mongoose.Schema.Types.Mixed

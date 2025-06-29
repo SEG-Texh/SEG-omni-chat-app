@@ -107,7 +107,7 @@ class FacebookController {
       await Conversation.updateOne(
         { _id: conversation._id },
         { 
-          $set: { lastMessage: new Date() },
+          $set: { lastMessage: newMessage._id },
           $inc: { unreadCount: 1 } // Track unread messages
         }
       );
@@ -181,7 +181,6 @@ class FacebookController {
           participants: [userId],
           platform: 'facebook',
           platformConversationId: conversationId,
-          lastMessage: new Date(),
           labels: ['facebook-inbox'], // Default label
           status: 'active'
         });
@@ -214,7 +213,7 @@ class FacebookController {
 
       await Conversation.updateOne(
         { _id: conversation._id },
-        { $set: { lastMessage: new Date() } }
+        { $set: { lastMessage: newMessage._id } }
       );
 
       return newMessage;
@@ -272,7 +271,6 @@ class FacebookController {
             participants: [senderId],
             platform: 'facebook',
             platformConversationId: conversationIdToUse,
-            lastMessage: new Date(),
             labels: ['facebook-inbox'],
             status: 'active'
           });
@@ -321,7 +319,7 @@ class FacebookController {
         // Update conversation last message
         await Conversation.updateOne(
           { _id: conversation._id },
-          { $set: { lastMessage: new Date() } }
+          { $set: { lastMessage: newMessage._id } }
         );
 
         // Return populated message for real-time updates
