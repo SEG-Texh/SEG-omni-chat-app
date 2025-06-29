@@ -915,11 +915,6 @@ body {
 }
 
 /* ACCOUNT MANAGEMENT STYLES */
-.tab-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
 
 .success-message {
   background: rgba(16, 185, 129, 0.1);
