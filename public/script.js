@@ -1075,6 +1075,29 @@ style.textContent = `
     .chat-input button:hover {
       background: var(--primary-dark);
     }
+
+    .role-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border-color);
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.875rem;
+      font-weight: 500;
+      min-width: unset;         /* Remove any min-width that might be too small */
+      width: auto;              /* Let the item size to its content */
+      white-space: nowrap;      /* Prevent label text from wrapping */
+    }
+
+    .role-item label {
+      margin-left: 0.5rem;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
 `
 document.head.appendChild(style)
 
