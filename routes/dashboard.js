@@ -102,4 +102,21 @@ router.get('/response-times', async (req, res) => {
   const results = await Message.aggregate(pipeline);
   res.json(results.map(r => ({ month: r._id, avgResponseTime: r.avgResponseTime })));
 });
+
+// GET /api/stats/response-rate
+router.get('/stats/response-rate', async (req, res) => {
+  try {
+    const Message = require('../models/message');
+    // Count user messages (inbound)
+    const userMessages = await Message.countDocuments({ direction: 'inbound' });
+    // Count agent replies (outbound)
+    const agentReplies = await Message.countDocuments({ direction: 'outbound' });
+    // Calculate response rate
+    const responseRate = userMessages > 0 ? (agentReplies / userMessages) * 100 : 0;
+    res.json({ responseRate: Math.round(responseRate) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
