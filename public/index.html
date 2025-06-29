@@ -49,15 +49,15 @@
     </div>
 
     <div class="nav-tabs">
-      <button class="tab-btn active" onclick="switchTab('dashboard')">
+      <button class="tab-btn active" onclick="switchTab('dashboard', event)">
         <span class="tab-icon">📊</span>
         Dashboard
       </button>
-      <button class="tab-btn" onclick="switchTab('facebook')">
+      <button class="tab-btn" onclick="switchTab('facebook', event)">
         <span class="tab-icon">📘</span>
         Facebook
       </button>
-      <button class="tab-btn" onclick="switchTab('whatsapp')">
+      <button class="tab-btn" onclick="switchTab('whatsapp', event)">
         <span class="tab-icon">💚</span>
         WhatsApp
       </button>
@@ -397,5 +397,9 @@
 
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script src="script.js"></script>
+  <script>
+    const initialTab = window.location.hash.replace('#', '') || 'dashboard';
+    switchTab(initialTab, null, false);
+  </script>
 </body>
 </html>
