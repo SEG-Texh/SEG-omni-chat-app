@@ -482,10 +482,14 @@ function updateLineChart(data) {
   console.log('Data type:', typeof data);
   console.log('Data length:', data ? data.length : 'undefined');
   
-  // Handle empty data
-  if (!data || data.length === 0) {
-    console.log('No data for line chart');
-    // Display a message when no data is available
+  // Filter out invalid points
+  const validData = (data || []).filter(
+    d => d && typeof d.responseRate === 'number' && !isNaN(d.responseRate)
+  );
+
+  if (validData.length === 0) {
+    console.log('No valid data for line chart:', data);
+    // Show "No data available" message as before
     const noDataText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     noDataText.setAttribute('x', '200');
     noDataText.setAttribute('y', '100');
