@@ -4,6 +4,7 @@ const router = express.Router();
 const Message = require('../models/message');
 const Conversation = require('../models/conversation');
 const { auth } = require('../middleware/auth');
+const whatsappController = require('../controllers/whatsappController');
 
 // Example route
 router.get('/', (req, res) => {
@@ -49,6 +50,22 @@ router.post('/', auth, async (req, res) => {
 
     // Populate sender info for response
     await savedMessage.populate('sender', 'name avatar');
+
+    if (platform === 'whatsapp') {
+      // Find the conversation and recipient
+      const conversation = await Conversation.findById(conversationId).populate('participants');
+      // Find the customer (not the agent/admin)
+      const recipient = conversation.participants.find(p => !p.roles.includes('agent') && !p.roles.includes('admin'));
+      if (recipient && recipient.platformIds && recipient.platformIds.whatsapp) {
+        const phoneNumber = recipient.platformIds.whatsapp;
+        try {
+          await whatsappController.sendMessage(phoneNumber, content.text);
+        } catch (err) {
+          console.error('Failed to send WhatsApp message:', err);
+          // Optionally, update the message status to 'failed'
+        }
+      }
+    }
 
     res.status(201).json(savedMessage);
   } catch (error) {
