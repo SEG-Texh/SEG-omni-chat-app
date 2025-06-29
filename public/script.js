@@ -120,8 +120,15 @@ function switchTab(tabName) {
   })
 
   // Add active class to selected tab and button
-  document.getElementById(tabName + "Tab").classList.add("active")
-  event.target.classList.add("active")
+  const targetTab = document.getElementById(tabName + "Tab");
+  if (targetTab) {
+    targetTab.classList.add("active")
+  }
+  
+  const clickedBtn = event.target;
+  if (clickedBtn) {
+    clickedBtn.classList.add("active")
+  }
 
   // Load tab-specific data
   if (tabName === "dashboard") {
@@ -1108,4 +1115,256 @@ function updateOnlineStatus() {
 fetch('/api/chats/message-volume?days=7')
   .then(res => res.json())
   .then(data => console.log('Backend response:', data));
+
+// ACCOUNT MANAGEMENT FUNCTIONS
+
+// Toggle role selection
+function toggleRole(element) {
+    const checkbox = element.querySelector('input[type="checkbox"]');
+    checkbox.checked = !checkbox.checked;
+    
+    if (checkbox.checked) {
+        element.classList.add('selected');
+    } else {
+        element.classList.remove('selected');
+    }
+}
+
+// Handle form submission
+function initializeAccountManagement() {
+    const addUserForm = document.getElementById('addUserForm');
+    if (addUserForm) {
+        addUserForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const fullName = formData.get('fullName');
+            const email = formData.get('email');
+            const username = formData.get('username');
+            const department = formData.get('department');
+            const roles = formData.getAll('roles');
+            const password = formData.get('password');
+            
+            // Basic validation
+            if (!fullName || !email || !username || !password || roles.length === 0) {
+                showMessage('errorMessage', 'Please fill in all required fields and select at least one role.');
+                return;
+            }
+            
+            // Create user object
+            const userData = {
+                name: fullName,
+                email: email,
+                username: username,
+                password: password,
+                department: department || 'N/A',
+                roles: roles,
+                status: 'active'
+            };
+            
+            // Send to backend
+            addUserToBackend(userData);
+        });
+    }
+
+    // Add click event listeners to role items
+    document.querySelectorAll('.role-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            if (e.target.type !== 'checkbox') {
+                toggleRole(this);
+            }
+        });
+    });
+}
+
+// Add user to backend
+async function addUserToBackend(userData) {
+    try {
+        const response = await fetch('/api/users', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentUser.token}`
+            },
+            body: JSON.stringify(userData)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to add user');
+        }
+
+        const newUser = await response.json();
+        
+        // Add user to table
+        addUserToTable(newUser);
+        
+        // Reset form
+        document.getElementById('addUserForm').reset();
+        document.querySelectorAll('.role-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        
+        showMessage('successMessage', 'User added successfully!');
+        
+        // Refresh user statistics
+        loadUserStatistics();
+        
+    } catch (error) {
+        showMessage('errorMessage', error.message || 'Failed to add user');
+    }
+}
+
+function addUserToTable(user) {
+    const tbody = document.getElementById('usersTableBody');
+    const row = document.createElement('tr');
+    
+    const rolesBadges = user.roles.map(role => 
+        `<span class="user-role-badge ${role}">${role.charAt(0).toUpperCase() + role.slice(1)}</span>`
+    ).join(' ');
+    
+    row.innerHTML = `
+        <td>${user.name}</td>
+        <td>${user.email}</td>
+        <td>${user.username}</td>
+        <td>${user.department || 'N/A'}</td>
+        <td>${rolesBadges}</td>
+        <td><span class="user-status ${user.status}">${user.status.charAt(0).toUpperCase() + user.status.slice(1)}</span></td>
+        <td class="user-actions">
+            <button class="btn-edit" onclick="editUser('${user._id}')">Edit</button>
+            <button class="btn-delete" onclick="deleteUser('${user._id}')">Delete</button>
+        </td>
+    `;
+    
+    tbody.appendChild(row);
+}
+
+async function deleteUser(userId) {
+    if (confirm('Are you sure you want to delete this user?')) {
+        try {
+            const response = await fetch(`/api/users/${userId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${currentUser.token}`
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to delete user');
+            }
+
+            // Remove from table
+            const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+            if (row) row.remove();
+            
+            showMessage('successMessage', 'User deleted successfully!');
+            
+            // Refresh user statistics
+            loadUserStatistics();
+            
+        } catch (error) {
+            showMessage('errorMessage', error.message || 'Failed to delete user');
+        }
+    }
+}
+
+async function editUser(userId) {
+    // TODO: Implement edit user functionality
+    alert('Edit user functionality coming soon!');
+}
+
+function showMessage(messageId, text) {
+    const messageElement = document.getElementById(messageId);
+    if (messageElement) {
+        messageElement.textContent = text;
+        messageElement.style.display = 'block';
+        
+        // Hide other message
+        const otherMessageId = messageId === 'successMessage' ? 'errorMessage' : 'successMessage';
+        const otherMessage = document.getElementById(otherMessageId);
+        if (otherMessage) {
+            otherMessage.style.display = 'none';
+        }
+        
+        // Auto hide after 3 seconds
+        setTimeout(() => {
+            messageElement.style.display = 'none';
+        }, 3000);
+    }
+}
+
+// Load accounts data
+async function loadAccountsData() {
+    try {
+        // Load user statistics
+        await loadUserStatistics();
+        
+        // Load users table
+        await loadUsersTable();
+        
+        // Initialize account management
+        initializeAccountManagement();
+        
+    } catch (error) {
+        console.error('Error loading accounts data:', error);
+    }
+}
+
+// Load user statistics
+async function loadUserStatistics() {
+    try {
+        const response = await fetch('/api/users/stats', {
+            headers: {
+                'Authorization': `Bearer ${currentUser.token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to load user statistics');
+        }
+
+        const stats = await response.json();
+        
+        // Update statistics cards
+        document.getElementById('statTotalUsers').textContent = stats.totalUsers || 0;
+        document.getElementById('statActiveUsers').textContent = stats.activeUsers || 0;
+        document.getElementById('statInactiveUsers').textContent = stats.inactiveUsers || 0;
+        document.getElementById('statAdmins').textContent = stats.admins || 0;
+        document.getElementById('statSupervisors').textContent = stats.supervisors || 0;
+        document.getElementById('statUsers').textContent = stats.users || 0;
+        
+    } catch (error) {
+        console.error('Error loading user statistics:', error);
+    }
+}
+
+// Load users table
+async function loadUsersTable() {
+    try {
+        const response = await fetch('/api/users', {
+            headers: {
+                'Authorization': `Bearer ${currentUser.token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to load users');
+        }
+
+        const users = await response.json();
+        
+        // Clear existing table
+        const tbody = document.getElementById('usersTableBody');
+        tbody.innerHTML = '';
+        
+        // Add users to table
+        users.forEach(user => {
+            addUserToTable(user);
+        });
+        
+    } catch (error) {
+        console.error('Error loading users table:', error);
+    }
+}
 
