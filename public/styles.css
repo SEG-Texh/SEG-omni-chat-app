@@ -915,269 +915,265 @@ body {
 }
 
 /* ACCOUNT MANAGEMENT STYLES */
-.account-management {
-  .success-message {
-    background: rgba(16, 185, 129, 0.1);
-    border: 1px solid var(--success-color);
-    color: var(--success-color);
-    padding: 0.75rem;
-    border-radius: var(--border-radius);
-    margin-bottom: 1rem;
-    font-weight: 500;
-  }
+.account-management .main-content {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
 
-  .error-message {
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid var(--error-color);
-    color: var(--error-color);
-    padding: 0.75rem;
-    border-radius: var(--border-radius);
-    margin-bottom: 1rem;
-    font-weight: 500;
-  }
+.account-management .add-user-card {
+  flex: 1 1 350px;
+  min-width: 320px;
+}
 
-  .role-selection {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    margin-top: 0.5rem;
-  }
+.account-management .success-message {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid var(--success-color);
+  color: var(--success-color);
+  padding: 0.75rem;
+  border-radius: var(--border-radius);
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
 
-  .role-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: var(--bg-secondary);
-    border: 2px solid var(--border-color);
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    transition: all 0.2s;
-    font-size: 0.875rem;
-    font-weight: 500;
-  }
+.account-management .error-message {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid var(--error-color);
+  color: var(--error-color);
+  padding: 0.75rem;
+  border-radius: var(--border-radius);
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
 
-  .role-item:hover {
-    background: var(--bg-tertiary);
-    border-color: var(--primary-color);
-  }
+.account-management .role-selection {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
 
-  .role-item input[type="checkbox"] {
-    width: auto;
-    margin: 0;
-  }
+.account-management .role-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
 
-  .role-item input[type="checkbox"]:checked + label {
-    color: var(--primary-color);
-    font-weight: 600;
-  }
+.account-management .role-item:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--primary-color);
+}
 
-  .role-item.selected {
-    background: rgba(79, 70, 229, 0.1);
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-  }
+.account-management .role-item input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
 
-  .users-table {
-    margin-top: 2rem;
-  }
+.account-management .role-item input[type="checkbox"]:checked + label {
+  color: var(--primary-color);
+  font-weight: 600;
+}
 
-  .table-container {
-    overflow-x: auto;
-    border-radius: var(--border-radius);
-    border: 1px solid var(--border-color);
-  }
+.account-management .role-item.selected {
+  background: rgba(79, 70, 229, 0.1);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
 
-  .users-table table {
-    width: 100%;
-    border-collapse: collapse;
-    background: var(--bg-primary);
-  }
+.account-management .users-table {
+  margin-top: 2rem;
+}
 
-  .users-table th {
-    background: var(--bg-secondary);
-    padding: 1rem;
-    text-align: left;
-    font-weight: 600;
-    color: var(--text-primary);
-    border-bottom: 1px solid var(--border-color);
-    font-size: 0.875rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
+.account-management .table-container {
+  overflow-x: auto;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+}
 
-  .users-table td {
-    padding: 1rem;
-    border-bottom: 1px solid var(--border-color);
-    color: var(--text-primary);
-  }
+.account-management .users-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-primary);
+}
 
-  .users-table tr:hover {
-    background: var(--bg-secondary);
-  }
+.account-management .users-table th {
+  background: var(--bg-secondary);
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
 
-  .users-table tr:last-child td {
-    border-bottom: none;
-  }
+.account-management .users-table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
 
-  .user-role-badge {
-    display: inline-flex;
-    align-items: center;
+.account-management .users-table tr:hover {
+  background: var(--bg-secondary);
+}
+
+.account-management .users-table tr:last-child td {
+  border-bottom: none;
+}
+
+.account-management .user-role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.account-management .user-role-badge.admin {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--error-color);
+}
+
+.account-management .user-role-badge.supervisor {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning-color);
+}
+
+.account-management .user-role-badge.user {
+  background: rgba(79, 70, 229, 0.1);
+  color: var(--primary-color);
+}
+
+.account-management .user-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.account-management .user-status.active {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success-color);
+}
+
+.account-management .user-status.inactive {
+  background: rgba(107, 114, 128, 0.1);
+  color: var(--text-secondary);
+}
+
+.account-management .user-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.account-management .btn-edit,
+.account-management .btn-delete {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.account-management .btn-edit {
+  background: rgba(79, 70, 229, 0.1);
+  color: var(--primary-color);
+  border: 1px solid rgba(79, 70, 229, 0.2);
+}
+
+.account-management .btn-edit:hover {
+  background: var(--primary-color);
+  color: white;
+}
+
+.account-management .btn-delete {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--error-color);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.account-management .btn-delete:hover {
+  background: var(--error-color);
+  color: white;
+}
+
+/* Responsive design for account management */
+@media (max-width: 768px) {
+  .account-management .main-content {
+    flex-direction: column !important;
+  }
+  
+  .account-management .users-table th,
+  .account-management .users-table td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.8rem;
+  }
+  
+  .account-management .user-actions {
+    flex-direction: column;
     gap: 0.25rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 12px;
+  }
+  
+  .account-management .role-selection {
+    flex-direction: column;
+  }
+  
+  .account-management .role-item {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .account-management .users-table {
     font-size: 0.75rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
   }
+  
+  .account-management .users-table th,
+  .account-management .users-table td {
+    padding: 0.5rem 0.25rem;
+  }
+  
+  .account-management .user-role-badge,
+  .account-management .user-status {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+  }
+}
 
-  .user-role-badge.admin {
-    background: rgba(239, 68, 68, 0.1);
-    color: var(--error-color);
-  }
+/* Account Management Header Bar */
+.account-management .account-header-bar {
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2rem 1rem;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+.account-management .account-header-bar h1 {
+  margin-bottom: 0.5rem;
+}
+.account-management .account-header-bar p {
+  font-size: 1.1rem;
+}
 
-  .user-role-badge.supervisor {
-    background: rgba(245, 158, 11, 0.1);
-    color: var(--warning-color);
-  }
-
-  .user-role-badge.user {
-    background: rgba(79, 70, 229, 0.1);
-    color: var(--primary-color);
-  }
-
-  .user-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 500;
-  }
-
-  .user-status.active {
-    background: rgba(16, 185, 129, 0.1);
-    color: var(--success-color);
-  }
-
-  .user-status.inactive {
-    background: rgba(107, 114, 128, 0.1);
-    color: var(--text-secondary);
-  }
-
-  .user-actions {
-    display: flex;
-    gap: 0.5rem;
-  }
-
-  .btn-edit,
-  .btn-delete {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .btn-edit {
-    background: rgba(79, 70, 229, 0.1);
-    color: var(--primary-color);
-    border: 1px solid rgba(79, 70, 229, 0.2);
-  }
-
-  .btn-edit:hover {
-    background: var(--primary-color);
-    color: white;
-  }
-
-  .btn-delete {
-    background: rgba(239, 68, 68, 0.1);
-    color: var(--error-color);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-  }
-
-  .btn-delete:hover {
-    background: var(--error-color);
-    color: white;
-  }
-
-  /* Responsive design for account management */
-  @media (max-width: 768px) {
-    .main-content {
-      flex-direction: column !important;
-    }
-    
-    .users-table th,
-    .users-table td {
-      padding: 0.75rem 0.5rem;
-      font-size: 0.8rem;
-    }
-    
-    .user-actions {
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-    
-    .role-selection {
-      flex-direction: column;
-    }
-    
-    .role-item {
-      justify-content: flex-start;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .users-table {
-      font-size: 0.75rem;
-    }
-    
-    .users-table th,
-    .users-table td {
-      padding: 0.5rem 0.25rem;
-    }
-    
-    .user-role-badge,
-    .user-status {
-      font-size: 0.7rem;
-      padding: 0.2rem 0.4rem;
-    }
-  }
-
-  /* Account Management Header Bar */
-  .account-header-bar {
-    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 2rem 1rem;
-    border-radius: 16px;
-    margin-bottom: 2rem;
-    text-align: center;
-  }
-  .account-header-bar h1 {
-    margin-bottom: 0.5rem;
-  }
-  .account-header-bar p {
-    font-size: 1.1rem;
-  }
-
-  /* Add User Card */
-  .add-user-card {
-    flex: 1 1 350px;
-    min-width: 320px;
-  }
-
-  /* User Statistics Card */
-  .user-stats-card {
-    flex: 1 1 300px;
-    min-width: 260px;
-  }
-
-  /* Main Content Flex Layout for Account Management */
-  .main-content {
-    display: flex;
-    gap: 2rem;
-    flex-wrap: wrap;
-  }
+/* User Statistics Card */
+.account-management .user-stats-card {
+  flex: 1 1 300px;
+  min-width: 260px;
 }
