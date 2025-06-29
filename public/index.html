@@ -244,9 +244,95 @@
           <h1>Account Management System</h1>
           <p>Admin Dashboard - Add users and manage roles efficiently</p>
         </header>
-        <h2>Account Management</h2>
-        <p>Add, edit, and manage users and roles here.</p>
-        <!-- User management UI will go here -->
+        <div class="main-content" style="display: flex; gap: 2rem; flex-wrap: wrap;">
+          <!-- Add User Form -->
+          <div class="card" style="flex: 1 1 350px; min-width: 320px;">
+            <h2>Add New User</h2>
+            <div class="success-message" id="successMessage" style="display:none;color:var(--success-color);margin-bottom:0.5rem;">User added successfully!</div>
+            <div class="error-message" id="errorMessage" style="display:none;color:var(--error-color);margin-bottom:0.5rem;">Please fill in all required fields.</div>
+            <form id="addUserForm">
+              <div class="form-group">
+                <label for="fullName">Full Name *</label>
+                <input type="text" id="fullName" name="fullName" required>
+              </div>
+              <div class="form-group">
+                <label for="email">Email Address *</label>
+                <input type="email" id="email" name="email" required>
+              </div>
+              <div class="form-group">
+                <label for="username">Username *</label>
+                <input type="text" id="username" name="username" required>
+              </div>
+              <div class="form-group">
+                <label for="department">Department</label>
+                <select id="department" name="department">
+                  <option value="">Select Department</option>
+                  <option value="IT">Information Technology</option>
+                  <option value="HR">Human Resources</option>
+                  <option value="Finance">Finance</option>
+                  <option value="Marketing">Marketing</option>
+                  <option value="Operations">Operations</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Assign Roles *</label>
+                <div class="role-selection" style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                  <div class="role-item" onclick="toggleRole(this)">
+                    <input type="checkbox" name="roles" value="admin" id="role-admin">
+                    <label for="role-admin">Admin</label>
+                  </div>
+                  <div class="role-item" onclick="toggleRole(this)">
+                    <input type="checkbox" name="roles" value="supervisor" id="role-supervisor">
+                    <label for="role-supervisor">Supervisor</label>
+                  </div>
+                  <div class="role-item" onclick="toggleRole(this)">
+                    <input type="checkbox" name="roles" value="user" id="role-user">
+                    <label for="role-user">User</label>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="password">Password *</label>
+                <input type="password" id="password" name="password" required>
+              </div>
+              <button type="submit" class="btn btn-primary">Add User</button>
+            </form>
+          </div>
+          <!-- User Statistics -->
+          <div class="card" style="flex: 1 1 300px; min-width: 260px;">
+            <h2>User Statistics</h2>
+            <div class="stats-grid" style="margin-top:1rem;">
+              <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-content"><h3 id="statTotalUsers">--</h3><p>Total Users</p></div></div>
+              <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-content"><h3 id="statActiveUsers">--</h3><p>Active Users</p></div></div>
+              <div class="stat-card"><div class="stat-icon">⏸️</div><div class="stat-content"><h3 id="statInactiveUsers">--</h3><p>Inactive Users</p></div></div>
+              <div class="stat-card"><div class="stat-icon">🛡️</div><div class="stat-content"><h3 id="statAdmins">--</h3><p>Admins</p></div></div>
+              <div class="stat-card"><div class="stat-icon">👔</div><div class="stat-content"><h3 id="statSupervisors">--</h3><p>Supervisors</p></div></div>
+              <div class="stat-card"><div class="stat-icon">👤</div><div class="stat-content"><h3 id="statUsers">--</h3><p>Users</p></div></div>
+            </div>
+          </div>
+        </div>
+        <!-- Users Table -->
+        <div class="card users-table" style="margin-top:2rem;">
+          <h2>Existing Users</h2>
+          <div class="table-container" style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Username</th>
+                  <th>Department</th>
+                  <th>Roles</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
+                <!-- Users will be rendered here by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
