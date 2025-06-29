@@ -130,6 +130,8 @@ function switchTab(tabName) {
      loadFacebookConversations();
   } else if (tabName === "whatsapp") {
     loadWhatsAppConversations()
+  } else if (tabName === "accounts") {
+    loadAccountsData();
   }
 }
 
