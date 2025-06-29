@@ -35,17 +35,6 @@ router.get('/count', async (req, res) => {
   res.json({ count });
 });
 
-// GET /api/chats/active?since=...
-router.get('/active', async (req, res) => {
-  const { since } = req.query;
-  const filter = {};
-  if (since) {
-    filter.createdAt = { $gte: new Date(since) };
-  }
-  const count = await Message.distinct('conversation', filter).then(arr => arr.length);
-  res.json({ count });
-});
-
 // GET /api/chats/platform-distribution
 router.get('/platform-distribution', async (req, res) => {
   const pipeline = [

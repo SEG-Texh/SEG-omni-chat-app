@@ -347,12 +347,9 @@ async function getMessagesToday() {
 
 async function getActiveChats() {
   try {
-    // Active chats could be defined as chats with messages in the last 15 minutes
-    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-    
-    const response = await fetch(`/api/chats/active?since=${fifteenMinutesAgo.toISOString()}`);
+    const response = await fetch('/api/active-chats');
     const data = await response.json();
-    return data.count;
+    return data.activeChats;
   } catch (error) {
     console.error("Error fetching active chats:", error);
     return "N/A";
