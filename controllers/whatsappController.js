@@ -129,7 +129,7 @@ class WhatsAppController {
   // Send text message
   async sendMessage(phoneNumber, text) {
     try {
-      console.log('About to call sendMessage with:', phoneNumber, text);
+      console.log('SENDING TO WHATSAPP:', phoneNumber, text);
       const response = await axios.post(
         `https://graph.facebook.com/v13.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
         {
