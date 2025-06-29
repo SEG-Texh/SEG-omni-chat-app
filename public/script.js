@@ -1239,17 +1239,12 @@ function addUserToTable(user) {
     const tbody = document.getElementById('usersTableBody');
     const row = document.createElement('tr');
     
-    const rolesBadges = user.roles.map(role => 
-        `<span class="user-role-badge ${role}">${role.charAt(0).toUpperCase() + role.slice(1)}</span>`
-    ).join(' ');
-    
     row.innerHTML = `
         <td>${user.name}</td>
         <td>${user.email}</td>
-        <td>${user.username}</td>
-        <td>${user.department || 'N/A'}</td>
-        <td>${rolesBadges}</td>
-        <td><span class="user-status ${user.status}">${user.status.charAt(0).toUpperCase() + user.status.slice(1)}</span></td>
+        <td>${user.username || ''}</td>
+        <td><span class="user-role-badge ${user.role}">${user.role.charAt(0).toUpperCase() + user.role.slice(1)}</span></td>
+        <td><span class="user-status ${user.status || 'active'}">${(user.status || 'active').charAt(0).toUpperCase() + (user.status || 'active').slice(1)}</span></td>
         <td class="user-actions">
             <button class="btn-edit" onclick="editUser('${user._id}')">Edit</button>
             <button class="btn-delete" onclick="deleteUser('${user._id}')">Delete</button>
