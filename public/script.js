@@ -292,20 +292,8 @@ async function loadDashboardData() {
     const responseTimes = await getResponseRateTrend();
     console.log('Response rate trend data received:', responseTimes);
     
-    // Ensure we have valid data structure
-    let validResponseData = responseTimes;
-    if (!Array.isArray(responseTimes) || responseTimes.length === 0) {
-      console.log('Invalid response rate data, using dummy data');
-      validResponseData = [
-        { month: '2024-01', responseRate: 85 },
-        { month: '2024-02', responseRate: 92 },
-        { month: '2024-03', responseRate: 78 },
-        { month: '2024-04', responseRate: 95 },
-        { month: '2024-05', responseRate: 88 },
-        { month: '2024-06', responseRate: 91 },
-        { month: '2024-07', responseRate: 87 }
-      ];
-    } else {
+    // Only use real backend data for the response rate trend
+    if (Array.isArray(responseTimes) && responseTimes.length > 0) {
       // Validate each data point has the correct structure
       const validDataPoints = responseTimes.filter(point => 
         point && 
@@ -314,24 +302,14 @@ async function loadDashboardData() {
         typeof point.responseRate === 'number' && 
         !isNaN(point.responseRate)
       );
-      
-      if (validDataPoints.length !== responseTimes.length) {
-        console.log('Some data points are invalid, using dummy data');
-        validResponseData = [
-          { month: '2024-01', responseRate: 85 },
-          { month: '2024-02', responseRate: 92 },
-          { month: '2024-03', responseRate: 78 },
-          { month: '2024-04', responseRate: 95 },
-          { month: '2024-05', responseRate: 88 },
-          { month: '2024-06', responseRate: 91 },
-          { month: '2024-07', responseRate: 87 }
-        ];
+      if (validDataPoints.length > 0) {
+        updateLineChart(validDataPoints);
       } else {
-        validResponseData = validDataPoints;
+        updateLineChart([]); // Will show 'No data available'
       }
+    } else {
+      updateLineChart([]); // Will show 'No data available'
     }
-    
-    updateLineChart(validResponseData);
     
     // Animate charts
     animateCharts();
