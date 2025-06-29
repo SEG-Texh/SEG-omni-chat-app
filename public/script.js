@@ -549,6 +549,8 @@ function updateLineChart(data) {
     label.textContent = month;
     labelsContainer.appendChild(label);
   });
+
+  console.log('Line chart data:', data);
 }
 
 // Update real-time data
