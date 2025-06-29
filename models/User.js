@@ -53,7 +53,12 @@ const userSchema = new mongoose.Schema({
     default: 'internal'
   },
   profilePic: String,
-  permissions: [String]
+  permissions: [String],
+  status: {
+    type: String,
+    enum: ['active', 'inactive'],
+    default: 'active'
+  }
 }, {
   timestamps: true,
   toJSON: { virtuals: true }
