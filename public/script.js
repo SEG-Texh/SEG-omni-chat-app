@@ -1393,3 +1393,10 @@ async function loadUsersTable() {
     }
 }
 
+async function getResponseTimes() {
+  const res = await fetch('/api/response-times', {
+    headers: { 'Authorization': `Bearer ${currentUser.token}` }
+  });
+  return await res.json();
+}
+
