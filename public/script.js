@@ -108,9 +108,7 @@ function logout() {
   loginForm.reset()
   loginError.textContent = ""
 }
-
-// Switch between tabs
-function switchTab(tabName) {
+function switchTab(tabName, event) {
   // Remove active class from all tabs and buttons
   document.querySelectorAll(".tab-content").forEach((tab) => {
     tab.classList.remove("active")
@@ -124,17 +122,16 @@ function switchTab(tabName) {
   if (targetTab) {
     targetTab.classList.add("active")
   }
-  
-  const clickedBtn = event.target;
-  if (clickedBtn) {
-    clickedBtn.classList.add("active")
+
+  if (event && event.target) {
+    event.target.classList.add("active")
   }
 
   // Load tab-specific data
   if (tabName === "dashboard") {
     loadDashboardData()
   } else if (tabName === "facebook") {
-     loadFacebookConversations();
+    loadFacebookConversations();
   } else if (tabName === "whatsapp") {
     loadWhatsAppConversations()
   } else if (tabName === "accounts") {

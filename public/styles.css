@@ -915,11 +915,7 @@ body {
 }
 
 /* ACCOUNT MANAGEMENT STYLES */
-.account-management .tab-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
+
 .account-management .main-content {
   display: flex;
   gap: 2rem;
