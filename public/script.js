@@ -266,15 +266,13 @@ async function loadDashboardData() {
       messagesToday,
       activeChats,
       platformDistribution,
-      messageVolume,
-      responseTimes
+      messageVolume
     ] = await Promise.all([
       getTotalUsers(),
       getMessagesToday(),
       getActiveChats(),
       getPlatformDistribution(),
-      getMessageVolume(),
-      getResponseTimes()
+      getMessageVolume()
     ]);
     
     // Update stats cards
@@ -285,7 +283,8 @@ async function loadDashboardData() {
     // Update charts with real data
     updateBarChart(messageVolume);
     updatePieChart(platformDistribution);
-    updateLineChart(responseTimes);
+    // For the line chart, use message volume as a trend
+    updateLineChart(messageVolume.map(d => ({ month: d.date, avgResponseTime: d.count })));
     
     // Animate charts
     animateCharts();
@@ -374,17 +373,6 @@ async function getMessageVolume() {
     return data;
   } catch (error) {
     console.error("Error fetching message volume:", error);
-    return [];
-  }
-}
-
-async function getResponseTimes() {
-  try {
-    const response = await fetch('/api/chats/response-times?months=7');
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error fetching response times:", error);
     return [];
   }
 }
