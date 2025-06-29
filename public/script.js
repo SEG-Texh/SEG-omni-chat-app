@@ -367,14 +367,9 @@ async function getPlatformDistribution() {
 }
 
 async function getMessageVolume() {
-  try {
-    const response = await fetch('/api/chats/message-volume?days=7');
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error fetching message volume:", error);
-    return [];
-  }
+  const response = await fetch('/api/chats/message-volume?days=7');
+  const data = await response.json();
+  return data;
 }
 
 // Chart updating functions
