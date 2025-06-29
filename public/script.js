@@ -1162,11 +1162,11 @@ function initializeAccountManagement() {
             const email = formData.get('email');
             const username = formData.get('username');
             const department = formData.get('department');
-            const roles = formData.getAll('roles');
+            const role = formData.get('role');
             const password = formData.get('password');
             
             // Basic validation
-            if (!fullName || !email || !username || !password || roles.length === 0) {
+            if (!fullName || !email || !username || !password || !role) {
                 showMessage('errorMessage', 'Please fill in all required fields and select at least one role.');
                 return;
             }
@@ -1178,7 +1178,7 @@ function initializeAccountManagement() {
                 username: username,
                 password: password,
                 department: department || 'N/A',
-                roles: roles,
+                role: role,
                 status: 'active'
             };
             
