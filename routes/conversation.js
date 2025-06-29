@@ -11,7 +11,9 @@ router.get('/', auth, async (req, res) => {
     if (req.query.platform) {
       filter.platform = req.query.platform;
     }
-    filter.participants = req.user._id;
+    
+    // Show all conversations initially, not just those where user is a participant
+    // This allows users to see all incoming messages before they reply
     console.log('Conversation filter:', filter);
     const conversations = await Conversation.find(filter)
       .populate('participants', 'name email avatar')

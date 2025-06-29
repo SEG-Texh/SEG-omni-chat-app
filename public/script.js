@@ -470,6 +470,12 @@ function updateLineChart(data) {
   svg.innerHTML = '';
   labelsContainer.innerHTML = '';
   
+  // Handle empty data
+  if (!data || data.length === 0) {
+    console.log('No data for line chart');
+    return;
+  }
+  
   // Calculate dimensions and scaling
   const width = 400;
   const height = 200;
