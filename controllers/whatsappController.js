@@ -129,13 +129,7 @@ class WhatsAppController {
   // Send text message
   async sendMessage(phoneNumber, text) {
     try {
-      console.log('WhatsApp API payload:', {
-        phoneNumber,
-        text,
-        url: `https://graph.facebook.com/v13.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
-        token: process.env.WHATSAPP_ACCESS_TOKEN ? 'set' : 'missing'
-      });
-
+      console.log('About to call sendMessage with:', phoneNumber, text);
       const response = await axios.post(
         `https://graph.facebook.com/v13.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
         {
@@ -152,6 +146,7 @@ class WhatsAppController {
           }
         }
       );
+      console.log('WHATSAPP API RESPONSE:', response.data);
       
       // Save outgoing message to database
       const platformMessageId = `wa_out_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -169,7 +164,7 @@ class WhatsAppController {
       
       return response.data;
     } catch (error) {
-      console.error('WhatsApp API error:', error.response?.data || error.message);
+      console.error('WHATSAPP API ERROR:', error.response?.data || error.message);
       throw error;
     }
   }
