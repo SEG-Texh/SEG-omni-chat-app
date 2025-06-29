@@ -61,6 +61,10 @@
         <span class="tab-icon">💚</span>
         WhatsApp
       </button>
+      <button class="tab-btn" onclick="switchTab('accountsTab')">
+        <span class="tab-icon">👤</span>
+        Accounts
+      </button>
     </div>
 
     <div id="dashboardTab" class="tab-content active">
@@ -233,42 +237,55 @@
         </div>
       </div>
     </div>
-<div id="facebookTab" class="tab-content">
-  <div class="chat-interface">
-    <h2>Facebook Chat</h2>
-    <div class="chat-container">
-      <!-- Sidebar -->
-      <div class="chat-sidebar">
-        <div class="chat-search">
-          <input type="text" placeholder="Search conversations..." id="facebookSearchInput" />
-        </div>
-        <div class="chat-list" id="facebookChatList">
-          <!-- Dynamic chat items will be appended here -->
-        </div>
-      </div>
 
-      <!-- Main Chat Area -->
-      <div class="chat-main">
-        <div class="chat-header" id="facebookChatHeader">
-          <!-- Dynamic user details will go here -->
-        </div>
-        <div class="chat-messages" id="facebookChatMessages">
-          <div class="chat-message from-me">
-            <div class="bubble">Your message here</div>
+    <div id="accountsTab" class="tab-content">
+      <div class="dashboard">
+        <header class="header">
+          <h1>Account Management System</h1>
+          <p>Admin Dashboard - Add users and manage roles efficiently</p>
+        </header>
+        <h2>Account Management</h2>
+        <p>Add, edit, and manage users and roles here.</p>
+        <!-- User management UI will go here -->
+      </div>
+    </div>
+
+    <div id="facebookTab" class="tab-content">
+      <div class="chat-interface">
+        <h2>Facebook Chat</h2>
+        <div class="chat-container">
+          <!-- Sidebar -->
+          <div class="chat-sidebar">
+            <div class="chat-search">
+              <input type="text" placeholder="Search conversations..." id="facebookSearchInput" />
+            </div>
+            <div class="chat-list" id="facebookChatList">
+              <!-- Dynamic chat items will be appended here -->
+            </div>
           </div>
-          <div class="chat-message from-them">
-            <div class="bubble">Their message here</div>
+
+          <!-- Main Chat Area -->
+          <div class="chat-main">
+            <div class="chat-header" id="facebookChatHeader">
+              <!-- Dynamic user details will go here -->
+            </div>
+            <div class="chat-messages" id="facebookChatMessages">
+              <div class="chat-message from-me">
+                <div class="bubble">Your message here</div>
+              </div>
+              <div class="chat-message from-them">
+                <div class="bubble">Their message here</div>
+              </div>
+              <!-- Dynamic messages will be loaded here -->
+            </div>
+            <div class="chat-input">
+              <input type="text" placeholder="Type a message..." id="facebookMessageInput" />
+              <button class="btn btn-primary" id="facebookSendButton">Send</button>
+            </div>
           </div>
-          <!-- Dynamic messages will be loaded here -->
-        </div>
-        <div class="chat-input">
-          <input type="text" placeholder="Type a message..." id="facebookMessageInput" />
-          <button class="btn btn-primary" id="facebookSendButton">Send</button>
         </div>
       </div>
     </div>
-  </div>
-</div>
 
     <div id="whatsappTab" class="tab-content">
       <div class="chat-interface">
