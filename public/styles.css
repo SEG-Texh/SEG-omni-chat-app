@@ -942,18 +942,13 @@ body {
   margin-top: 0.5rem;
 }
 
-.role-checkbox {
-  display: none;
-}
-
 .role-card {
   display: flex;
   align-items: center;
-  justify-content: center;
   min-width: 200px;
   min-height: 70px;
   padding: 1rem 2rem;
-  border: 2px solid #d1d5db; /* light gray */
+  border: 2px solid #d1d5db;
   border-radius: 12px;
   background: #f8fafc;
   font-size: 1.5rem;
@@ -963,16 +958,53 @@ body {
   transition: border 0.2s, background 0.2s, color 0.2s;
   box-sizing: border-box;
   margin: 0;
+  gap: 1rem;
 }
 
-.role-checkbox:checked + .role-card {
-  border: 2px solid #4f46e5; /* primary color */
-  background: #eef2ff;
+.role-checkbox {
+  width: 1.5em;
+  height: 1.5em;
+  margin-right: 1rem;
+  accent-color: #4f46e5; /* for modern browsers */
+}
+
+.role-checkbox:checked + span,
+.role-card input:checked {
+  /* Optional: style the label text when checked */
+}
+
+.role-card input:checked ~ * {
+  /* Optional: style the text when checked */
+}
+
+.role-card input:checked {
+  /* Optional: style the box itself when checked */
+}
+
+.role-card input:checked + span {
+  /* Optional: style the text when checked */
+}
+
+.role-card input:checked {
+  /* Optional: style the box itself when checked */
+}
+
+/* Highlight the card when checked */
+.role-card input:checked ~ * {
   color: #3730a3;
 }
+.role-card input:checked {
+  /* No effect, but needed for specificity */
+}
+.role-card input:checked ~ * {
+  /* No effect, but needed for specificity */
+}
 
-.role-card strong {
-  font-weight: 700;
+/* Use :has for card highlight if supported */
+.role-card:has(input:checked) {
+  border: 2px solid #4f46e5;
+  background: #eef2ff;
+  color: #3730a3;
 }
 
 .users-table {
