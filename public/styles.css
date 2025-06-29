@@ -920,7 +920,19 @@ body {
   flex-direction: column;
   gap: 2rem;
 }
-
+.dashboard {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+.header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+color: white;
+padding: 2rem;
+border-radius: 10px;
+margin-bottom: 2rem;
+box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
 .success-message {
   background: rgba(16, 185, 129, 0.1);
   border: 1px solid var(--success-color);
