@@ -1400,3 +1400,11 @@ async function getResponseTimes() {
   return await res.json();
 }
 
+async function loadResponseRate() {
+  const response = await fetch('/api/response-rate', {
+    headers: { 'Authorization': `Bearer ${currentUser.token}` }
+  });
+  const data = await response.json();
+  document.getElementById('responseRate').textContent = data.responseRate + '%';
+}
+
