@@ -487,15 +487,15 @@ function updateLineChart(data) {
     d => d && typeof d.responseRate === 'number' && !isNaN(d.responseRate)
   );
 
-  if (validData.length === 0) {
-    console.log('No valid data for line chart:', data);
-    // Show "No data available" message as before
+  if (validData.length < 2) {
+    // Show a message or plot a single point at the center
+    svg.innerHTML = '';
     const noDataText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     noDataText.setAttribute('x', '200');
     noDataText.setAttribute('y', '100');
     noDataText.setAttribute('text-anchor', 'middle');
     noDataText.setAttribute('fill', '#6b7280');
-    noDataText.textContent = 'No data available';
+    noDataText.textContent = 'Not enough data for trend';
     svg.appendChild(noDataText);
     return;
   }
@@ -685,8 +685,13 @@ async function loadFacebookConversations() {
     }
 
     const conversations = await res.json();
+    console.log('Fetched conversations:', conversations);
 
     const chatList = document.getElementById("facebookChatList");
+    if (!chatList) {
+      console.error("No element with id 'facebookChatList' found!");
+      return;
+    }
     chatList.innerHTML = "";
 
     conversations.forEach((conv) => {
@@ -697,9 +702,9 @@ async function loadFacebookConversations() {
         <div class="chat-avatar">👤</div>
         <div class="chat-info">
           <div class="chat-name">${participant.name}</div>
-          <div class="chat-preview">${conv.lastMessage?.content?.text || ""}</div>
+          <div class="chat-preview">${conv.lastMessage || ""}</div>
         </div>
-        <div class="chat-time">just now</div>
+        <div class="chat-time">${new Date(conv.updatedAt).toLocaleString()}</div>
       `;
       item.onclick = () => loadFacebookMessages(conv._id);
       chatList.appendChild(item);
