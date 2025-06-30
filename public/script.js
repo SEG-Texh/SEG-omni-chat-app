@@ -121,20 +121,16 @@ function logout() {
 }
 
 function switchTab(tabName, event) {
-  // Remove active from all tab contents
   document.querySelectorAll(".tab-content").forEach((tab) => {
     tab.classList.remove("active");
   });
-  // Remove active from all tab buttons
   document.querySelectorAll(".tab-btn").forEach((btn) => {
     btn.classList.remove("active");
   });
-  // Add active to the selected tab content
   const targetTab = document.getElementById(tabName + "Tab");
   if (targetTab) {
     targetTab.classList.add("active");
   }
-  // Add active to the selected tab button
   if (event && event.currentTarget) {
     event.currentTarget.classList.add("active");
   } else if (event && event.target) {
