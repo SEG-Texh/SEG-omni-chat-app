@@ -765,9 +765,6 @@ async function loadFacebookMessages(conversationId) {
       chatBox.appendChild(div);
     });
     
-    // Scroll to bottom to show latest messages
-    chatBox.scrollTop = chatBox.scrollHeight;
-
     if (messages.length === 0) {
       chatBox.innerHTML = `
         <div class="chat-message from-me">
@@ -778,6 +775,9 @@ async function loadFacebookMessages(conversationId) {
         </div>
       `;
     }
+
+    // Scroll to bottom to show latest messages
+    chatBox.scrollTop = chatBox.scrollHeight;
   } catch (err) {
     console.error("Failed to load messages", err);
   }
@@ -924,7 +924,6 @@ async function loadWhatsAppMessages(conversationId) {
       div.innerHTML = `<div class="bubble"><strong>${senderName}:</strong> ${msg.content && msg.content.text ? msg.content.text : ''}</div>`;
       chatBox.appendChild(div);
     });
-    if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
 
     if (messages.length === 0 && chatBox) {
       chatBox.innerHTML = `
@@ -936,6 +935,8 @@ async function loadWhatsAppMessages(conversationId) {
         </div>
       `;
     }
+
+    if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
   } catch (err) {
     console.error("Failed to load WhatsApp messages", err);
   }
