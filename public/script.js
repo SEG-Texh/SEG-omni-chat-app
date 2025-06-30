@@ -769,7 +769,6 @@ async function loadFacebookMessages(conversationId) {
     chatBox.scrollTop = chatBox.scrollHeight;
 
     if (messages.length === 0) {
-      const chatBox = document.getElementById("facebookChatMessages");
       chatBox.innerHTML = `
         <div class="chat-message from-me">
           <div class="bubble">Your message here</div>
@@ -926,6 +925,17 @@ async function loadWhatsAppMessages(conversationId) {
       chatBox.appendChild(div);
     });
     if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+
+    if (messages.length === 0 && chatBox) {
+      chatBox.innerHTML = `
+        <div class="chat-message from-me">
+          <div class="bubble">Your WhatsApp message here</div>
+        </div>
+        <div class="chat-message from-them">
+          <div class="bubble">Their WhatsApp message here</div>
+        </div>
+      `;
+    }
   } catch (err) {
     console.error("Failed to load WhatsApp messages", err);
   }
