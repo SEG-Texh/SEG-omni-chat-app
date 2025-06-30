@@ -267,6 +267,11 @@ function formatTime(dateString) {
 // Load dashboard data
 // Load dashboard data with real data from MongoDB
 async function loadDashboardData() {
+  if (!currentUser || !currentUser.token) {
+    console.error("No current user or token found.");
+    return;
+  }
+
   try {
     console.log("Loading dashboard data...");
     
@@ -340,6 +345,11 @@ function updateStatCard(selector, value) {
 
 // Updated data fetching function
 async function getTotalUsers() {
+  if (!currentUser || !currentUser.token) {
+    console.error("No current user or token found.");
+    return "N/A";
+  }
+
   try {
     const response = await fetch('/api/dashboard/users/count'); // Corrected endpoint
     if (!response.ok) {
@@ -355,6 +365,11 @@ async function getTotalUsers() {
 }
 
 async function getMessagesToday() {
+  if (!currentUser || !currentUser.token) {
+    console.error("No current user or token found.");
+    return "N/A";
+  }
+
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -369,6 +384,11 @@ async function getMessagesToday() {
 }
 
 async function getActiveChats() {
+  if (!currentUser || !currentUser.token) {
+    console.error("No current user or token found.");
+    return "N/A";
+  }
+
   try {
     const response = await fetch('/api/dashboard/active-chats');
     const data = await response.json();
@@ -380,6 +400,16 @@ async function getActiveChats() {
 }
 
 async function getPlatformDistribution() {
+  if (!currentUser || !currentUser.token) {
+    console.error("No current user or token found.");
+    return {
+      facebook: 0,
+      whatsapp: 0,
+      email: 0,
+      sms: 0
+    };
+  }
+
   try {
     const response = await fetch('/api/dashboard/platform-distribution');
     const data = await response.json();
@@ -396,6 +426,11 @@ async function getPlatformDistribution() {
 }
 
 async function getMessageVolume() {
+  if (!currentUser || !currentUser.token) {
+    console.error("No current user or token found.");
+    return null;
+  }
+
   const response = await fetch('/api/dashboard/message-volume?days=7');
   const data = await response.json();
   return data;
@@ -649,6 +684,11 @@ function updateLineChart(data) {
 
 // Update real-time data
 async function updateRealTimeData() {
+  if (!currentUser || !currentUser.token) {
+    console.error("No current user or token found.");
+    return;
+  }
+
   try {
     const [messagesToday, activeChats] = await Promise.all([
       getMessagesToday(),
@@ -1320,6 +1360,11 @@ function initializeAccountManagement() {
 
 // Add user to backend
 async function addUserToBackend(userData) {
+    if (!currentUser || !currentUser.token) {
+        console.error("No current user or token found.");
+        return;
+    }
+
     try {
         const response = await fetch('/api/users', {
             method: 'POST',
@@ -1377,6 +1422,11 @@ function addUserToTable(user) {
 
 async function deleteUser(userId) {
     if (confirm('Are you sure you want to delete this user?')) {
+        if (!currentUser || !currentUser.token) {
+            console.error("No current user or token found.");
+            return;
+        }
+
         try {
             const response = await fetch(`/api/users/${userId}`, {
                 method: 'DELETE',
@@ -1442,6 +1492,11 @@ function showMessage(messageId, text) {
       }
 // Load accounts data
 async function loadAccountsData() {
+    if (!currentUser || !currentUser.token) {
+        console.error("No current user or token found.");
+        return;
+    }
+
     try {
         // Load user statistics
         await loadUserStatistics();
@@ -1459,6 +1514,11 @@ async function loadAccountsData() {
 
 // Load user statistics
 async function loadUserStatistics() {
+    if (!currentUser || !currentUser.token) {
+        console.error("No current user or token found.");
+        return;
+    }
+
     try {
         const response = await fetch('/api/users/stats', {
             headers: {
@@ -1487,6 +1547,11 @@ async function loadUserStatistics() {
 
 // Load users table
 async function loadUsersTable() {
+    if (!currentUser || !currentUser.token) {
+        console.error("No current user or token found.");
+        return;
+    }
+
     try {
         const response = await fetch('/api/users', {
             headers: {
@@ -1531,6 +1596,11 @@ async function loadUsersTable() {
 }
 
 async function getResponseRateTrend() {
+  if (!currentUser || !currentUser.token) {
+    console.error("No current user or token found.");
+    return [];
+  }
+
   try {
     const res = await fetch('/api/dashboard/response-times', {
       headers: { 'Authorization': `Bearer ${currentUser.token}` }
@@ -1545,6 +1615,11 @@ async function getResponseRateTrend() {
 }
 
 async function loadResponseRate() {
+  if (!currentUser || !currentUser.token) {
+    console.error("No current user or token found.");
+    return;
+  }
+
   try {
     const response = await fetch('/api/dashboard/response-rate', {
       headers: { 'Authorization': `Bearer ${currentUser.token}` }
@@ -1559,6 +1634,11 @@ async function loadResponseRate() {
 }
 
 async function loadActiveChats() {
+  if (!currentUser || !currentUser.token) {
+    console.error("No current user or token found.");
+    return;
+  }
+
   try {
     const response = await fetch('/api/dashboard/active-chats', {
       headers: { 'Authorization': `Bearer ${currentUser.token}` }
