@@ -108,6 +108,7 @@ function logout() {
   loginForm.reset()
   loginError.textContent = ""
 }
+
 function switchTab(tabName, event) {
   // Remove active class from all tabs and buttons
   document.querySelectorAll(".tab-content").forEach((tab) => {
