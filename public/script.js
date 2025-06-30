@@ -242,7 +242,11 @@ function refreshConversationList() {
   fetch('/api/facebook/conversations')
     .then(response => response.json())
     .then(conversations => {
-      renderConversationList(conversations);
+      if (!Array.isArray(conversations) || conversations.length === 0) {
+        // Show a message or fallback
+      } else {
+        renderConversationList(conversations);
+      }
     });
 }
 
@@ -488,7 +492,6 @@ function updateLineChart(data) {
   );
 
   if (validData.length < 2) {
-    // Show a message or plot a single point at the center
     svg.innerHTML = '';
     const noDataText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     noDataText.setAttribute('x', '200');
