@@ -724,7 +724,7 @@ function animateCharts() {
 // Load Facebook chats
 async function loadFacebookConversations() {
   if (!currentUser || !currentUser.token) {
-    console.error("No token found – cannot load conversations.");
+    renderDummyFacebookConversations();
     return;
   }
 
@@ -766,6 +766,17 @@ async function loadFacebookConversations() {
     });
   } catch (err) {
     console.error("Failed to load conversations", err);
+  }
+}
+
+function renderDummyFacebookConversations() {
+  const chatList = document.getElementById("facebookChatList");
+  if (chatList) {
+    chatList.innerHTML = `<div class="chat-item"><div class="chat-avatar">👤</div><div class="chat-info"><div class="chat-name">Jane Doe</div><div class="chat-preview">Hello from Facebook!</div></div><div class="chat-time">just now</div></div>`;
+  }
+  const chatBox = document.getElementById("facebookChatMessages");
+  if (chatBox) {
+    chatBox.innerHTML = `<div class="chat-message from-me"><div class="bubble">Your message here</div></div><div class="chat-message from-them"><div class="bubble">Their message here</div></div>`;
   }
 }
 
@@ -918,7 +929,7 @@ if (facebookSendButton && facebookMessageInput) {
 // Load WhatsApp chats
 async function loadWhatsAppConversations() {
   if (!currentUser || !currentUser.token) {
-    console.error("No token found – cannot load WhatsApp conversations.");
+    renderDummyWhatsAppConversations();
     return;
   }
 
@@ -960,6 +971,17 @@ async function loadWhatsAppConversations() {
     });
   } catch (err) {
     console.error("Failed to load WhatsApp conversations", err);
+  }
+}
+
+function renderDummyWhatsAppConversations() {
+  const chatList = document.getElementById("whatsappChatList");
+  if (chatList) {
+    chatList.innerHTML = `<div class="chat-item"><div class="chat-avatar">👤</div><div class="chat-info"><div class="chat-name">John Smith</div><div class="chat-preview">Hello from WhatsApp!</div></div><div class="chat-time">just now</div></div>`;
+  }
+  const chatBox = document.getElementById("whatsappChatMessages");
+  if (chatBox) {
+    chatBox.innerHTML = `<div class="chat-message from-me"><div class="bubble">Your WhatsApp message here</div></div><div class="chat-message from-them"><div class="bubble">Their WhatsApp message here</div></div>`;
   }
 }
 
@@ -1491,37 +1513,47 @@ function showMessage(messageId, text) {
         }, 3000);
     }
 }
-        // Toggle role selection
-        function toggleRole(element) {
-          const checkbox = element.querySelector('input[type="checkbox"]');
-          checkbox.checked = !checkbox.checked;
-          
-          if (checkbox.checked) {
-              element.classList.add('checked');
-          } else {
-              element.classList.remove('checked');
-          }
-      }
+
 // Load accounts data
 async function loadAccountsData() {
     if (!currentUser || !currentUser.token) {
-        console.error("No current user or token found.");
+        // Restore dummy data for accountTab
+        renderDummyAccounts();
         return;
     }
-
     try {
-        // Load user statistics
         await loadUserStatistics();
-        
-        // Load users table
         await loadUsersTable();
-        
-        // Initialize account management
         initializeAccountManagement();
-        
     } catch (error) {
         console.error('Error loading accounts data:', error);
+        renderDummyAccounts();
     }
+}
+
+function renderDummyAccounts() {
+    // Dummy statistics
+    document.getElementById('statTotalUsers').textContent = 1;
+    document.getElementById('statActiveUsers').textContent = 1;
+    document.getElementById('statInactiveUsers').textContent = 0;
+    document.getElementById('statAdmins').textContent = 1;
+    document.getElementById('statSupervisors').textContent = 0;
+    document.getElementById('statUsers').textContent = 0;
+    // Dummy user table
+    const tbody = document.getElementById('usersTableBody');
+    tbody.innerHTML = `
+      <tr>
+        <td>Jane Doe</td>
+        <td>jane@example.com</td>
+        <td>janedoe</td>
+        <td><span class="user-role-badge admin">Admin</span></td>
+        <td><span class="user-status active">Active</span></td>
+        <td class="user-actions">
+          <button class="btn-edit">Edit</button>
+          <button class="btn-delete">Delete</button>
+        </td>
+      </tr>
+    `;
 }
 
 // Load user statistics
