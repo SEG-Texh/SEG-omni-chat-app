@@ -241,6 +241,17 @@
                 </tr>
               </thead>
               <tbody id="usersTableBody">
+                <tr>
+                  <td>Jane Doe</td>
+                  <td>jane@example.com</td>
+                  <td>janedoe</td>
+                  <td><span class="user-role-badge admin">Admin</span></td>
+                  <td><span class="user-status active">Active</span></td>
+                  <td class="user-actions">
+                    <button class="btn-edit">Edit</button>
+                    <button class="btn-delete">Delete</button>
+                  </td>
+                </tr>
                 <!-- Users will be rendered here by JS -->
               </tbody>
             </table>
@@ -304,6 +315,12 @@
               <!-- WhatsApp chat user details will be dynamically loaded here -->
             </div>
             <div class="chat-messages" id="whatsappChatMessages">
+              <div class="chat-message from-me">
+                <div class="bubble">Your WhatsApp message here</div>
+              </div>
+              <div class="chat-message from-them">
+                <div class="bubble">Their WhatsApp message here</div>
+              </div>
               <!-- Messages will be dynamically loaded here -->
             </div>
             <div class="chat-input">
