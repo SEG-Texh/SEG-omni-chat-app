@@ -500,6 +500,17 @@ function updateLineChart(data) {
     return;
   }
   
+  if (validData.length < 2) {
+    const noDataText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    noDataText.setAttribute('x', '200');
+    noDataText.setAttribute('y', '100');
+    noDataText.setAttribute('text-anchor', 'middle');
+    noDataText.setAttribute('fill', '#6b7280');
+    noDataText.textContent = 'Not enough data for trend';
+    svg.appendChild(noDataText);
+    return;
+  }
+  
   // Calculate dimensions and scaling
   const width = 400;
   const height = 200;
