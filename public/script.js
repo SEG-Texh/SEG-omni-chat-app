@@ -21,6 +21,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const savedUser = localStorage.getItem("currentUser")
   if (savedUser) {
     currentUser = JSON.parse(savedUser)
+    currentUser._id = currentUser.id;
+    localStorage.setItem('currentUser', JSON.stringify(currentUser))
     showApp()
   }
 
@@ -59,6 +61,7 @@ async function handleLogin(e) {
 
     // Store user and token in currentUser
     currentUser = { ...data.user, token: data.token }
+    currentUser._id = currentUser.id;
 
     // Save to localStorage
     localStorage.setItem('currentUser', JSON.stringify(currentUser))
