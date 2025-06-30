@@ -767,6 +767,18 @@ async function loadFacebookMessages(conversationId) {
     
     // Scroll to bottom to show latest messages
     chatBox.scrollTop = chatBox.scrollHeight;
+
+    if (messages.length === 0) {
+      const chatBox = document.getElementById("facebookChatMessages");
+      chatBox.innerHTML = `
+        <div class="chat-message from-me">
+          <div class="bubble">Your message here</div>
+        </div>
+        <div class="chat-message from-them">
+          <div class="bubble">Their message here</div>
+        </div>
+      `;
+    }
   } catch (err) {
     console.error("Failed to load messages", err);
   }
@@ -1477,6 +1489,22 @@ async function loadUsersTable() {
         users.forEach(user => {
             addUserToTable(user);
         });
+        
+        if (users.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td>Jane Doe</td>
+              <td>jane@example.com</td>
+              <td>janedoe</td>
+              <td><span class="user-role-badge admin">Admin</span></td>
+              <td><span class="user-status active">Active</span></td>
+              <td class="user-actions">
+                <button class="btn-edit">Edit</button>
+                <button class="btn-delete">Delete</button>
+              </td>
+            </tr>
+          `;
+        }
         
     } catch (error) {
         console.error('Error loading users table:', error);
