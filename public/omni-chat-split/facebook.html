@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Omni Chat - Facebook</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body class="bg-slate-50">
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 shadow-sm">
+        <div class="flex justify-between items-center px-8 py-4">
+            <div class="flex items-center gap-4">
+                <div class="text-2xl">💬</div>
+                <h2 class="text-xl font-semibold">Omni Chat</h2>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <div id="userAvatar" class="w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center font-semibold">
+                        U
+                    </div>
+                    <div>
+                        <div id="userName" class="font-medium">User Name</div>
+                        <div id="userRole" class="text-sm text-slate-500 capitalize">user</div>
+                    </div>
+                </div>
+                <button
+                    id="logoutButton"
+                    class="px-4 py-2 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                    Logout
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-white border-b border-slate-200">
+        <div class="flex px-8">
+            <a href="dashboard.html" class="tab-btn">
+                <span>📊</span>
+                Dashboard
+            </a>
+            <a href="facebook.html" class="tab-btn active">
+                <span>📘</span>
+                Facebook
+            </a>
+            <a href="whatsapp.html" class="tab-btn">
+                <span>📱</span>
+                WhatsApp
+            </a>
+            <a href="account_management.html" class="tab-btn">
+                <span>👤</span>
+                Accounts
+            </a>
+        </div>
+    </nav>
+
+    <!-- Facebook Chat Content -->
+    <main class="p-8">
+        <div class="h-[calc(100vh-200px)] bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="flex h-full">
+                <!-- Conversations Sidebar -->
+                <div class="w-80 border-r border-slate-200 flex flex-col">
+                    <div class="p-4 border-b border-slate-200">
+                        <h2 class="text-lg font-semibold mb-3">Facebook Conversations</h2>
+                        <input
+                            type="text"
+                            placeholder="Search conversations..."
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                    </div>
+
+                    <div id="facebookConversationsList" class="flex-1 overflow-y-auto">
+                        <div class="p-4 text-center text-slate-500">Loading conversations...</div>
+                    </div>
+                </div>
+
+                <!-- Chat Area -->
+                <div class="flex-1 flex flex-col">
+                    <div id="facebookChatArea" class="flex-1 flex items-center justify-center text-slate-500">
+                        <div class="text-center">
+                            <div class="text-4xl mb-4">💬</div>
+                            <div class="text-lg">Select a conversation to start chatting</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="shared.js"></script>
+    <script src="facebook.js"></script>
+</body>
+</html>

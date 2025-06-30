@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Omni Chat - Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50">
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 shadow-sm">
+        <div class="flex justify-between items-center px-8 py-4">
+            <div class="flex items-center gap-4">
+                <div class="text-2xl">💬</div>
+                <h2 class="text-xl font-semibold">Omni Chat</h2>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <div id="userAvatar" class="w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center font-semibold">
+                        U
+                    </div>
+                    <div>
+                        <div id="userName" class="font-medium">User Name</div>
+                        <div id="userRole" class="text-sm text-slate-500 capitalize">user</div>
+                    </div>
+                </div>
+                <button
+                    id="logoutButton"
+                    class="px-4 py-2 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                    Logout
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-white border-b border-slate-200">
+        <div class="flex px-8">
+            <a href="dashboard.html" class="tab-btn active">
+                <span>📊</span>
+                Dashboard
+            </a>
+            <a href="facebook.html" class="tab-btn">
+                <span>📘</span>
+                Facebook
+            </a>
+            <a href="whatsapp.html" class="tab-btn">
+                <span>📱</span>
+                WhatsApp
+            </a>
+            <a href="account_management.html" class="tab-btn">
+                <span>👤</span>
+                Accounts
+            </a>
+        </div>
+    </nav>
+
+    <!-- Dashboard Content -->
+    <main class="p-8">
+        <div class="max-w-7xl mx-auto space-y-8">
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center text-white text-xl">
+                            👥
+                        </div>
+                        <div>
+                            <h3 id="totalUsers" class="text-2xl font-bold text-slate-900">--</h3>
+                            <p class="text-slate-600">Total Users</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center text-white text-xl">
+                            💬
+                        </div>
+                        <div>
+                            <h3 id="messagesToday" class="text-2xl font-bold text-slate-900">--</h3>
+                            <p class="text-slate-600">Messages Today</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-yellow-500 rounded-lg flex items-center justify-center text-white text-xl">
+                            ⚡
+                        </div>
+                        <div>
+                            <h3 id="responseRate" class="text-2xl font-bold text-slate-900">--</h3>
+                            <p class="text-slate-600">Response Rate</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center text-white text-xl">
+                            🎯
+                        </div>
+                        <div>
+                            <h3 id="activeChats" class="text-2xl font-bold text-slate-900">--</h3>
+                            <p class="text-slate-600">Active Chats</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Message Volume Chart -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-semibold">Message Volume</h3>
+                        <select class="px-3 py-1 border border-slate-300 rounded-lg text-sm">
+                            <option>Last 7 days</option>
+                            <option>Last 30 days</option>
+                            <option>Last 3 months</option>
+                        </select>
+                    </div>
+                    <div id="barChart" class="h-48 flex items-end justify-between gap-2">
+                        <!-- Bars will be generated by JavaScript -->
+                    </div>
+                    <div class="flex justify-between mt-2 text-xs text-slate-500">
+                        <span>Sun</span>
+                        <span>Mon</span>
+                        <span>Tue</span>
+                        <span>Wed</span>
+                        <span>Thu</span>
+                        <span>Fri</span>
+                        <span>Sat</span>
+                    </div>
+                </div>
+
+                <!-- Platform Distribution -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="text-lg font-semibold mb-6">Platform Distribution</h3>
+                    <div class="flex items-center justify-center">
+                        <div class="w-32 h-32 rounded-full bg-gradient-to-r from-blue-500 via-green-500 to-purple-500 relative">
+                            <div class="absolute inset-4 bg-white rounded-full"></div>
+                        </div>
+                    </div>
+                    <div class="mt-6 space-y-2">
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 bg-blue-500 rounded-sm"></div>
+                            <span class="text-sm text-slate-600">Facebook (45%)</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 bg-green-500 rounded-sm"></div>
+                            <span class="text-sm text-slate-600">WhatsApp (35%)</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 bg-purple-500 rounded-sm"></div>
+                            <span class="text-sm text-slate-600">Other (20%)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Response Rate Trend -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 class="text-lg font-semibold mb-6">Response Rate Trend</h3>
+                <div class="h-48 flex items-end justify-between">
+                    <svg viewBox="0 0 400 200" class="w-full h-full">
+                        <defs>
+                            <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stop-color="#10b981" stop-opacity="0.3" />
+                                <stop offset="100%" stop-color="#10b981" stop-opacity="0" />
+                            </linearGradient>
+                        </defs>
+                        <path
+                            d="M 20 180 L 80 120 L 140 100 L 200 80 L 260 90 L 320 60 L 380 40"
+                            stroke="#10b981"
+                            stroke-width="3"
+                            fill="none"
+                        />
+                        <path
+                            d="M 20 180 L 80 120 L 140 100 L 200 80 L 260 90 L 320 60 L 380 40 L 380 200 L 20 200 Z"
+                            fill="url(#gradient)"
+                        />
+                    </svg>
+                </div>
+                <div class="flex justify-between mt-4 text-xs text-slate-500">
+                    <span>Jan</span>
+                    <span>Feb</span>
+                    <span>Mar</span>
+                    <span>Apr</span>
+                    <span>May</span>
+                    <span>Jun</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="shared.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>

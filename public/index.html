@@ -1,343 +1,506 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Omni Chat App</title>
-  <link rel="stylesheet" href="styles.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Omni Chat - Connect Across All Platforms</title>
+    <link rel="stylesheet" href="omni-chat-split/styles.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="omni-chat-split/shared.js"></script>
 </head>
-<body>
-  <!-- LOGIN -->
-  <div id="loginContainer" class="container">
-    <div class="logo">
-      <div class="logo-icon">💬</div>
-      <h1>Omni Chat</h1>
-      <p>Connect across all platforms</p>
-    </div>
-    <form id="loginForm" class="login-form">
-      <div class="form-group">
-        <label>Email</label>
-        <input type="email" id="email" required placeholder="Enter your email" />
-      </div>
-      <div class="form-group">
-        <label>Password</label>
-        <input type="password" id="password" required placeholder="Enter your password" />
-      </div>
-      <button type="submit" class="btn btn-primary">
-        <span id="loginText">Login</span>
-        <span id="loginSpinner" class="spinner" style="display:none;"></span>
-      </button>
-      <div id="loginError" class="error"></div>
-    </form>
-  </div>
+<body class="bg-slate-50">
+    <!-- Login Container -->
+    <div id="loginContainer" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600 p-4">
+        <div class="w-full max-w-md">
+            <!-- Logo -->
+            <div class="text-center mb-8 text-white">
+                <div class="text-6xl mb-4">💬</div>
+                <h1 class="text-3xl font-bold mb-2">Omni Chat</h1>
+                <p class="text-lg opacity-90">Connect across all platforms</p>
+            </div>
 
-  <!-- DASHBOARD & CHAT -->
-  <div id="appContainer" style="display:none;">
-    <div class="header">
-      <div class="header-left">
-        <div class="logo-small">💬</div>
-        <h2>Omni Chat</h2>
-      </div>
-      <div class="user-info">
-        <div id="userAvatar" class="user-avatar">A</div>
-        <div class="user-details">
-          <div id="userName">Admin User</div>
-          <div id="userRole" class="badge admin">Admin</div>
+            <!-- Login Form -->
+            <div class="bg-white rounded-2xl shadow-xl p-8">
+                <form id="loginForm" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Email</label>
+                        <input
+                            type="email"
+                            id="email"
+                            required
+                            placeholder="Enter your email"
+                            class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                        />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Password</label>
+                        <input
+                            type="password"
+                            id="password"
+                            required
+                            placeholder="Enter your password"
+                            class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                        />
+                    </div>
+
+                    <button
+                        type="submit"
+                        id="loginButton"
+                        class="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                        <span id="loginText">Login</span>
+                        <div id="loginSpinner" class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin hidden"></div>
+                    </button>
+
+                    <div id="loginError" class="text-red-600 text-sm text-center bg-red-50 p-3 rounded-lg hidden"></div>
+                </form>
+            </div>
         </div>
-        <button class="btn btn-secondary" onclick="logout()">Logout</button>
-      </div>
-    </div>
-
-    <div class="nav-tabs">
-      <button class="tab-btn active" onclick="switchTab('dashboard', event)">
-        <span class="tab-icon">📊</span>
-        Dashboard
-      </button>
-      <button class="tab-btn" onclick="switchTab('facebook', event)">
-        <span class="tab-icon">
-          <img src="images/facebook.svg" alt="Facebook" style="width:20px; height:20px; vertical-align:middle;">
-        </span>
-        Facebook
-      </button>
-      <button class="tab-btn" onclick="switchTab('whatsapp', event)">
-        <span class="tab-icon">
-          <img src="images/whatsapp.svg" alt="WhatsApp" style="width:20px; height:20px; vertical-align:middle;">
-        </span>
-        WhatsApp
-      </button>
-      <button class="tab-btn" onclick="switchTab('accounts', event)">
-        <span class="tab-icon">👤</span>
-        Accounts
-      </button>      
     </div>
 
-    <div id="dashboardTab" class="tab-content active">
-      <div class="dashboard">
-        <!-- Stats Cards -->
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-icon">👥</div>
-            <div class="stat-content">
-              <h3 id="totalUsers">--</h3>
-              <p>Total Users</p>
-              <span class="stat-change positive" id="totalUsersChange"></span>
+    <!-- App Container -->
+    <div id="appContainer" class="min-h-screen bg-slate-50 hidden">
+        <!-- Header -->
+        <header class="bg-white border-b border-slate-200 shadow-sm">
+            <div class="flex justify-between items-center px-8 py-4">
+                <div class="flex items-center gap-4">
+                    <div class="text-2xl">💬</div>
+                    <h2 class="text-xl font-semibold">Omni Chat</h2>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-3">
+                        <div id="userAvatar" class="w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center font-semibold">
+                            U
+                        </div>
+                        <div>
+                            <div id="userName" class="font-medium">User Name</div>
+                            <div id="userRole" class="text-sm text-slate-500 capitalize">user</div>
+                        </div>
+                    </div>
+                    <button
+                        id="logoutButton"
+                        class="px-4 py-2 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                    >
+                        Logout
+                    </button>
+                </div>
             </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">💬</div>
-            <div class="stat-content">
-              <h3 id="messagesToday">--</h3>
-              <p>Messages Today</p>
-              <span class="stat-change positive" id="messagesTodayChange"></span>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">⚡</div>
-            <div class="stat-content">
-              <h3 id="responseRate">--</h3>
-              <p>Response Rate</p>
-              <span class="stat-change" id="responseRateChange"></span>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">🎯</div>
-            <div class="stat-content">
-              <h3 id="activeChats">--</h3>
-              <p>Active Chats</p>
-              <span class="stat-change positive" id="activeChatsChange"></span>
-            </div>
-          </div>
-        </div>
+        </header>
 
-        <!-- Charts Section -->
-        <div class="charts-grid">
-          <!-- Message Volume Chart -->
-          <div class="chart-card">
-            <div class="chart-header">
-              <h3>Message Volume</h3>
-              <select class="chart-filter" id="messageVolumeFilter">
-                <option>Last 7 days</option>
-                <option>Last 30 days</option>
-                <option>Last 3 months</option>
-              </select>
+        <!-- Navigation Tabs -->
+        <nav class="bg-white border-b border-slate-200">
+            <div class="flex px-8">
+                <button class="tab-btn active" data-tab="dashboard">
+                    <span>📊</span>
+                    Dashboard
+                </button>
+                <button class="tab-btn" data-tab="facebook">
+                    <span>📘</span>
+                    Facebook
+                </button>
+                <button class="tab-btn" data-tab="whatsapp">
+                    <span>📱</span>
+                    WhatsApp
+                </button>
+                <button class="tab-btn" data-tab="accounts">
+                    <span>👤</span>
+                    Accounts
+                </button>
             </div>
-            <div class="bar-chart">
-              <div class="bar-chart-container" id="barChartContainer">
-                <!-- Real bars will be rendered by JS -->
-              </div>
-            </div>
-          </div>
+        </nav>
 
-          <!-- Platform Distribution -->
-          <div class="chart-card">
-            <div class="chart-header">
-              <h3>Platform Distribution</h3>
-            </div>
-            <div class="pie-chart">
-              <div class="pie-chart-container" id="pieChartContainer">
-                <!-- Real slices will be rendered by JS -->
-              </div>
-              <div class="pie-legend" id="pieLegend">
-                <!-- Real legend will be rendered by JS -->
-              </div>
-            </div>
-          </div>
+        <!-- Tab Content -->
+        <main class="p-8">
+            <!-- Dashboard Tab -->
+            <div id="dashboardTab" class="tab-content active">
+                <div class="max-w-7xl mx-auto space-y-8">
+                    <!-- Stats Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center text-white text-xl">
+                                    👥
+                                </div>
+                                <div>
+                                    <h3 id="totalUsers" class="text-2xl font-bold text-slate-900">--</h3>
+                                    <p class="text-slate-600">Total Users</p>
+                                </div>
+                            </div>
+                        </div>
 
-          <!-- Response Rate Trend -->
-          <div class="chart-card full-width">
-            <div class="chart-header">
-              <h3>Response Rate Trend</h3>
-            </div>
-            <div class="line-chart">
-              <div class="line-chart-container">
-                <svg viewBox="0 0 400 200" class="line-chart-svg">
-                  <!-- Real chart will be rendered by JS -->
-                </svg>
-                <div class="line-chart-labels" id="lineChartLabels">
-                  <!-- Real labels will be rendered by JS -->
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center text-white text-xl">
+                                    💬
+                                </div>
+                                <div>
+                                    <h3 id="messagesToday" class="text-2xl font-bold text-slate-900">--</h3>
+                                    <p class="text-slate-600">Messages Today</p>
+                                </div>
+                            </div>
+                        </div>
 
-     
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 bg-yellow-500 rounded-lg flex items-center justify-center text-white text-xl">
+                                    ⚡
+                                </div>
+                                <div>
+                                    <h3 id="responseRate" class="text-2xl font-bold text-slate-900">--</h3>
+                                    <p class="text-slate-600">Response Rate</p>
+                                </div>
+                            </div>
+                        </div>
 
-    <div id="accountsTab" class="tab-content">
-      <div class="account-management">
-        <!-- Account Management Header Bar -->
-        <div class="account-header-bar">
-          <h1>Account Management System</h1>
-          <p>Admin Dashboard - Add users and manage roles efficiently</p>
-        </div>
-        <!-- Main Content: Add User + User Statistics -->
-        <div class="account-main-cards">
-          <div class="main-content">
-            <!-- Add User Card -->
-            <div class="card add-user-card">
-              <h2>Add New User</h2>
-              <div class="success-message" id="successMessage" style="display:none;">User added successfully!</div>
-              <div class="error-message" id="errorMessage" style="display:none;">Please fill in all required fields.</div>
-              <form id="addUserForm">
-                <div class="form-group">
-                  <label for="fullName">Full Name *</label>
-                  <input type="text" id="fullName" name="fullName" required>
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center text-white text-xl">
+                                    🎯
+                                </div>
+                                <div>
+                                    <h3 id="activeChats" class="text-2xl font-bold text-slate-900">--</h3>
+                                    <p class="text-slate-600">Active Chats</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Grid -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Message Volume Chart -->
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-lg font-semibold">Message Volume</h3>
+                                <select class="px-3 py-1 border border-slate-300 rounded-lg text-sm">
+                                    <option>Last 7 days</option>
+                                    <option>Last 30 days</option>
+                                    <option>Last 3 months</option>
+                                </select>
+                            </div>
+                            <div id="barChart" class="h-48 flex items-end justify-between gap-2">
+                                <!-- Bars will be generated by JavaScript -->
+                            </div>
+                            <div class="flex justify-between mt-2 text-xs text-slate-500">
+                                <span>Sun</span>
+                                <span>Mon</span>
+                                <span>Tue</span>
+                                <span>Wed</span>
+                                <span>Thu</span>
+                                <span>Fri</span>
+                                <span>Sat</span>
+                            </div>
+                        </div>
+
+                        <!-- Platform Distribution -->
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                            <h3 class="text-lg font-semibold mb-6">Platform Distribution</h3>
+                            <div class="flex items-center justify-center">
+                                <div class="w-32 h-32 rounded-full bg-gradient-to-r from-blue-500 via-green-500 to-purple-500 relative">
+                                    <div class="absolute inset-4 bg-white rounded-full"></div>
+                                </div>
+                            </div>
+                            <div class="mt-6 space-y-2">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-3 h-3 bg-blue-500 rounded-sm"></div>
+                                    <span class="text-sm text-slate-600">Facebook (45%)</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-3 h-3 bg-green-500 rounded-sm"></div>
+                                    <span class="text-sm text-slate-600">WhatsApp (35%)</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-3 h-3 bg-purple-500 rounded-sm"></div>
+                                    <span class="text-sm text-slate-600">Other (20%)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Response Rate Trend -->
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <h3 class="text-lg font-semibold mb-6">Response Rate Trend</h3>
+                        <div class="h-48 flex items-end justify-between">
+                            <svg viewBox="0 0 400 200" class="w-full h-full">
+                                <defs>
+                                    <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" stop-color="#10b981" stop-opacity="0.3" />
+                                        <stop offset="100%" stop-color="#10b981" stop-opacity="0" />
+                                    </linearGradient>
+                                </defs>
+                                <path
+                                    d="M 20 180 L 80 120 L 140 100 L 200 80 L 260 90 L 320 60 L 380 40"
+                                    stroke="#10b981"
+                                    stroke-width="3"
+                                    fill="none"
+                                />
+                                <path
+                                    d="M 20 180 L 80 120 L 140 100 L 200 80 L 260 90 L 320 60 L 380 40 L 380 200 L 20 200 Z"
+                                    fill="url(#gradient)"
+                                />
+                            </svg>
+                        </div>
+                        <div class="flex justify-between mt-4 text-xs text-slate-500">
+                            <span>Jan</span>
+                            <span>Feb</span>
+                            <span>Mar</span>
+                            <span>Apr</span>
+                            <span>May</span>
+                            <span>Jun</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                  <label for="email">Email Address *</label>
-                  <input type="email" id="email" name="email" required>
-                </div>
-                <div class="form-group">
-                  <label for="username">Username *</label>
-                  <input type="text" id="username" name="username" required>
-                </div>
-                <div class="form-group">
-                  <label>Assign Roles *</label>
-                  <div class="role-selection">
-                    <label class="role-card">
-                      <input type="radio" name="role" value="admin" class="role-checkbox" required>
-                      Administrator
-                    </label>
-                    <label class="role-card">
-                      <input type="radio" name="role" value="supervisor" class="role-checkbox">
-                      Supervisor
-                    </label>
-                    <label class="role-card">
-                      <input type="radio" name="role" value="user" class="role-checkbox">
-                      User
-                    </label>
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label for="password">Password *</label>
-                  <input type="password" id="password" name="password" required>
-                </div>
-                <button type="submit" class="btn btn-primary">Add User</button>
-              </form>
             </div>
-            <!-- User Statistics Card -->
-            <div class="card user-stats-card">
-              <h2>User Statistics</h2>
-              <div class="stats-grid" style="margin-top:1rem;">
-                <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-content"><h3 id="statTotalUsers">--</h3><p>Total Users</p></div></div>
-                <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-content"><h3 id="statActiveUsers">--</h3><p>Active Users</p></div></div>
-                <div class="stat-card"><div class="stat-icon">⏸️</div><div class="stat-content"><h3 id="statInactiveUsers">--</h3><p>Inactive Users</p></div></div>
-                <div class="stat-card"><div class="stat-icon">🛡️</div><div class="stat-content"><h3 id="statAdmins">--</h3><p>Admins</p></div></div>
-                <div class="stat-card"><div class="stat-icon">👔</div><div class="stat-content"><h3 id="statSupervisors">--</h3><p>Supervisors</p></div></div>
-                <div class="stat-card"><div class="stat-icon">👤</div><div class="stat-content"><h3 id="statUsers">--</h3><p>Users</p></div></div>
-              </div>
+
+            <!-- Facebook Tab -->
+            <div id="facebookTab" class="tab-content">
+                <div class="h-[calc(100vh-200px)] bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="flex h-full">
+                        <!-- Conversations Sidebar -->
+                        <div class="w-80 border-r border-slate-200 flex flex-col">
+                            <div class="p-4 border-b border-slate-200">
+                                <h2 class="text-lg font-semibold mb-3">Facebook Conversations</h2>
+                                <input
+                                    type="text"
+                                    placeholder="Search conversations..."
+                                    class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            </div>
+
+                            <div id="facebookConversationsList" class="flex-1 overflow-y-auto">
+                                <div class="p-4 text-center text-slate-500">Loading conversations...</div>
+                            </div>
+                        </div>
+
+                        <!-- Chat Area -->
+                        <div class="flex-1 flex flex-col">
+                            <div id="facebookChatArea" class="flex-1 flex items-center justify-center text-slate-500">
+                                <div class="text-center">
+                                    <div class="text-4xl mb-4">💬</div>
+                                    <div class="text-lg">Select a conversation to start chatting</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
-        </div>
-        <!-- Existing Users Table -->
-        <div class="card users-table">
-          <h2>Existing Users</h2>
-          <div class="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Username</th>
-                  <th>Role</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="usersTableBody">
-                <tr>
-                  <td>Jane Doe</td>
-                  <td>jane@example.com</td>
-                  <td>janedoe</td>
-                  <td><span class="user-role-badge admin">Admin</span></td>
-                  <td><span class="user-status active">Active</span></td>
-                  <td class="user-actions">
-                    <button class="btn-edit">Edit</button>
-                    <button class="btn-delete">Delete</button>
-                  </td>
-                </tr>
-                <!-- Users will be rendered here by JS -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+
+            <!-- WhatsApp Tab -->
+            <div id="whatsappTab" class="tab-content">
+                <div class="h-[calc(100vh-200px)] bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="flex h-full">
+                        <!-- Conversations Sidebar -->
+                        <div class="w-80 border-r border-slate-200 flex flex-col">
+                            <div class="p-4 border-b border-slate-200">
+                                <h2 class="text-lg font-semibold mb-3">WhatsApp Conversations</h2>
+                                <input
+                                    type="text"
+                                    placeholder="Search conversations..."
+                                    class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                />
+                            </div>
+
+                            <div id="whatsappConversationsList" class="flex-1 overflow-y-auto">
+                                <div class="p-4 text-center text-slate-500">Loading conversations...</div>
+                            </div>
+                        </div>
+
+                        <!-- Chat Area -->
+                        <div class="flex-1 flex flex-col">
+                            <div id="whatsappChatArea" class="flex-1 flex items-center justify-center text-slate-500 bg-green-50">
+                                <div class="text-center">
+                                    <div class="text-4xl mb-4">📱</div>
+                                    <div class="text-lg">Select a conversation to start chatting</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accounts Tab -->
+            <div id="accountsTab" class="tab-content">
+                <div class="max-w-7xl mx-auto space-y-8">
+                    <!-- Header -->
+                    <div class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl p-8 text-center">
+                        <h1 class="text-3xl font-bold mb-2">Account Management System</h1>
+                        <p class="text-lg opacity-90">Admin Dashboard - Add users and manage roles efficiently</p>
+                    </div>
+
+                    <!-- Main Content -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <!-- Add User Form -->
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                            <h2 class="text-xl font-semibold mb-6">Add New User</h2>
+
+                            <div id="accountMessage" class="p-4 rounded-lg mb-6 hidden"></div>
+
+                            <form id="addUserForm" class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Full Name *</label>
+                                    <input
+                                        type="text"
+                                        id="fullName"
+                                        required
+                                        class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Email Address *</label>
+                                    <input
+                                        type="email"
+                                        id="userEmail"
+                                        required
+                                        class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Username *</label>
+                                    <input
+                                        type="text"
+                                        id="username"
+                                        required
+                                        class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Role *</label>
+                                    <div class="space-y-2">
+                                        <label class="flex items-center gap-3 p-3 border border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50">
+                                            <input type="radio" name="role" value="admin" class="w-4 h-4 text-indigo-600" />
+                                            <span class="font-medium">Admin</span>
+                                        </label>
+                                        <label class="flex items-center gap-3 p-3 border border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50">
+                                            <input type="radio" name="role" value="supervisor" class="w-4 h-4 text-indigo-600" />
+                                            <span class="font-medium">Supervisor</span>
+                                        </label>
+                                        <label class="flex items-center gap-3 p-3 border border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50">
+                                            <input type="radio" name="role" value="user" class="w-4 h-4 text-indigo-600" />
+                                            <span class="font-medium">User</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Password *</label>
+                                    <input
+                                        type="password"
+                                        id="userPassword"
+                                        required
+                                        class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    class="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
+                                >
+                                    Add User
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- User Statistics -->
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                            <h2 class="text-xl font-semibold mb-6">User Statistics</h2>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-lg">
+                                    <div class="w-10 h-10 bg-blue-500 text-white rounded-lg flex items-center justify-center text-lg">
+                                        👥
+                                    </div>
+                                    <div>
+                                        <div id="statTotalUsers" class="text-2xl font-bold">--</div>
+                                        <div class="text-sm text-slate-600">Total Users</div>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-lg">
+                                    <div class="w-10 h-10 bg-green-500 text-white rounded-lg flex items-center justify-center text-lg">
+                                        ✅
+                                    </div>
+                                    <div>
+                                        <div id="statActiveUsers" class="text-2xl font-bold">--</div>
+                                        <div class="text-sm text-slate-600">Active Users</div>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-lg">
+                                    <div class="w-10 h-10 bg-gray-500 text-white rounded-lg flex items-center justify-center text-lg">
+                                        ⏸️
+                                    </div>
+                                    <div>
+                                        <div id="statInactiveUsers" class="text-2xl font-bold">--</div>
+                                        <div class="text-sm text-slate-600">Inactive Users</div>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-lg">
+                                    <div class="w-10 h-10 bg-red-500 text-white rounded-lg flex items-center justify-center text-lg">
+                                        🛡️
+                                    </div>
+                                    <div>
+                                        <div id="statAdmins" class="text-2xl font-bold">--</div>
+                                        <div class="text-sm text-slate-600">Admins</div>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-lg">
+                                    <div class="w-10 h-10 bg-yellow-500 text-white rounded-lg flex items-center justify-center text-lg">
+                                        👔
+                                    </div>
+                                    <div>
+                                        <div id="statSupervisors" class="text-2xl font-bold">--</div>
+                                        <div class="text-sm text-slate-600">Supervisors</div>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-lg">
+                                    <div class="w-10 h-10 bg-purple-500 text-white rounded-lg flex items-center justify-center text-lg">
+                                        👤
+                                    </div>
+                                    <div>
+                                        <div id="statUsers" class="text-2xl font-bold">--</div>
+                                        <div class="text-sm text-slate-600">Users</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Users Table -->
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="p-6 border-b border-slate-200">
+                            <h2 class="text-xl font-semibold">Existing Users</h2>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-slate-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Email</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Username</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Role</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usersTableBody" class="bg-white divide-y divide-slate-200">
+                                    <tr>
+                                        <td colspan="6" class="px-6 py-4 text-center text-slate-500">Loading users...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
 
-    <div id="facebookTab" class="tab-content">
-      <div class="chat-interface">
-        <h2>Facebook Chat</h2>
-        <div class="chat-container">
-          <!-- Sidebar -->
-          <div class="chat-sidebar">
-            <div class="chat-search">
-              <input type="text" placeholder="Search conversations..." id="facebookSearchInput" />
-            </div>
-            <div class="chat-list" id="facebookChatList">
-              <!-- Dynamic chat items will be appended here -->
-            </div>
-          </div>
-
-          <!-- Main Chat Area -->
-          <div class="chat-main">
-            <div class="chat-header" id="facebookChatHeader">
-              <!-- Dynamic user details will go here -->
-            </div>
-            <div class="chat-messages" id="facebookChatMessages">
-              <div class="chat-message from-me">
-                <div class="bubble">Your message here</div>
-              </div>
-              <div class="chat-message from-them">
-                <div class="bubble">Their message here</div>
-              </div>
-              <!-- Dynamic messages will be loaded here -->
-            </div>
-            <div class="chat-input">
-              <input type="text" placeholder="Type a message..." id="facebookMessageInput" />
-              <button class="btn btn-primary" id="facebookSendButton">Send</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="whatsappTab" class="tab-content">
-      <div class="chat-interface">
-        <h2>WhatsApp Chat</h2>
-        <div class="chat-container">
-          <!-- Similar structure to Facebook tab -->
-          <div class="chat-sidebar">
-            <div class="chat-search">
-              <input type="text" placeholder="Search conversations..." />
-            </div>
-            <div class="chat-list" id="whatsappChatList">
-              <!-- WhatsApp conversations will be dynamically loaded here -->
-            </div>
-          </div>
-          <div class="chat-main">
-            <div class="chat-header" id="whatsappChatHeader">
-              <!-- WhatsApp chat user details will be dynamically loaded here -->
-            </div>
-            <div class="chat-messages" id="whatsappChatMessages">
-              <div class="chat-message from-me">
-                <div class="bubble">Your WhatsApp message here</div>
-              </div>
-              <div class="chat-message from-them">
-                <div class="bubble">Their WhatsApp message here</div>
-              </div>
-              <!-- Messages will be dynamically loaded here -->
-            </div>
-            <div class="chat-input">
-              <input type="text" placeholder="Type a message..." id="whatsappMessageInput" />
-              <button class="btn btn-primary" id="whatsappSendButton">Send</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
-  <script src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

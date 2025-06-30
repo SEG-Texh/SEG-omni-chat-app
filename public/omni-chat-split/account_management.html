@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Omni Chat - Account Management</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50">
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 shadow-sm">
+        <div class="flex justify-between items-center px-8 py-4">
+            <div class="flex items-center gap-4">
+                <div class="text-2xl">💬</div>
+                <h2 class="text-xl font-semibold">Omni Chat</h2>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <div id="userAvatar" class="w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center font-semibold">
+                        U
+                    </div>
+                    <div>
+                        <div id="userName" class="font-medium">User Name</div>
+                        <div id="userRole" class="text-sm text-slate-500 capitalize">user</div>
+                    </div>
+                </div>
+                <button
+                    id="logoutButton"
+                    class="px-4 py-2 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                    Logout
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-white border-b border-slate-200">
+        <div class="flex px-8">
+            <a href="dashboard.html" class="tab-btn">
+                <span>📊</span>
+                Dashboard
+            </a>
+            <a href="facebook.html" class="tab-btn">
+                <span>📘</span>
+                Facebook
+            </a>
+            <a href="whatsapp.html" class="tab-btn">
+                <span>📱</span>
+                WhatsApp
+            </a>
+            <a href="account_management.html" class="tab-btn active">
+                <span>👤</span>
+                Accounts
+            </a>
+        </div>
+    </nav>
+
+    <!-- Account Management Content -->
+    <main class="p-8">
+        <div class="max-w-7xl mx-auto space-y-8">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl p-8 text-center">
+                <h1 class="text-3xl font-bold mb-2">Account Management System</h1>
+                <p class="text-lg opacity-90">Admin Dashboard - Add users and manage roles efficiently</p>
+            </div>
+
+            <!-- Main Content -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Add User Form -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h2 class="text-xl font-semibold mb-6">Add New User</h2>
+
+                    <div id="accountMessage" class="p-4 rounded-lg mb-6 hidden"></div>
+
+                    <form id="addUserForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Full Name *</label>
+                            <input
+                                type="text"
+                                id="fullName"
+                                required
+                                class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            />
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Email Address *</label>
+                            <input
+                                type="email"
+                                id="userEmail"
+                                required
+                                class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            />
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Username *</label>
+                            <input
+                                type="text"
+                                id="username"
+                                required
+                                class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            />
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Role *</label>
+                            <div class="space-y-2">
+                                <label class="flex items-center gap-3 p-3 border border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50">
+                                    <input type="radio" name="role" value="admin" class="w-4 h-4 text-indigo-600" />
+                                    <span class="font-medium">Admin</span>
+                                </label>
+                                <label class="flex items-center gap-3 p-3 border border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50">
+                                    <input type="radio" name="role" value="supervisor" class="w-4 h-4 text-indigo-600" />
+                                    <span class="font-medium">Supervisor</span>
+                                </label>
+                                <label class="flex items-center gap-3 p-3 border border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50">
+                                    <input type="radio" name="role" value="user" class="w-4 h-4 text-indigo-600" />
+                                    <span class="font-medium">User</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Password *</label>
+                            <input
+                                type="password"
+                                id="userPassword"
+                                required
+                                class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            />
+                        </div>
+
+                        <button
+                            type="submit"
+                            class="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
+                        >
+                            Add User
+                        </button>
+                    </form>
+                </div>
+
+                <!-- User Statistics -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h2 class="text-xl font-semibold mb-6">User Statistics</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-lg">
+                            <div class="w-10 h-10 bg-blue-500 text-white rounded-lg flex items-center justify-center text-lg">
+                                👥
+                            </div>
+                            <div>
+                                <div id="statTotalUsers" class="text-2xl font-bold">--</div>
+                                <div class="text-sm text-slate-600">Total Users</div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-lg">
+                            <div class="w-10 h-10 bg-green-500 text-white rounded-lg flex items-center justify-center text-lg">
+                                ✅
+                            </div>
+                            <div>
+                                <div id="statActiveUsers" class="text-2xl font-bold">--</div>
+                                <div class="text-sm text-slate-600">Active Users</div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-lg">
+                            <div class="w-10 h-10 bg-gray-500 text-white rounded-lg flex items-center justify-center text-lg">
+                                ⏸️
+                            </div>
+                            <div>
+                                <div id="statInactiveUsers" class="text-2xl font-bold">--</div>
+                                <div class="text-sm text-slate-600">Inactive Users</div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-lg">
+                            <div class="w-10 h-10 bg-red-500 text-white rounded-lg flex items-center justify-center text-lg">
+                                🛡️
+                            </div>
+                            <div>
+                                <div id="statAdmins" class="text-2xl font-bold">--</div>
+                                <div class="text-sm text-slate-600">Admins</div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-lg">
+                            <div class="w-10 h-10 bg-yellow-500 text-white rounded-lg flex items-center justify-center text-lg">
+                                👔
+                            </div>
+                            <div>
+                                <div id="statSupervisors" class="text-2xl font-bold">--</div>
+                                <div class="text-sm text-slate-600">Supervisors</div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-lg">
+                            <div class="w-10 h-10 bg-purple-500 text-white rounded-lg flex items-center justify-center text-lg">
+                                👤
+                            </div>
+                            <div>
+                                <div id="statUsers" class="text-2xl font-bold">--</div>
+                                <div class="text-sm text-slate-600">Users</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Table -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-6 border-b border-slate-200">
+                    <h2 class="text-xl font-semibold">Existing Users</h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Email</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Username</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Role</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody" class="bg-white divide-y divide-slate-200">
+                            <tr>
+                                <td colspan="6" class="px-6 py-4 text-center text-slate-500">Loading users...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="shared.js"></script>
+    <script src="account_management.js"></script>
+</body>
+</html>
