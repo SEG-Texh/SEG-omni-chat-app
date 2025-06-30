@@ -1643,3 +1643,5 @@ async function loadActiveChats() {
   }
 }
 
+window.switchTab = switchTab;
+
