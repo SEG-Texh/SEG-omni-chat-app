@@ -925,7 +925,7 @@ async function loadWhatsAppMessages(conversationId) {
       chatBox.appendChild(div);
     });
 
-    if (messages.length === 0) {
+    if (messages.length === 0 && chatBox) {
       chatBox.innerHTML = `
         <div class="chat-message from-me">
           <div class="bubble">Your WhatsApp message here</div>
