@@ -1,6 +1,7 @@
 const axios = require('axios');
 const Chat = require('../models/message');
 const mongoose = require('mongoose');
+const io = require('socket.io-client');
 
 class WhatsAppController {
   // Verify webhook
@@ -79,6 +80,7 @@ class WhatsAppController {
         user = await User.create({
           name: `WhatsApp User ${phoneNumber}`,
           email: `${phoneNumber}@whatsapp.local`,
+          type: 'platform',
           platformIds: { whatsapp: phoneNumber },
           roles: ['customer']
         });
@@ -121,6 +123,8 @@ class WhatsAppController {
       if (text.toLowerCase().includes('hello')) {
         await this.sendMessage(phoneNumber, 'Hello! Thanks for reaching out. How can I assist you?');
       }
+
+      io.to(`conversation_${conversation._id}`).emit('newMessage', chat);
     } catch (error) {
       console.error('Error processing WhatsApp message:', error);
     }
@@ -161,6 +165,8 @@ class WhatsAppController {
         platformMessageId
       });
       await chat.save();
+      
+      io.to(`conversation_${conversationId}`).emit('newMessage', chat);
       
       return response.data;
     } catch (error) {

@@ -159,7 +159,7 @@ function initializeSocket(token) {
   // Facebook Specific Events
   socket.on("new_message", (message) => {
     console.log("📨 New Facebook message:", message);
-    if (currentConversation?._id === message.conversation) {
+    if (currentFacebookConversationId === message.conversation) {
       appendFacebookMessage(message);
     }
     updateConversationList(message);
@@ -205,6 +205,22 @@ function initializeSocket(token) {
     if (err.message.includes("invalid token")) {
       // Handle token refresh here if needed
     }
+  });
+
+  socket.on("newMessage", (msg) => {
+    console.log("📨 New WhatsApp message:", msg);
+    if (window.currentWhatsAppConversationId === msg.conversation) {
+      // You may want to create a function like appendWhatsAppMessage(msg)
+      const chatBox = document.getElementById("whatsappChatMessages");
+      const div = document.createElement("div");
+      const isFromCurrentUser = msg.sender && (msg.sender._id === currentUser.id || msg.sender._id === currentUser._id);
+      div.className = isFromCurrentUser ? "chat-message from-me" : "chat-message from-them";
+      const senderName = msg.sender && msg.sender.name ? msg.sender.name : "Unknown";
+      div.innerHTML = `<div class="bubble"><strong>${senderName}:</strong> ${msg.content && msg.content.text ? msg.content.text : ''}</div>`;
+      if (chatBox) chatBox.appendChild(div);
+      if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+    }
+    // Optionally update conversation list preview
   });
 }
 
