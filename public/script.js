@@ -15,6 +15,14 @@ const loginText = document.getElementById("loginText")
 // Store the currently selected Facebook conversation ID
 globalThis.currentFacebookConversationId = null;
 
+// Restore currentUser from localStorage on every page load
+if (!currentUser) {
+  const savedUser = localStorage.getItem('currentUser');
+  if (savedUser) {
+    currentUser = JSON.parse(savedUser);
+  }
+}
+
 // Initialize the application
 document.addEventListener("DOMContentLoaded", () => {
   // Check if user is already logged in
