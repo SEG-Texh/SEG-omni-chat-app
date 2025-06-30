@@ -1525,3 +1525,12 @@ async function loadActiveChats() {
   }
 }
 
+updateLineChart([
+  { month: "2024-01", responseRate: 80 },
+  { month: "2024-02", responseRate: 85 },
+  { month: "2024-03", responseRate: 90 },
+  { month: "2024-04", responseRate: 75 },
+  { month: "2024-05", responseRate: 95 },
+  { month: "2024-06", responseRate: 88 }
+]);
+
