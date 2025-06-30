@@ -159,7 +159,7 @@ function initializeSocket(token) {
   // Facebook Specific Events
   socket.on("new_message", (message) => {
     console.log("📨 New Facebook message:", message);
-    if (currentFacebookConversationId === message.conversation) {
+    if (currentConversation?._id === message.conversation) {
       appendFacebookMessage(message);
     }
     updateConversationList(message);
@@ -205,22 +205,6 @@ function initializeSocket(token) {
     if (err.message.includes("invalid token")) {
       // Handle token refresh here if needed
     }
-  });
-
-  socket.on("newMessage", (msg) => {
-    console.log("📨 New WhatsApp message:", msg);
-    if (window.currentWhatsAppConversationId === msg.conversation) {
-      // You may want to create a function like appendWhatsAppMessage(msg)
-      const chatBox = document.getElementById("whatsappChatMessages");
-      const div = document.createElement("div");
-      const isFromCurrentUser = msg.sender && (msg.sender._id === currentUser.id || msg.sender._id === currentUser._id);
-      div.className = isFromCurrentUser ? "chat-message from-me" : "chat-message from-them";
-      const senderName = msg.sender && msg.sender.name ? msg.sender.name : "Unknown";
-      div.innerHTML = `<div class="bubble"><strong>${senderName}:</strong> ${msg.content && msg.content.text ? msg.content.text : ''}</div>`;
-      if (chatBox) chatBox.appendChild(div);
-      if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
-    }
-    // Optionally update conversation list preview
   });
 }
 
@@ -512,17 +496,6 @@ function updateLineChart(data) {
     noDataText.setAttribute('text-anchor', 'middle');
     noDataText.setAttribute('fill', '#6b7280');
     noDataText.textContent = 'No data available';
-    svg.appendChild(noDataText);
-    return;
-  }
-  
-  if (validData.length < 2) {
-    const noDataText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    noDataText.setAttribute('x', '200');
-    noDataText.setAttribute('y', '100');
-    noDataText.setAttribute('text-anchor', 'middle');
-    noDataText.setAttribute('fill', '#6b7280');
-    noDataText.textContent = 'Not enough data for trend';
     svg.appendChild(noDataText);
     return;
   }
@@ -1551,13 +1524,4 @@ async function loadActiveChats() {
     console.error('Error loading active chats:', error);
   }
 }
-
-updateLineChart([
-  { month: "2024-01", responseRate: 80 },
-  { month: "2024-02", responseRate: 85 },
-  { month: "2024-03", responseRate: 90 },
-  { month: "2024-04", responseRate: 75 },
-  { month: "2024-05", responseRate: 95 },
-  { month: "2024-06", responseRate: 88 }
-]);
 
