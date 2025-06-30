@@ -1,142 +1,139 @@
 // Global variables
-let currentUser = null;
-let socket = null;
+let currentUser = null
+let socket = null
 let currentFacebookConversationId = null;
 let currentFacebookRecipientId = null;
-let currentWhatsAppConversationId = null;
-let currentWhatsAppNumber = null;
 
 // DOM elements
-const loginContainer = document.getElementById("loginContainer");
-const appContainer = document.getElementById("appContainer");
-const loginForm = document.getElementById("loginForm");
-const loginError = document.getElementById("loginError");
-const loginSpinner = document.getElementById("loginSpinner");
-const loginText = document.getElementById("loginText");
+const loginContainer = document.getElementById("loginContainer")
+const appContainer = document.getElementById("appContainer")
+const loginForm = document.getElementById("loginForm")
+const loginError = document.getElementById("loginError")
+const loginSpinner = document.getElementById("loginSpinner")
+const loginText = document.getElementById("loginText")
+
+// Store the currently selected Facebook conversation ID
+globalThis.currentFacebookConversationId = null;
 
 // Initialize the application
 document.addEventListener("DOMContentLoaded", () => {
   // Check if user is already logged in
-  const savedUser = localStorage.getItem("currentUser");
+  const savedUser = localStorage.getItem("currentUser")
   if (savedUser) {
-    currentUser = JSON.parse(savedUser);
-    showApp();
+    currentUser = JSON.parse(savedUser)
+    showApp()
   }
 
   // Add login form event listener
-  loginForm.addEventListener("submit", handleLogin);
+  loginForm.addEventListener("submit", handleLogin)
 
   // Initialize dashboard animations
-  initializeDashboard();
-});
+  initializeDashboard()
+})
 
 // Handle login
 async function handleLogin(e) {
-  e.preventDefault();
+  e.preventDefault()
 
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
+  const email = document.getElementById("email").value
+  const password = document.getElementById("password").value
 
   // Show loading state
-  loginSpinner.style.display = "inline-block";
-  loginText.textContent = "Logging in...";
-  loginError.textContent = "";
+  loginSpinner.style.display = "inline-block"
+  loginText.textContent = "Logging in..."
+  loginError.textContent = ""
 
   try {
     const response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
-    });
+    })
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Invalid credentials");
+      throw new Error("Invalid credentials")
     }
 
-    const data = await response.json();
-    currentUser = { ...data.user, token: data.token };
-    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    const data = await response.json()
+    // data should have { token, user }
 
-    showApp();
+    // Store user and token in currentUser
+    currentUser = { ...data.user, token: data.token }
+
+    // Save to localStorage
+    localStorage.setItem('currentUser', JSON.stringify(currentUser))
+
+    showApp()
   } catch (error) {
-    loginError.textContent = error.message || "Login failed. Please try again.";
+    loginError.textContent = error.message || "Login failed. Please try again."
   } finally {
     // Reset loading state
-    loginSpinner.style.display = "none";
-    loginText.textContent = "Login";
+    loginSpinner.style.display = "none"
+    loginText.textContent = "Login"
   }
 }
 
 // Show the main application
 function showApp() {
-  loginContainer.style.display = "none";
-  appContainer.style.display = "block";
+  loginContainer.style.display = "none"
+  appContainer.style.display = "block"
 
   // Update user info in header
-  document.getElementById("userName").textContent = currentUser.name;
-  document.getElementById("userAvatar").textContent = currentUser.name.charAt(0).toUpperCase();
-  document.getElementById("userRole").textContent = currentUser.role;
-  document.getElementById("userRole").className = `badge ${currentUser.role}`;
+  document.getElementById("userName").textContent = currentUser.name
+  document.getElementById("userAvatar").textContent = currentUser.avatar
+  document.getElementById("userRole").textContent = currentUser.role
+  document.getElementById("userRole").className = `badge ${currentUser.role}`
 
   // Initialize socket connection
-  initializeSocket(currentUser.token);
+  initializeSocket(currentUser.token)
 
-  // Load initial tab data
-  const initialTab = window.location.hash.replace('#', '') || 'dashboard';
-  switchTab(initialTab, null, false);
+  // Load dashboard data
+  loadDashboardData()
 }
 
 // Handle logout
 function logout() {
-  localStorage.removeItem("currentUser");
-  currentUser = null;
+  localStorage.removeItem("currentUser")
+  currentUser = null
 
   if (socket) {
-    socket.disconnect();
-    socket = null;
+    socket.disconnect()
+    socket = null
   }
 
-  loginContainer.style.display = "flex";
-  appContainer.style.display = "none";
+  loginContainer.style.display = "flex"
+  appContainer.style.display = "none"
 
   // Reset form
-  loginForm.reset();
-  loginError.textContent = "";
+  loginForm.reset()
+  loginError.textContent = ""
 }
-
-// Switch between tabs
-function switchTab(tabName, event, updateHash = true) {
-  // Update URL hash
-  if (updateHash) {
-    window.location.hash = tabName;
-  }
-
+function switchTab(tabName, event) {
   // Remove active class from all tabs and buttons
   document.querySelectorAll(".tab-content").forEach((tab) => {
-    tab.classList.remove("active");
-  });
+    tab.classList.remove("active")
+  })
   document.querySelectorAll(".tab-btn").forEach((btn) => {
-    btn.classList.remove("active");
-  });
+    btn.classList.remove("active")
+  })
 
   // Add active class to selected tab and button
-  const targetTab = document.getElementById(`${tabName}Tab`);
+  const targetTab = document.getElementById(tabName + "Tab");
   if (targetTab) {
-    targetTab.classList.add("active");
+    targetTab.classList.add("active")
   }
 
   if (event && event.target) {
-    event.target.classList.add("active");
+    event.target.classList.add("active")
   }
 
   // Load tab-specific data
   if (tabName === "dashboard") {
-    loadDashboardData();
+    loadDashboardData()
   } else if (tabName === "facebook") {
     loadFacebookConversations();
   } else if (tabName === "whatsapp") {
-    loadWhatsAppConversations();
+    loadWhatsAppConversations()
   } else if (tabName === "accounts") {
     loadAccountsData();
   }
@@ -144,690 +141,1434 @@ function switchTab(tabName, event, updateHash = true) {
 
 // Initialize socket connection
 function initializeSocket(token) {
-  socket = io({
-    auth: { token },
-    transports: ['websocket'],
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
+  socket = io('https://chat-app-omni-33e1e5eaa993.herokuapp.com', {
+    auth: {
+      token: token
+    },
+    transports: ['websocket'], // Force WebSocket for better reliability
+    reconnectionAttempts: 5, // Number of reconnect attempts
+    reconnectionDelay: 1000, // Time between reconnections
   });
 
+  // Connection Events
   socket.on("connect", () => {
     console.log("✅ Socket connected:", socket.id);
-    joinFacebookRooms();
+    joinFacebookRooms(); // Join relevant rooms after connection
   });
 
-  // Facebook events
-  socket.on("facebook_new_message", (message) => {
-    if (currentFacebookConversationId === message.conversationId) {
+  // Facebook Specific Events
+  socket.on("new_message", (message) => {
+    console.log("📨 New Facebook message:", message);
+    if (currentConversation?._id === message.conversation) {
       appendFacebookMessage(message);
     }
     updateConversationList(message);
   });
 
-  socket.on("facebook_conversation_update", (conversation) => {
+  socket.on("facebookConversationUpdate", (conversation) => {
+    console.log("🔄 Conversation updated:", conversation);
     refreshConversationList();
   });
 
-  socket.on("facebook_user_status", ({ userId, isOnline }) => {
+  socket.on("facebookUserStatus", ({ userId, isOnline }) => {
+    console.log(`👤 User ${userId} is now ${isOnline ? 'online' : 'offline'}`);
     updateUserStatus(userId, isOnline);
   });
 
-  // WhatsApp events
-  socket.on("whatsapp_new_message", (message) => {
-    if (currentWhatsAppConversationId === message.conversationId) {
-      appendWhatsAppMessage(message);
-    }
-    updateWhatsAppConversationList(message);
+  // Existing Events (keep these)
+  socket.on("newMessage", (msg) => {
+    console.log("📨 New message:", msg);
+    updateChatUI(msg); // Your existing handler
   });
 
-  // Error handling
+  socket.on("userTyping", (data) => {
+    console.log(`${data.name} is typing...`);
+    showTypingIndicator(data); // Your existing handler
+  });
+
+  socket.on("userOnline", (data) => {
+    console.log(`${data.name} is online`);
+    updateOnlineStatus(data, true); // Your existing handler
+  });
+
+  socket.on("userOffline", (data) => {
+    console.log(`${data.name} went offline`);
+    updateOnlineStatus(data, false); // Your existing handler
+  });
+
+  socket.on("disconnect", () => {
+    console.log("🔌 Disconnected from socket");
+  });
+
   socket.on("connect_error", (err) => {
     console.error("❌ Connection error:", err.message);
     if (err.message.includes("invalid token")) {
-      logout();
+      // Handle token refresh here if needed
     }
   });
 }
 
 // Facebook-specific functions
 function joinFacebookRooms() {
-  socket.emit("join_facebook_rooms");
+  // Join general Facebook room
+  socket.emit("joinFacebookRoom");
+  
+  // Join all user-specific conversation rooms
   if (currentUser?.facebookId) {
-    socket.emit("join_user_facebook_rooms", currentUser.facebookId);
+    socket.emit("joinUserFacebookRooms", currentUser.facebookId);
   }
-}
-
-async function loadFacebookConversations() {
-  try {
-    const response = await fetch('/api/facebook/conversations', {
-      headers: { 'Authorization': `Bearer ${currentUser.token}` }
-    });
-
-    if (!response.ok) throw new Error('Failed to load conversations');
-
-    const conversations = await response.json();
-    renderFacebookConversationList(conversations);
-  } catch (error) {
-    console.error("Error loading Facebook conversations:", error);
-    document.getElementById("facebookChatList").innerHTML = `
-      <div class="error-message">Failed to load conversations. Please try again.</div>
-    `;
-  }
-}
-
-function renderFacebookConversationList(conversations) {
-  const chatList = document.getElementById("facebookChatList");
-  chatList.innerHTML = "";
-
-  if (!conversations || conversations.length === 0) {
-    chatList.innerHTML = '<div class="empty-state">No conversations found</div>';
-    return;
-  }
-
-  conversations.forEach(conv => {
-    const participant = conv.participants.find(p => p._id !== currentUser._id) || {};
-    const lastMessage = conv.lastMessage?.content?.text || "No messages yet";
-    const lastMessageTime = conv.lastMessage?.createdAt ? formatTime(conv.lastMessage.createdAt) : "";
-
-    const conversationItem = document.createElement("div");
-    conversationItem.className = `chat-item ${currentFacebookConversationId === conv._id ? 'active' : ''}`;
-    conversationItem.innerHTML = `
-      <div class="chat-avatar">${participant.name?.charAt(0).toUpperCase() || '👤'}</div>
-      <div class="chat-info">
-        <div class="chat-name">${participant.name || 'Unknown User'}</div>
-        <div class="chat-preview">${lastMessage}</div>
-      </div>
-      <div class="chat-time">${lastMessageTime}</div>
-    `;
-    conversationItem.addEventListener("click", () => loadFacebookMessages(conv._id));
-    chatList.appendChild(conversationItem);
-  });
-}
-
-async function loadFacebookMessages(conversationId) {
-  try {
-    currentFacebookConversationId = conversationId;
-    
-    // Highlight selected conversation
-    document.querySelectorAll('#facebookChatList .chat-item').forEach(item => {
-      item.classList.remove('active');
-    });
-    document.querySelector(`#facebookChatList .chat-item[data-id="${conversationId}"]`)?.classList.add('active');
-
-    const response = await fetch(`/api/facebook/conversations/${conversationId}/messages`, {
-      headers: { 'Authorization': `Bearer ${currentUser.token}` }
-    });
-
-    if (!response.ok) throw new Error('Failed to load messages');
-
-    const data = await response.json();
-    renderFacebookMessages(data.messages, data.conversation);
-  } catch (error) {
-    console.error("Error loading Facebook messages:", error);
-    document.getElementById("facebookChatMessages").innerHTML = `
-      <div class="error-message">Failed to load messages. Please try again.</div>
-    `;
-  }
-}
-
-function renderFacebookMessages(messages, conversation) {
-  const chatMessages = document.getElementById("facebookChatMessages");
-  chatMessages.innerHTML = "";
-
-  if (!messages || messages.length === 0) {
-    chatMessages.innerHTML = '<div class="empty-state">No messages in this conversation</div>';
-    return;
-  }
-
-  messages.forEach(message => {
-    const isCurrentUser = message.sender._id === currentUser._id;
-    const messageDiv = document.createElement("div");
-    messageDiv.className = `chat-message ${isCurrentUser ? 'from-me' : 'from-them'}`;
-    messageDiv.innerHTML = `
-      <div class="bubble">
-        <strong>${isCurrentUser ? 'You' : message.sender.name}:</strong> ${message.content.text}
-        <div class="message-time">${formatTime(message.createdAt)}</div>
-      </div>
-    `;
-    chatMessages.appendChild(messageDiv);
-  });
-
-  // Scroll to bottom
-  chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 function appendFacebookMessage(message) {
-  const chatMessages = document.getElementById("facebookChatMessages");
-  const isCurrentUser = message.sender._id === currentUser._id;
-  
-  const messageDiv = document.createElement("div");
-  messageDiv.className = `chat-message ${isCurrentUser ? 'from-me' : 'from-them'}`;
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message ${message.sender === currentUser._id ? 'sent' : 'received'}`;
   messageDiv.innerHTML = `
-    <div class="bubble">
-      <strong>${isCurrentUser ? 'You' : message.sender.name}:</strong> ${message.content.text}
-      <div class="message-time">${formatTime(message.createdAt)}</div>
-    </div>
+    <div class="message-content">${message.content.text}</div>
+    <div class="message-time">${formatTime(message.createdAt)}</div>
   `;
-  chatMessages.appendChild(messageDiv);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
+  document.querySelector('.facebook-chat .chat-messages').appendChild(messageDiv);
 }
 
-// WhatsApp-specific functions
-async function loadWhatsAppConversations() {
-  try {
-    const response = await fetch('/api/whatsapp/conversations', {
-      headers: { 'Authorization': `Bearer ${currentUser.token}` }
+function updateConversationList(message) {
+  const conversationElement = document.querySelector(`.conversation[data-id="${message.conversation}"]`);
+  if (conversationElement) {
+    conversationElement.querySelector('.last-message').textContent = 
+      message.content.text.substring(0, 30) + (message.content.text.length > 30 ? '...' : '');
+    conversationElement.querySelector('.message-time').textContent = formatTime(message.createdAt);
+  }
+}
+
+function refreshConversationList() {
+  fetch('/api/facebook/conversations')
+    .then(response => response.json())
+    .then(conversations => {
+      if (!Array.isArray(conversations) || conversations.length === 0) {
+        // Show a message or fallback
+      } else {
+        renderConversationList(conversations);
+      }
     });
+}
 
-    if (!response.ok) throw new Error('Failed to load conversations');
-
-    const conversations = await response.json();
-    renderWhatsAppConversationList(conversations);
-  } catch (error) {
-    console.error("Error loading WhatsApp conversations:", error);
-    document.getElementById("whatsappChatList").innerHTML = `
-      <div class="error-message">Failed to load conversations. Please try again.</div>
-    `;
+function updateUserStatus(userId, isOnline) {
+  const statusElement = document.querySelector(`.user-status[data-user="${userId}"]`);
+  if (statusElement) {
+    statusElement.textContent = isOnline ? 'Online' : 'Offline';
+    statusElement.className = `user-status ${isOnline ? 'online' : 'offline'}`;
   }
 }
 
-function renderWhatsAppConversationList(conversations) {
-  const chatList = document.getElementById("whatsappChatList");
-  chatList.innerHTML = "";
-
-  if (!conversations || conversations.length === 0) {
-    chatList.innerHTML = '<div class="empty-state">No conversations found</div>';
-    return;
-  }
-
-  conversations.forEach(conv => {
-    const participant = conv.participants.find(p => p._id !== currentUser._id) || {};
-    const lastMessage = conv.lastMessage?.content?.text || "No messages yet";
-    const lastMessageTime = conv.lastMessage?.createdAt ? formatTime(conv.lastMessage.createdAt) : "";
-
-    const conversationItem = document.createElement("div");
-    conversationItem.className = `chat-item ${currentWhatsAppConversationId === conv._id ? 'active' : ''}`;
-    conversationItem.innerHTML = `
-      <div class="chat-avatar">${participant.name?.charAt(0).toUpperCase() || '👤'}</div>
-      <div class="chat-info">
-        <div class="chat-name">${participant.name || participant.phoneNumber || 'Unknown User'}</div>
-        <div class="chat-preview">${lastMessage}</div>
-      </div>
-      <div class="chat-time">${lastMessageTime}</div>
-    `;
-    conversationItem.addEventListener("click", () => loadWhatsAppMessages(conv._id));
-    chatList.appendChild(conversationItem);
-  });
+// Utility function
+function formatTime(dateString) {
+  return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-async function loadWhatsAppMessages(conversationId) {
-  try {
-    currentWhatsAppConversationId = conversationId;
-    
-    // Highlight selected conversation
-    document.querySelectorAll('#whatsappChatList .chat-item').forEach(item => {
-      item.classList.remove('active');
-    });
-    document.querySelector(`#whatsappChatList .chat-item[data-id="${conversationId}"]`)?.classList.add('active');
 
-    const response = await fetch(`/api/whatsapp/conversations/${conversationId}/messages`, {
-      headers: { 'Authorization': `Bearer ${currentUser.token}` }
-    });
-
-    if (!response.ok) throw new Error('Failed to load messages');
-
-    const data = await response.json();
-    renderWhatsAppMessages(data.messages, data.conversation);
-  } catch (error) {
-    console.error("Error loading WhatsApp messages:", error);
-    document.getElementById("whatsappChatMessages").innerHTML = `
-      <div class="error-message">Failed to load messages. Please try again.</div>
-    `;
-  }
-}
-
-function renderWhatsAppMessages(messages, conversation) {
-  const chatMessages = document.getElementById("whatsappChatMessages");
-  chatMessages.innerHTML = "";
-
-  if (!messages || messages.length === 0) {
-    chatMessages.innerHTML = '<div class="empty-state">No messages in this conversation</div>';
-    return;
-  }
-
-  messages.forEach(message => {
-    const isCurrentUser = message.sender._id === currentUser._id;
-    const messageDiv = document.createElement("div");
-    messageDiv.className = `chat-message ${isCurrentUser ? 'from-me' : 'from-them'}`;
-    messageDiv.innerHTML = `
-      <div class="bubble">
-        <strong>${isCurrentUser ? 'You' : message.sender.name || message.sender.phoneNumber}:</strong> ${message.content.text}
-        <div class="message-time">${formatTime(message.createdAt)}</div>
-      </div>
-    `;
-    chatMessages.appendChild(messageDiv);
-  });
-
-  // Scroll to bottom
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-function appendWhatsAppMessage(message) {
-  const chatMessages = document.getElementById("whatsappChatMessages");
-  const isCurrentUser = message.sender._id === currentUser._id;
-  
-  const messageDiv = document.createElement("div");
-  messageDiv.className = `chat-message ${isCurrentUser ? 'from-me' : 'from-them'}`;
-  messageDiv.innerHTML = `
-    <div class="bubble">
-      <strong>${isCurrentUser ? 'You' : message.sender.name || message.sender.phoneNumber}:</strong> ${message.content.text}
-      <div class="message-time">${formatTime(message.createdAt)}</div>
-    </div>
-  `;
-  chatMessages.appendChild(messageDiv);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-// Dashboard functions
+// Load dashboard data
+// Load dashboard data with real data from MongoDB
 async function loadDashboardData() {
   try {
-    // Fetch all dashboard data in parallel
-    const [stats, messageVolume, platformDistribution, responseRateTrend] = await Promise.all([
-      fetchDashboardStats(),
-      fetchMessageVolume(),
-      fetchPlatformDistribution(),
-      fetchResponseRateTrend()
+    console.log("Loading dashboard data...");
+    
+    // Fetch all data in parallel
+    const [
+      totalUsers,
+      messagesToday,
+      activeChats,
+      platformDistribution,
+      messageVolume
+    ] = await Promise.all([
+      getTotalUsers(),
+      getMessagesToday(),
+      getActiveChats(),
+      getPlatformDistribution(),
+      getMessageVolume()
     ]);
-
+    
     // Update stats cards
-    updateStatCard('totalUsers', stats.totalUsers);
-    updateStatCard('messagesToday', stats.messagesToday);
-    updateStatCard('responseRate', `${stats.responseRate}%`);
-    updateStatCard('activeChats', stats.activeChats);
-
-    // Update charts
+    updateStatCard('.stat-card:nth-child(1) h3', totalUsers);
+    updateStatCard('.stat-card:nth-child(2) h3', messagesToday);
+    updateStatCard('.stat-card:nth-child(4) h3', activeChats);
+    
+    // Update charts with real data
     updateBarChart(messageVolume);
     updatePieChart(platformDistribution);
-    updateLineChart(responseRateTrend);
-
-    // Set up periodic refresh
-    setInterval(loadDashboardData, 30000);
+    const responseTimes = await getResponseRateTrend();
+    console.log('Response rate trend data received:', responseTimes);
+    
+    // Only use real backend data for the response rate trend
+    if (Array.isArray(responseTimes) && responseTimes.length > 0) {
+      // Validate each data point has the correct structure
+      const validDataPoints = responseTimes.filter(point => 
+        point && 
+        typeof point === 'object' && 
+        point.month && 
+        typeof point.responseRate === 'number' && 
+        !isNaN(point.responseRate)
+      );
+      if (validDataPoints.length > 0) {
+        updateLineChart(validDataPoints);
+      } else {
+        updateLineChart([]); // Will show 'No data available'
+      }
+    } else {
+      updateLineChart([]); // Will show 'No data available'
+    }
+    
+    // Animate charts
+    animateCharts();
+    
+    // Update real-time data periodically
+    setInterval(updateRealTimeData, 30000);
+    
+    // Load response rate
+    await loadResponseRate();
+    
   } catch (error) {
     console.error("Error loading dashboard data:", error);
+    // You might want to show an error message to the user here
   }
 }
 
-async function fetchDashboardStats() {
-  const response = await fetch('/api/dashboard/stats', {
-    headers: { 'Authorization': `Bearer ${currentUser.token}` }
-  });
-  if (!response.ok) throw new Error('Failed to load dashboard stats');
-  return response.json();
+// Helper function to update stat cards
+function updateStatCard(selector, value) {
+  const element = document.querySelector(selector);
+  if (element) {
+    element.textContent = value;
+  }
 }
 
-async function fetchMessageVolume() {
-  const response = await fetch('/api/dashboard/message-volume?days=7', {
-    headers: { 'Authorization': `Bearer ${currentUser.token}` }
-  });
-  if (!response.ok) throw new Error('Failed to load message volume');
-  return response.json();
+// Updated data fetching function
+async function getTotalUsers() {
+  try {
+    const response = await fetch('/api/dashboard/users/count'); // Corrected endpoint
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    console.log('User count data:', data); // Debug log
+    return data.count;
+  } catch (error) {
+    console.error("Error fetching total users:", error);
+    return "N/A";
+  }
 }
 
-async function fetchPlatformDistribution() {
-  const response = await fetch('/api/dashboard/platform-distribution', {
-    headers: { 'Authorization': `Bearer ${currentUser.token}` }
-  });
-  if (!response.ok) throw new Error('Failed to load platform distribution');
-  return response.json();
+async function getMessagesToday() {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const response = await fetch(`/api/dashboard/count?startDate=${today.toISOString()}`);
+    const data = await response.json();
+    return data.count;
+  } catch (error) {
+    console.error("Error fetching messages today:", error);
+    return "N/A";
+  }
 }
 
-async function fetchResponseRateTrend() {
-  const response = await fetch('/api/dashboard/response-rate-trend', {
-    headers: { 'Authorization': `Bearer ${currentUser.token}` }
-  });
-  if (!response.ok) throw new Error('Failed to load response rate trend');
-  return response.json();
+async function getActiveChats() {
+  try {
+    const response = await fetch('/api/dashboard/active-chats');
+    const data = await response.json();
+    return data.activeChats;
+  } catch (error) {
+    console.error("Error fetching active chats:", error);
+    return "N/A";
+  }
 }
 
-function updateStatCard(id, value) {
-  const element = document.getElementById(id);
-  if (element) element.textContent = value;
+async function getPlatformDistribution() {
+  try {
+    const response = await fetch('/api/dashboard/platform-distribution');
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching platform distribution:", error);
+    return {
+      facebook: 0,
+      whatsapp: 0,
+      email: 0,
+      sms: 0
+    };
+  }
 }
 
+async function getMessageVolume() {
+  const response = await fetch('/api/dashboard/message-volume?days=7');
+  const data = await response.json();
+  return data;
+}
+
+// Chart updating functions
 function updateBarChart(data) {
-  const container = document.getElementById('barChartContainer');
-  container.innerHTML = '';
-
-  if (!data || data.length === 0) {
-    container.innerHTML = '<div class="empty-state">No data available</div>';
-    return;
-  }
-
-  const maxValue = Math.max(...data.map(item => item.count));
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const chartContainer = document.querySelector('.bar-chart-container');
   
-  data.forEach(item => {
-    const heightPercentage = (item.count / maxValue) * 100;
+  if (!chartContainer) return;
+  
+  // Clear existing bars
+  chartContainer.innerHTML = '';
+  
+  // Create new bars based on data
+  data.forEach((dayData, index) => {
+    const dayName = days[new Date(dayData.date).getDay()];
+    const maxValue = Math.max(...data.map(d => d.count));
+    const heightPercentage = (dayData.count / maxValue) * 100;
+    
     const bar = document.createElement('div');
     bar.className = 'bar';
     bar.style.setProperty('--height', `${heightPercentage}%`);
-    bar.dataset.value = item.count;
+    bar.dataset.value = dayData.count;
     
     const label = document.createElement('span');
     label.className = 'bar-label';
-    label.textContent = new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' });
+    label.textContent = dayName;
     
     bar.appendChild(label);
-    container.appendChild(bar);
+    chartContainer.appendChild(bar);
   });
 }
 
 function updatePieChart(data) {
-  const container = document.getElementById('pieChartContainer');
-  const legend = document.getElementById('pieLegend');
-  container.innerHTML = '';
-  legend.innerHTML = '';
-
-  if (!data || Object.keys(data).length === 0) {
-    container.innerHTML = '<div class="empty-state">No data available</div>';
-    return;
-  }
-
-  const total = Object.values(data).reduce((sum, val) => sum + val, 0);
-  let cumulativePercentage = 0;
-
-  // Create pie slices using conic-gradient
-  const gradientParts = Object.entries(data).map(([platform, count]) => {
-    const percentage = (count / total) * 100;
-    const start = cumulativePercentage;
-    cumulativePercentage += percentage;
-    const end = cumulativePercentage;
-    
-    // Add legend item
-    const legendItem = document.createElement('div');
-    legendItem.className = 'legend-item';
-    legendItem.innerHTML = `
-      <span class="legend-color ${platform}"></span>
-      <span>${platform.charAt(0).toUpperCase() + platform.slice(1)} (${percentage.toFixed(1)}%)</span>
-    `;
-    legend.appendChild(legendItem);
-    
-    return `${getPlatformColor(platform)} ${start}% ${end}%`;
-  }).join(', ');
-
-  container.style.background = `conic-gradient(${gradientParts})`;
-}
-
-function getPlatformColor(platform) {
-  switch (platform) {
-    case 'facebook': return 'var(--facebook-color)';
-    case 'whatsapp': return 'var(--whatsapp-color)';
-    default: return 'var(--secondary-color)';
-  }
+  const pieContainer = document.querySelector('.pie-chart-container');
+  const legendContainer = document.querySelector('.pie-legend');
+  
+  if (!pieContainer || !legendContainer) return;
+  
+  // Clear existing slices and legend
+  pieContainer.innerHTML = '';
+  legendContainer.innerHTML = '';
+  
+  // Calculate total for percentages
+  const total = Object.values(data).reduce((sum, value) => sum + value, 0);
+  
+  // Create new slices
+  Object.entries(data).forEach(([platform, count]) => {
+    if (count > 0) {
+      const percentage = (count / total) * 100;
+      
+      // Add pie slice
+      const slice = document.createElement('div');
+      slice.className = `pie-slice ${platform}`;
+      slice.style.setProperty('--percentage', percentage);
+      pieContainer.appendChild(slice);
+      
+      // Add legend item
+      const legendItem = document.createElement('div');
+      legendItem.className = 'legend-item';
+      
+      const color = document.createElement('span');
+      color.className = `legend-color ${platform}`;
+      
+      const text = document.createElement('span');
+      text.textContent = `${platform.charAt(0).toUpperCase() + platform.slice(1)} (${percentage.toFixed(1)}%)`;
+      
+      legendItem.appendChild(color);
+      legendItem.appendChild(text);
+      legendContainer.appendChild(legendItem);
+    }
+  });
 }
 
 function updateLineChart(data) {
   const svg = document.querySelector('.line-chart-svg');
   const labelsContainer = document.querySelector('.line-chart-labels');
+  
+  if (!svg || !labelsContainer) return;
+  
+  // Clear existing content
   svg.innerHTML = '';
   labelsContainer.innerHTML = '';
+  
+  console.log('updateLineChart called with data:', data);
+  console.log('Data type:', typeof data);
+  console.log('Data length:', data ? data.length : 'undefined');
+  
+  // Filter out invalid points
+  const validData = (data || []).filter(
+    d => d && typeof d.responseRate === 'number' && !isNaN(d.responseRate)
+  );
 
-  if (!data || data.length < 2) {
-    svg.innerHTML = '<text x="50%" y="50%" text-anchor="middle" fill="#6b7280">Not enough data</text>';
+  if (validData.length < 2) {
+    svg.innerHTML = '';
+    const noDataText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    noDataText.setAttribute('x', '200');
+    noDataText.setAttribute('y', '100');
+    noDataText.setAttribute('text-anchor', 'middle');
+    noDataText.setAttribute('fill', '#6b7280');
+    noDataText.textContent = 'Not enough data for trend';
+    svg.appendChild(noDataText);
     return;
   }
-
-  // Set up SVG dimensions
+  
+  // Calculate dimensions and scaling
   const width = 400;
   const height = 200;
   const padding = 20;
-
-  // Calculate scales
+  
+  console.log('Raw data points:', data);
+  const responseRates = data.map(d => d.responseRate || 0);
+  console.log('Response rates extracted:', responseRates);
+  
+  const maxValue = Math.max(...responseRates);
+  console.log('Max value:', maxValue);
+  
+  // Handle case where maxValue is 0 or NaN
+  if (maxValue <= 0 || isNaN(maxValue)) {
+    console.log('No valid response rate data for line chart');
+    const noDataText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    noDataText.setAttribute('x', '200');
+    noDataText.setAttribute('y', '100');
+    noDataText.setAttribute('text-anchor', 'middle');
+    noDataText.setAttribute('fill', '#6b7280');
+    noDataText.textContent = 'No response rate data available';
+    svg.appendChild(noDataText);
+    return;
+  }
+  
   const xScale = (width - 2 * padding) / (data.length - 1);
-  const maxY = Math.max(...data.map(item => item.responseRate));
-  const yScale = (height - 2 * padding) / maxY;
-
-  // Create path data
-  let pathData = '';
-  data.forEach((item, index) => {
+  const yScale = (height - 2 * padding) / maxValue;
+  
+  console.log('Scaling factors:', { xScale, yScale, width, height, padding, maxValue });
+  
+  // Create path for line
+  let pathD = '';
+  let areaD = '';
+  
+  data.forEach((point, index) => {
+    const responseRate = point.responseRate || 0;
     const x = padding + index * xScale;
-    const y = height - padding - (item.responseRate * yScale);
-    pathData += `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+    const y = height - padding - (responseRate * yScale);
+    
+    console.log(`Point ${index}:`, { responseRate, x, y, point });
+    
+    if (isNaN(x) || isNaN(y)) {
+      console.error(`NaN detected at point ${index}:`, { responseRate, x, y, point });
+      return;
+    }
+    
+    if (index === 0) {
+      pathD += `M ${x} ${y}`;
+      areaD += `M ${x} ${y}`;
+    } else {
+      pathD += ` L ${x} ${y}`;
+      areaD += ` L ${x} ${y}`;
+    }
   });
-
-  // Create area data (same as path but closes at bottom)
-  let areaData = pathData + ` L ${width - padding} ${height - padding} L ${padding} ${height - padding} Z`;
-
+  
+  console.log('Generated paths:', { pathD, areaD });
+  
+  // Only proceed if we have a valid path
+  if (pathD === '') {
+    console.log('No valid path generated');
+    return;
+  }
+  
+  // Close the area path
+  areaD += ` L ${width - padding} ${height - padding} L ${padding} ${height - padding} Z`;
+  
   // Add gradient definition
   const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
   const gradient = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
-  gradient.id = 'lineGradient';
+  gradient.setAttribute('id', 'lineGradient');
   gradient.setAttribute('x1', '0%');
   gradient.setAttribute('y1', '0%');
   gradient.setAttribute('x2', '0%');
   gradient.setAttribute('y2', '100%');
   
-  gradient.innerHTML = `
-    <stop offset="0%" stop-color="var(--success-color)" stop-opacity="0.3"/>
-    <stop offset="100%" stop-color="var(--success-color)" stop-opacity="0"/>
-  `;
+  const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+  stop1.setAttribute('offset', '0%');
+  stop1.setAttribute('style', 'stop-color:#10b981;stop-opacity:0.3');
+  
+  const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+  stop2.setAttribute('offset', '100%');
+  stop2.setAttribute('style', 'stop-color:#10b981;stop-opacity:0');
+  
+  gradient.appendChild(stop1);
+  gradient.appendChild(stop2);
   defs.appendChild(gradient);
   svg.appendChild(defs);
-
+  
   // Add area
   const area = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  area.setAttribute('d', areaData);
+  area.setAttribute('d', areaD);
   area.setAttribute('fill', 'url(#lineGradient)');
   svg.appendChild(area);
-
+  
   // Add line
   const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  line.setAttribute('d', pathData);
-  line.setAttribute('stroke', 'var(--success-color)');
+  line.setAttribute('d', pathD);
+  line.setAttribute('stroke', '#10b981');
   line.setAttribute('stroke-width', '3');
   line.setAttribute('fill', 'none');
   svg.appendChild(line);
-
+  
   // Add points
-  data.forEach((item, index) => {
+  data.forEach((point, index) => {
+    const responseRate = point.responseRate || 0;
     const x = padding + index * xScale;
-    const y = height - padding - (item.responseRate * yScale);
+    const y = height - padding - (responseRate * yScale);
+    
+    if (isNaN(x) || isNaN(y)) {
+      console.error(`NaN detected for circle at point ${index}:`, { responseRate, x, y, point });
+      return;
+    }
     
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('cx', x);
     circle.setAttribute('cy', y);
     circle.setAttribute('r', '4');
-    circle.setAttribute('fill', 'var(--success-color)');
-    
-    // Add tooltip
-    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-    title.textContent = `${item.responseRate}%`;
-    circle.appendChild(title);
-    
+    circle.setAttribute('fill', '#10b981');
     svg.appendChild(circle);
+    
+    // Add tooltip with response rate percentage
+    const tooltip = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    tooltip.textContent = `${responseRate}%`;
+    circle.appendChild(tooltip);
+  });
+  
+  // Add labels
+  data.forEach((point, index) => {
+    try {
+      const month = new Date(point.month + '-01').toLocaleString('default', { month: 'short' });
+      const label = document.createElement('span');
+      label.textContent = month;
+      labelsContainer.appendChild(label);
+    } catch (error) {
+      console.warn('Error parsing date for point:', point, error);
+      const label = document.createElement('span');
+      label.textContent = point.month || 'Unknown';
+      labelsContainer.appendChild(label);
+    }
   });
 
-  // Add labels
-  data.forEach(item => {
-    const label = document.createElement('span');
-    label.textContent = new Date(item.date).toLocaleDateString('en-US', { month: 'short' });
-    labelsContainer.appendChild(label);
-  });
+  console.log('Response rate trend data:', data);
 }
 
-// Account management functions
-async function loadAccountsData() {
+// Update real-time data
+async function updateRealTimeData() {
   try {
-    const [users, stats] = await Promise.all([
-      fetchUsers(),
-      fetchUserStats()
+    const [messagesToday, activeChats] = await Promise.all([
+      getMessagesToday(),
+      getActiveChats()
     ]);
-
-    renderUserTable(users);
-    updateUserStats(stats);
+    
+    updateStatCard('.stat-card:nth-child(2) h3', messagesToday);
+    updateStatCard('.stat-card:nth-child(4) h3', activeChats);
+    
   } catch (error) {
-    console.error("Error loading account data:", error);
+    console.error("Error updating real-time data:", error);
   }
 }
 
-async function fetchUsers() {
-  const response = await fetch('/api/users', {
-    headers: { 'Authorization': `Bearer ${currentUser.token}` }
-  });
-  if (!response.ok) throw new Error('Failed to load users');
-  return response.json();
+// Animate charts (placeholder - implement your animation logic)
+function animateCharts() {
+  // Implement your chart animation logic here
+  console.log("Animating charts...");
 }
 
-async function fetchUserStats() {
-  const response = await fetch('/api/users/stats', {
-    headers: { 'Authorization': `Bearer ${currentUser.token}` }
-  });
-  if (!response.ok) throw new Error('Failed to load user stats');
-  return response.json();
-}
-
-function renderUserTable(users) {
-  const tbody = document.getElementById('usersTableBody');
-  tbody.innerHTML = '';
-
-  if (!users || users.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No users found</td></tr>';
+// Load Facebook chats
+async function loadFacebookConversations() {
+  if (!currentUser || !currentUser.token) {
+    console.error("No token found – cannot load conversations.");
     return;
   }
 
-  users.forEach(user => {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${user.name}</td>
-      <td>${user.email}</td>
-      <td>${user.username || '-'}</td>
-      <td><span class="user-role-badge ${user.role}">${user.role.charAt(0).toUpperCase() + user.role.slice(1)}</span></td>
-      <td><span class="user-status ${user.status || 'active'}">${(user.status || 'active').charAt(0).toUpperCase() + (user.status || 'active').slice(1)}</span></td>
-      <td class="user-actions">
-        <button class="btn-edit" onclick="editUser('${user._id}')">Edit</button>
-        <button class="btn-delete" onclick="confirmDeleteUser('${user._id}')">Delete</button>
-      </td>
-    `;
-    tbody.appendChild(row);
+  try {
+    const res = await fetch('/api/facebook/conversations', {
+      headers: {
+        Authorization: `Bearer ${currentUser.token}`,
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Server responded with status ${res.status}`);
+    }
+
+    const conversations = await res.json();
+    console.log('Fetched conversations:', conversations);
+
+    const chatList = document.getElementById("facebookChatList");
+    if (!chatList) {
+      console.error("No element with id 'facebookChatList' found!");
+      return;
+    }
+    chatList.innerHTML = "";
+
+    conversations.forEach((conv) => {
+      const participant = conv.participants[0];
+      const item = document.createElement("div");
+      item.className = "chat-item";
+      item.innerHTML = `
+        <div class="chat-avatar">👤</div>
+        <div class="chat-info">
+          <div class="chat-name">${participant.name}</div>
+          <div class="chat-preview">${conv.lastMessage || ""}</div>
+        </div>
+        <div class="chat-time">${new Date(conv.updatedAt).toLocaleString()}</div>
+      `;
+      item.onclick = () => loadFacebookMessages(conv._id);
+      chatList.appendChild(item);
+    });
+  } catch (err) {
+    console.error("Failed to load conversations", err);
+  }
+}
+
+// Update loadFacebookMessages to set the current conversation ID
+async function loadFacebookMessages(conversationId) {
+  currentFacebookConversationId = conversationId;
+  
+  try {
+    // Get the conversation details to extract recipient ID
+    const convRes = await fetch(`/api/facebook/conversations`, {
+      headers: { Authorization: `Bearer ${currentUser.token}` }
+    });
+    const conversations = await convRes.json();
+    const conversation = conversations.find(c => c._id === conversationId);
+    
+    if (conversation) {
+      // Find the Facebook participant (not the current user)
+      const recipient = conversation.participants.find(
+        p => p._id !== currentUser.id && p._id !== currentUser._id
+      );
+      
+      if (recipient) {
+        // Try multiple ways to get the Facebook ID
+        currentFacebookRecipientId = recipient.facebookId || 
+                                    (recipient.platformIds && recipient.platformIds.facebook) ||
+                                    recipient.platformSenderId ||
+                                    // Extract from platformConversationId as fallback
+                                    (conversation.platformConversationId && 
+                                     conversation.platformConversationId.split('_')[1]);
+        
+        console.log('Selected conversation:', {
+          conversationId,
+          recipientId: currentFacebookRecipientId,
+          recipient: recipient,
+          platformConversationId: conversation.platformConversationId
+        });
+      }
+    }
+
+    // Load messages
+    const res = await fetch(`/api/facebook/conversations/${conversationId}/messages`, {
+      headers: {
+        Authorization: `Bearer ${currentUser.token}`,
+      },
+    });
+
+    const messages = await res.json();
+    const chatBox = document.getElementById("facebookChatMessages");
+    chatBox.innerHTML = "";
+
+    messages.forEach((msg) => {
+      const div = document.createElement("div");
+      const isFromCurrentUser = msg.sender && (msg.sender._id === currentUser.id || msg.sender._id === currentUser._id);
+      div.className = isFromCurrentUser ? "chat-message from-me" : "chat-message from-them";
+      const senderName = msg.sender && msg.sender.name ? msg.sender.name : "Unknown";
+      div.innerHTML = `<div class="bubble"><strong>${senderName}:</strong> ${msg.content && msg.content.text ? msg.content.text : ''}</div>`;
+      chatBox.appendChild(div);
+    });
+    
+    if (messages.length === 0) {
+      chatBox.innerHTML = `
+        <div class="chat-message from-me">
+          <div class="bubble">Your message here</div>
+        </div>
+        <div class="chat-message from-them">
+          <div class="bubble">Their message here</div>
+        </div>
+      `;
+    }
+
+    // Scroll to bottom to show latest messages
+    chatBox.scrollTop = chatBox.scrollHeight;
+  } catch (err) {
+    console.error("Failed to load messages", err);
+  }
+}
+
+// Add event listener for the Facebook send button
+const facebookSendButton = document.getElementById("facebookSendButton");
+const facebookMessageInput = document.getElementById("facebookMessageInput");
+
+if (facebookSendButton && facebookMessageInput) {
+  facebookSendButton.addEventListener("click", async () => {
+    const text = facebookMessageInput.value.trim();
+    
+    if (!text) {
+      alert("Please enter a message");
+      return;
+    }
+    
+    if (!currentFacebookConversationId) {
+      alert("Please select a conversation first");
+      return;
+    }
+    
+    if (!currentFacebookRecipientId) {
+      alert("Recipient ID not found. Please select the conversation again.");
+      return;
+    }
+
+    console.log('Sending message:', {
+      recipientId: currentFacebookRecipientId,
+      text,
+      conversationId: currentFacebookConversationId
+    });
+
+    try {
+      const sendRes = await fetch('/api/facebook/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${currentUser.token}`,
+        },
+        body: JSON.stringify({
+          recipientId: currentFacebookRecipientId,
+          text,
+          conversationId: currentFacebookConversationId,
+        }),
+      });
+
+      if (sendRes.ok) {
+        const result = await sendRes.json();
+        console.log("Message sent successfully:", result);
+        
+        // Clear the input field
+        facebookMessageInput.value = "";
+        
+        // Immediately append the sent message to the chat
+        const chatBox = document.getElementById("facebookChatMessages");
+        const div = document.createElement("div");
+        div.className = "chat-message from-me";
+        div.innerHTML = `<div class="bubble"><strong>${currentUser.name}:</strong> ${text}</div>`;
+        chatBox.appendChild(div);
+        
+        // Scroll to bottom to show the new message
+        chatBox.scrollTop = chatBox.scrollHeight;
+        
+        // Reload messages to get the updated list
+        loadFacebookMessages(currentFacebookConversationId);
+      } else {
+        const errData = await sendRes.json();
+        alert("Failed to send message: " + (errData.error || sendRes.status));
+      }
+    } catch (err) {
+      alert("Failed to send message: " + err.message);
+    }
   });
 }
 
-function updateUserStats(stats) {
-  updateStatCard('statTotalUsers', stats.totalUsers);
-  updateStatCard('statActiveUsers', stats.activeUsers);
-  updateStatCard('statInactiveUsers', stats.inactiveUsers);
-  updateStatCard('statAdmins', stats.admins);
-  updateStatCard('statSupervisors', stats.supervisors);
-  updateStatCard('statUsers', stats.users);
-}
+// Load WhatsApp chats
+async function loadWhatsAppConversations() {
+  if (!currentUser || !currentUser.token) {
+    console.error("No token found – cannot load WhatsApp conversations.");
+    return;
+  }
 
-async function confirmDeleteUser(userId) {
-  if (confirm('Are you sure you want to delete this user?')) {
-    try {
-      const response = await fetch(`/api/users/${userId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${currentUser.token}` }
-      });
+  try {
+    const res = await fetch('/api/conversation?platform=whatsapp', {
+      headers: {
+        Authorization: `Bearer ${currentUser.token}`,
+      },
+    });
 
-      if (!response.ok) throw new Error('Failed to delete user');
-
-      showMessage('successMessage', 'User deleted successfully');
-      loadAccountsData(); // Refresh the list
-    } catch (error) {
-      showMessage('errorMessage', error.message || 'Failed to delete user');
+    if (!res.ok) {
+      throw new Error(`Server responded with status ${res.status}`);
     }
+
+    const conversations = await res.json();
+    console.log('WhatsApp conversations:', conversations);
+    const chatList = document.getElementById("whatsappChatList");
+    if (chatList) chatList.innerHTML = "";
+
+    conversations.forEach((conv) => {
+      const participant = conv.participants[0];
+      const item = document.createElement("div");
+      item.className = "chat-item";
+      item.innerHTML = `
+        <div class="chat-avatar">👤</div>
+        <div class="chat-info">
+          <div class="chat-name">${participant.name}</div>
+          <div class="chat-preview">${conv.lastMessage?.content?.text || ""}</div>
+        </div>
+        <div class="chat-time">just now</div>
+      `;
+      item.onclick = () => {
+        window.currentWhatsAppConversationId = conv._id;
+        // Store the WhatsApp number (from participant or conv)
+        window.currentWhatsAppNumber = (participant.platformIds && participant.platformIds.whatsapp) || conv.platformConversationId;
+        loadWhatsAppMessages(conv._id);
+      };
+      if (chatList) chatList.appendChild(item);
+    });
+  } catch (err) {
+    console.error("Failed to load WhatsApp conversations", err);
   }
 }
 
-function showMessage(id, text) {
-  const element = document.getElementById(id);
-  if (element) {
-    element.textContent = text;
-    element.style.display = 'block';
-    setTimeout(() => element.style.display = 'none', 3000);
+async function loadWhatsAppMessages(conversationId) {
+  window.currentWhatsAppConversationId = conversationId;
+  try {
+    const res = await fetch(`/api/conversation/${conversationId}/messages`, {
+      headers: {
+        Authorization: `Bearer ${currentUser.token}`,
+      },
+    });
+    const messages = await res.json();
+    console.log('WhatsApp messages:', messages);
+    const chatBox = document.getElementById("whatsappChatMessages");
+    if (chatBox) chatBox.innerHTML = "";
+
+    messages.forEach((msg) => {
+      const div = document.createElement("div");
+      const isFromCurrentUser = msg.sender && (msg.sender._id === currentUser.id || msg.sender._id === currentUser._id);
+      div.className = isFromCurrentUser ? "chat-message from-me" : "chat-message from-them";
+      const senderName = msg.sender && msg.sender.name ? msg.sender.name : "Unknown";
+      div.innerHTML = `<div class="bubble"><strong>${senderName}:</strong> ${msg.content && msg.content.text ? msg.content.text : ''}</div>`;
+      chatBox.appendChild(div);
+    });
+
+    if (messages.length === 0 && chatBox) {
+      chatBox.innerHTML = `
+        <div class="chat-message from-me">
+          <div class="bubble">Your WhatsApp message here</div>
+        </div>
+        <div class="chat-message from-them">
+          <div class="bubble">Their WhatsApp message here</div>
+        </div>
+      `;
+    }
+
+    if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+  } catch (err) {
+    console.error("Failed to load WhatsApp messages", err);
   }
+}
+
+const whatsappSendButton = document.getElementById("whatsappSendButton");
+const whatsappMessageInput = document.getElementById("whatsappMessageInput");
+
+if (whatsappSendButton && whatsappMessageInput) {
+  whatsappSendButton.addEventListener("click", async () => {
+    const text = whatsappMessageInput.value.trim();
+    if (!text) {
+      alert("Please enter a message");
+      return;
+    }
+    if (!window.currentWhatsAppConversationId) {
+      alert("Please select a conversation first");
+      return;
+    }
+    try {
+      const sendRes = await fetch('/api/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${currentUser.token}`,
+        },
+        body: JSON.stringify({
+          conversationId: window.currentWhatsAppConversationId,
+          content: { text },
+          platform: 'whatsapp',
+          to: window.currentWhatsAppNumber
+        }),
+      });
+      if (sendRes.ok) {
+        whatsappMessageInput.value = "";
+        const chatBox = document.getElementById("whatsappChatMessages");
+        const div = document.createElement("div");
+        div.className = "chat-message from-me";
+        div.innerHTML = `<div class="bubble"><strong>${currentUser.name}:</strong> ${text}</div>`;
+        if (chatBox) chatBox.appendChild(div);
+        if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+        loadWhatsAppMessages(window.currentWhatsAppConversationId);
+      } else {
+        const errData = await sendRes.json();
+        alert("Failed to send message: " + (errData.error || sendRes.status));
+      }
+    } catch (err) {
+      alert("Failed to send message: " + err.message);
+    }
+  });
 }
 
 // Initialize dashboard animations
 function initializeDashboard() {
   // Add hover effects to stat cards
   document.querySelectorAll(".stat-card").forEach((card) => {
-    card.addEventListener("mouseenter", () => card.style.transform = "translateY(-4px)");
-    card.addEventListener("mouseleave", () => card.style.transform = "translateY(0)");
-  });
+    card.addEventListener("mouseenter", function () {
+      this.style.transform = "translateY(-4px)"
+    })
+
+    card.addEventListener("mouseleave", function () {
+      this.style.transform = "translateY(0)"
+    })
+  })
+
+  // Add click effects to chart elements
+  document.querySelectorAll(".bar").forEach((bar) => {
+    bar.addEventListener("click", function () {
+      const value = this.getAttribute("data-value")
+      console.log(`Bar clicked: ${value}`)
+      // You could show a modal with detailed data here
+    })
+  })
 }
+
+// Animate charts
+function animateCharts() {
+  // Animate bar chart
+  document.querySelectorAll(".bar").forEach((bar, index) => {
+    setTimeout(() => {
+      bar.style.animation = "none"
+      bar.offsetHeight // Trigger reflow
+      bar.style.animation = "barGrow 0.8s ease-out forwards"
+    }, index * 100)
+  })
+
+  // Animate pie chart
+  const pieChart = document.querySelector(".pie-chart-container")
+  if (pieChart) {
+    pieChart.style.animation = "pieRotate 1s ease-out"
+  }
+}
+
+// Update real-time data
+function updateRealTimeData() {
+  // Simulate real-time updates
+  const stats = document.querySelectorAll(".stat-content h3")
+  stats.forEach((stat) => {
+    const currentValue = Number.parseInt(stat.textContent.replace(/,/g, ""))
+    const change = Math.floor(Math.random() * 20) - 10 // Random change between -10 and +10
+    const newValue = Math.max(0, currentValue + change)
+
+    // Animate the change
+    stat.style.transition = "all 0.3s ease"
+    stat.textContent = newValue.toLocaleString()
+  })
+
+  console.log("Real-time data updated")
+}
+
+// Add CSS animations
+const style = document.createElement("style")
+style.textContent = `
+    @keyframes barGrow {
+        from {
+            height: 0;
+        }
+        to {
+            height: var(--height);
+        }
+    }
+    
+    @keyframes pieRotate {
+        from {
+            transform: rotate(-90deg);
+        }
+        to {
+            transform: rotate(0deg);
+        }
+    }
+    
+    .stat-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .chart-card:hover {
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+
+    .chat-messages {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-bottom: 16px;
+    }
+
+    .chat-message {
+      display: flex;
+      align-items: flex-end;
+      max-width: 80%;
+      margin-bottom: 2px;
+    }
+
+    .from-me {
+      align-self: flex-end;
+      justify-content: flex-end;
+    }
+
+    .from-them {
+      align-self: flex-start;
+      justify-content: flex-start;
+    }
+
+    .bubble {
+      padding: 12px 18px;
+      border-radius: 20px;
+      font-size: 1rem;
+      line-height: 1.4;
+      max-width: 350px;
+      word-break: break-word;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin: 2px 0;
+      position: relative;
+      transition: background 0.2s;
+    }
+
+    .from-me .bubble {
+      background: #1877f2;
+      color: #fff;
+      border-bottom-right-radius: 6px;
+      border-bottom-left-radius: 20px;
+      border-top-right-radius: 20px;
+      border-top-left-radius: 20px;
+    }
+
+    .from-them .bubble {
+      background: #f0f2f5;
+      color: #23272f;
+      border-bottom-left-radius: 6px;
+      border-bottom-right-radius: 20px;
+      border-top-right-radius: 20px;
+      border-top-left-radius: 20px;
+    }
+
+    /* Optional: Add a little spacing on the left/right for clarity */
+    .from-me {
+      margin-left: 20%;
+      margin-right: 0;
+    }
+    .from-them {
+      margin-left: 0;
+      margin-right: 20%;
+    }
+
+    .chat-main {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;
+    }
+
+    .chat-messages {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      min-height: 0;
+      max-height: 60vh; /* or adjust as needed */
+      padding: 1rem;
+      background: var(--bg-primary);
+    }
+
+    .chat-input {
+      display: flex;
+      gap: 0.75rem;
+      padding: 1rem;
+      border-top: 1px solid var(--border-color);
+      background: var(--bg-primary);
+    }
+
+    .chat-input input[type=\"text\"] {
+      flex: 1 1 auto;
+      padding: 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      font-size: 1rem;
+    }
+
+    .chat-input button {
+      padding: 0.75rem 1.5rem;
+      border-radius: var(--border-radius);
+      font-size: 1rem;
+      font-weight: 500;
+      background: var(--primary-color);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .chat-input button:hover {
+      background: var(--primary-dark);
+    }
+
+    .role-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border-color);
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.875rem;
+      font-weight: 500;
+      min-width: unset;         /* Remove any min-width that might be too small */
+      width: auto;              /* Let the item size to its content */
+      white-space: nowrap;      /* Prevent label text from wrapping */
+    }
+
+    .role-item label {
+      margin-left: 0.5rem;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+`
+document.head.appendChild(style)
 
 // Utility functions
-function formatTime(dateString) {
-  return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+function formatNumber(num) {
+  return num.toLocaleString()
 }
 
-// Event listeners for message sending
-document.getElementById('facebookSendButton')?.addEventListener('click', sendFacebookMessage);
-document.getElementById('whatsappSendButton')?.addEventListener('click', sendWhatsAppMessage);
+function formatPercentage(num) {
+  return `${num.toFixed(1)}%`
+}
 
-async function sendFacebookMessage() {
-  const input = document.getElementById('facebookMessageInput');
-  const message = input.value.trim();
-  
-  if (!message || !currentFacebookConversationId) return;
+function getRandomColor() {
+  const colors = ["#4f46e5", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"]
+  return colors[Math.floor(Math.random() * colors.length)]
+}
 
-  try {
-    const response = await fetch('/api/facebook/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${currentUser.token}`
-      },
-      body: JSON.stringify({
-        conversationId: currentFacebookConversationId,
-        text: message
-      })
+
+// Export functions for global access
+window.switchTab = switchTab
+window.logout = logout
+window.onload = () => {
+  const savedUser = localStorage.getItem('currentUser');
+  if (savedUser) {
+    currentUser = JSON.parse(savedUser);
+    initializeSocket(currentUser.token);
+    loadFacebookConversations();
+  }
+};
+
+function updateOnlineStatus() {
+  // Placeholder: implement online status update if needed
+}
+
+fetch('/api/dashboard/message-volume?days=7')
+  .then(res => res.json())
+  .then(data => console.log('Backend response:', data));
+
+// ACCOUNT MANAGEMENT FUNCTIONS
+
+// Toggle role selection
+function toggleRole(element) {
+    const checkbox = element.querySelector('input[type="checkbox"]');
+    checkbox.checked = !checkbox.checked;
+    
+    if (checkbox.checked) {
+        element.classList.add('selected');
+    } else {
+        element.classList.remove('selected');
+    }
+}
+
+// Handle form submission
+function initializeAccountManagement() {
+    const addUserForm = document.getElementById('addUserForm');
+    if (addUserForm) {
+        addUserForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const fullName = formData.get('fullName');
+            const email = formData.get('email');
+            const username = formData.get('username');
+            const department = formData.get('department');
+            const role = formData.get('role');
+            const password = formData.get('password');
+            
+            // Basic validation
+            if (!fullName || !email || !username || !password || !role) {
+                showMessage('errorMessage', 'Please fill in all required fields and select at least one role.');
+                return;
+            }
+            
+            // Create user object
+            const userData = {
+                name: fullName,
+                email: email,
+                username: username,
+                password: password,
+                department: department || 'N/A',
+                role: role,
+                status: 'active'
+            };
+            
+            // Send to backend
+            addUserToBackend(userData);
+        });
+    }
+
+    // Add click event listeners to role items
+    document.querySelectorAll('.role-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            if (e.target.type !== 'checkbox') {
+                toggleRole(this);
+            }
+        });
     });
+}
 
-    if (!response.ok) throw new Error('Failed to send message');
+// Add user to backend
+async function addUserToBackend(userData) {
+    try {
+        const response = await fetch('/api/users', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentUser.token}`
+            },
+            body: JSON.stringify(userData)
+        });
 
-    input.value = '';
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to add user');
+        }
+
+        const newUser = await response.json();
+        
+        // Add user to table
+        addUserToTable(newUser);
+        
+        // Reset form
+        document.getElementById('addUserForm').reset();
+        document.querySelectorAll('.role-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        
+        showMessage('successMessage', 'User added successfully!');
+        
+        // Refresh user statistics
+        loadUserStatistics();
+        
+    } catch (error) {
+        showMessage('errorMessage', error.message || 'Failed to add user');
+    }
+}
+
+function addUserToTable(user) {
+    const tbody = document.getElementById('usersTableBody');
+    const row = document.createElement('tr');
+    
+    row.innerHTML = `
+        <td>${user.name}</td>
+        <td>${user.email}</td>
+        <td>${user.username || ''}</td>
+        <td><span class="user-role-badge ${user.role}">${user.role.charAt(0).toUpperCase() + user.role.slice(1)}</span></td>
+        <td><span class="user-status ${user.status || 'active'}">${(user.status || 'active').charAt(0).toUpperCase() + (user.status || 'active').slice(1)}</span></td>
+        <td class="user-actions">
+            <button class="btn-edit" onclick="editUser('${user._id}')">Edit</button>
+            <button class="btn-delete" onclick="deleteUser('${user._id}')">Delete</button>
+        </td>
+    `;
+    
+    tbody.appendChild(row);
+}
+
+async function deleteUser(userId) {
+    if (confirm('Are you sure you want to delete this user?')) {
+        try {
+            const response = await fetch(`/api/users/${userId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${currentUser.token}`
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to delete user');
+            }
+
+            // Remove from table
+            const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+            if (row) row.remove();
+            
+            showMessage('successMessage', 'User deleted successfully!');
+            
+            // Refresh user statistics
+            loadUserStatistics();
+            
+        } catch (error) {
+            showMessage('errorMessage', error.message || 'Failed to delete user');
+        }
+    }
+}
+
+async function editUser(userId) {
+    // TODO: Implement edit user functionality
+    alert('Edit user functionality coming soon!');
+}
+
+function showMessage(messageId, text) {
+    const messageElement = document.getElementById(messageId);
+    if (messageElement) {
+        messageElement.textContent = text;
+        messageElement.style.display = 'block';
+        
+        // Hide other message
+        const otherMessageId = messageId === 'successMessage' ? 'errorMessage' : 'successMessage';
+        const otherMessage = document.getElementById(otherMessageId);
+        if (otherMessage) {
+            otherMessage.style.display = 'none';
+        }
+        
+        // Auto hide after 3 seconds
+        setTimeout(() => {
+            messageElement.style.display = 'none';
+        }, 3000);
+    }
+}
+        // Toggle role selection
+        function toggleRole(element) {
+          const checkbox = element.querySelector('input[type="checkbox"]');
+          checkbox.checked = !checkbox.checked;
+          
+          if (checkbox.checked) {
+              element.classList.add('checked');
+          } else {
+              element.classList.remove('checked');
+          }
+      }
+// Load accounts data
+async function loadAccountsData() {
+    try {
+        // Load user statistics
+        await loadUserStatistics();
+        
+        // Load users table
+        await loadUsersTable();
+        
+        // Initialize account management
+        initializeAccountManagement();
+        
+    } catch (error) {
+        console.error('Error loading accounts data:', error);
+    }
+}
+
+// Load user statistics
+async function loadUserStatistics() {
+    try {
+        const response = await fetch('/api/users/stats', {
+            headers: {
+                'Authorization': `Bearer ${currentUser.token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to load user statistics');
+        }
+
+        const stats = await response.json();
+        
+        // Update statistics cards
+        document.getElementById('statTotalUsers').textContent = stats.totalUsers || 0;
+        document.getElementById('statActiveUsers').textContent = stats.activeUsers || 0;
+        document.getElementById('statInactiveUsers').textContent = stats.inactiveUsers || 0;
+        document.getElementById('statAdmins').textContent = stats.admins || 0;
+        document.getElementById('statSupervisors').textContent = stats.supervisors || 0;
+        document.getElementById('statUsers').textContent = stats.users || 0;
+        
+    } catch (error) {
+        console.error('Error loading user statistics:', error);
+    }
+}
+
+// Load users table
+async function loadUsersTable() {
+    try {
+        const response = await fetch('/api/users', {
+            headers: {
+                'Authorization': `Bearer ${currentUser.token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to load users');
+        }
+
+        const users = await response.json();
+        
+        // Clear existing table
+        const tbody = document.getElementById('usersTableBody');
+        tbody.innerHTML = '';
+        
+        // Add users to table
+        users.forEach(user => {
+            addUserToTable(user);
+        });
+        
+        if (users.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td>Jane Doe</td>
+              <td>jane@example.com</td>
+              <td>janedoe</td>
+              <td><span class="user-role-badge admin">Admin</span></td>
+              <td><span class="user-status active">Active</span></td>
+              <td class="user-actions">
+                <button class="btn-edit">Edit</button>
+                <button class="btn-delete">Delete</button>
+              </td>
+            </tr>
+          `;
+        }
+        
+    } catch (error) {
+        console.error('Error loading users table:', error);
+    }
+}
+
+async function getResponseRateTrend() {
+  try {
+    const res = await fetch('/api/dashboard/response-times', {
+      headers: { 'Authorization': `Bearer ${currentUser.token}` }
+    });
+    const data = await res.json();
+    console.log('Response rate trend data from backend:', data);
+    return data;
   } catch (error) {
-    console.error("Error sending Facebook message:", error);
-    showMessage('errorMessage', 'Failed to send message');
+    console.error('Error fetching response rate trend:', error);
+    return [];
   }
 }
 
-async function sendWhatsAppMessage() {
-  const input = document.getElementById('whatsappMessageInput');
-  const message = input.value.trim();
-  
-  if (!message || !currentWhatsAppConversationId) return;
-
+async function loadResponseRate() {
   try {
-    const response = await fetch('/api/whatsapp/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${currentUser.token}`
-      },
-      body: JSON.stringify({
-        conversationId: currentWhatsAppConversationId,
-        text: message
-      })
+    const response = await fetch('/api/dashboard/response-rate', {
+      headers: { 'Authorization': `Bearer ${currentUser.token}` }
     });
-
-    if (!response.ok) throw new Error('Failed to send message');
-
-    input.value = '';
+    if (!response.ok) throw new Error('Failed to fetch response rate');
+    const data = await response.json();
+    document.getElementById('responseRate').textContent = data.responseRate + '%';
   } catch (error) {
-    console.error("Error sending WhatsApp message:", error);
-    showMessage('errorMessage', 'Failed to send message');
+    document.getElementById('responseRate').textContent = 'N/A';
+    console.error('Error loading response rate:', error);
   }
 }
 
-// Make functions available globally
-window.switchTab = switchTab;
-window.logout = logout;
-window.editUser = editUser;
-window.confirmDeleteUser = confirmDeleteUser;
-
-// Helper function for editing users (placeholder)
-function editUser(userId) {
-  alert(`Edit user ${userId} functionality coming soon!`);
+async function loadActiveChats() {
+  try {
+    const response = await fetch('/api/dashboard/active-chats', {
+      headers: { 'Authorization': `Bearer ${currentUser.token}` }
+    });
+    if (!response.ok) throw new Error('Failed to fetch active chats');
+    const data = await response.json();
+    document.getElementById('activeChats').textContent = data.activeChats;
+  } catch (error) {
+    document.getElementById('activeChats').textContent = 'N/A';
+    console.error('Error loading active chats:', error);
+  }
 }
+
