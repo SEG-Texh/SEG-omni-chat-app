@@ -1222,6 +1222,10 @@ function updateOnlineStatus() {
   // Placeholder: implement online status update if needed
 }
 
+fetch('/api/dashboard/message-volume?days=7')
+  .then(res => res.json())
+  .then(data => console.log('Backend response:', data));
+
 // ACCOUNT MANAGEMENT FUNCTIONS
 
 // Toggle role selection
