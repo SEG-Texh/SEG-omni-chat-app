@@ -121,31 +121,32 @@ function logout() {
 }
 
 function switchTab(tabName, event) {
-  // Remove active class from all tabs and buttons
+  // Remove active from all tab contents
   document.querySelectorAll(".tab-content").forEach((tab) => {
-    tab.classList.remove("active")
-  })
+    tab.classList.remove("active");
+  });
+  // Remove active from all tab buttons
   document.querySelectorAll(".tab-btn").forEach((btn) => {
-    btn.classList.remove("active")
-  })
-
-  // Add active class to selected tab and button
+    btn.classList.remove("active");
+  });
+  // Add active to the selected tab content
   const targetTab = document.getElementById(tabName + "Tab");
   if (targetTab) {
-    targetTab.classList.add("active")
+    targetTab.classList.add("active");
   }
-
-  if (event && event.target) {
-    event.target.classList.add("active")
+  // Add active to the selected tab button
+  if (event && event.currentTarget) {
+    event.currentTarget.classList.add("active");
+  } else if (event && event.target) {
+    event.target.classList.add("active");
   }
-
   // Load tab-specific data
   if (tabName === "dashboard") {
-    loadDashboardData()
+    loadDashboardData();
   } else if (tabName === "facebook") {
     loadFacebookConversations();
   } else if (tabName === "whatsapp") {
-    loadWhatsAppConversations()
+    loadWhatsAppConversations();
   } else if (tabName === "accounts") {
     loadAccountsData();
   }
