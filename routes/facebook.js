@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const facebookController = require('../controllers/facebookController');
-const auth = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 
 // Facebook webhook endpoint (no auth)
 router.post('/webhook', facebookController.webhook);
