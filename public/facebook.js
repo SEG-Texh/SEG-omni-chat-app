@@ -1,6 +1,7 @@
 // Facebook page specific functionality
-let socket = null
+// let socket = null // Removed duplicate declaration
 // let currentFacebookConversationId = null // Removed duplicate declaration
+// let currentFacebookRecipientId = null // Removed duplicate declaration
 let facebookConversations = []
 let openFacebookConversationId = null // Track the currently open conversation
 
