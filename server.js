@@ -30,6 +30,8 @@ app.use((req, res, next) => {
   next();
 });
 
+app.set('io', io);
+
 // Initialize database and stats
 connectDB().then(async () => {
   await initializeUserStats(); // Initialize UserStats after DB connection
