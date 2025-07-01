@@ -8,6 +8,8 @@ module.exports = {
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "*.{js,ts,jsx,tsx,mdx}",
+    "./public/**/*.html",
+    "./public/**/*.js",
   ],
   theme: {
     ...defaultConfig.theme,
