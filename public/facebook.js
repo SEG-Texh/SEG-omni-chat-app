@@ -1,6 +1,5 @@
-// Get current user and token from localStorage
-const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-const token = currentUser.token;
+// Use currentUser from shared.js
+const token = currentUser && currentUser.token;
 
 // Redirect to login if not authenticated
 if (!token) {
