@@ -2,7 +2,6 @@
 let currentWhatsAppConversationId = null
 let currentWhatsAppNumber = null
 let currentUser = null // Declare currentUser variable
-let apiRequest = null // Declare apiRequest variable
 
 document.addEventListener("DOMContentLoaded", () => {
   loadWhatsAppConversations()
@@ -201,25 +200,10 @@ async function sendWhatsAppMessage() {
   }
 }
 
-// Example declarations for currentUser and apiRequest
+// Example declarations for currentUser
 // These should be replaced with actual imports or declarations
 currentUser = {
   token: "your_token_here",
   _id: "your_user_id_here",
   id: "your_user_id_here",
-}
-
-apiRequest = async (url, options = {}) => {
-  const headers = {
-    Authorization: `Bearer ${currentUser.token}`,
-    "Content-Type": "application/json",
-  }
-
-  const request = new Request(url, {
-    method: options.method || "GET",
-    headers: headers,
-    body: options.body,
-  })
-
-  return fetch(request)
 }

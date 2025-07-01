@@ -1,6 +1,5 @@
 // Account Management page specific functionality
 let currentUser = null // Declare currentUser variable
-let apiRequest = null // Declare apiRequest variable
 let showMessage = null // Declare showMessage variable
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -181,17 +180,6 @@ window.deleteUser = deleteUser
 
 // Example implementations for undeclared variables
 currentUser = { token: "exampleToken" } // Example currentUser object
-apiRequest = async (url, options = {}) => {
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${currentUser.token}`,
-      "Content-Type": "application/json",
-    },
-    ...options,
-  })
-  return response
-} // Example apiRequest function
-
 showMessage = (elementId, type, message) => {
   const element = document.getElementById(elementId)
   if (element) {

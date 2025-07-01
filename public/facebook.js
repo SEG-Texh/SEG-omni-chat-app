@@ -4,7 +4,7 @@ let currentFacebookConversationId = null
 let currentFacebookRecipientId = null
 const currentUser = null // Declare currentUser variable
 const io = null // Declare io variable
-const apiRequest = null // Declare apiRequest variable
+
 
 document.addEventListener("DOMContentLoaded", () => {
   initializeSocket()

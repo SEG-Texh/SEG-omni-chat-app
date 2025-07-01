@@ -1,9 +1,5 @@
 // Dashboard page specific functionality
 const currentUser = {} // Declare currentUser variable
-const apiRequest = async (url) => {
-  // Dummy implementation of apiRequest
-  return fetch(url)
-} // Declare apiRequest function
 
 document.addEventListener("DOMContentLoaded", () => {
   loadDashboardData()
