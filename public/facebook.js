@@ -2,7 +2,6 @@
 let socket = null
 let currentFacebookConversationId = null
 let currentFacebookRecipientId = null
-const io = null // Declare io variable
 
 
 document.addEventListener("DOMContentLoaded", () => {
