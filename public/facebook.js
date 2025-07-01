@@ -30,13 +30,12 @@ function initializeSocket() {
 
   // Facebook Specific Events
   socket.on("new_message", (message) => {
-    updateConversationList(message) // Always update the conversation list
+    updateConversationList(message); // Always update the sidebar
     if (openFacebookConversationId === message.conversation) {
-      appendFacebookMessage(message)
-      console.log("Appended message to open chat")
+      appendFacebookMessage(message); // Instantly show in open chat
     } else {
-      console.log("Message for another conversation")
-      highlightConversationInList(message.conversation)
+      // Optionally, show a visual notification for background conversations
+      highlightConversationInList(message.conversation);
     }
   })
 
@@ -227,18 +226,14 @@ function displayFacebookMessages(messages) {
     const isFromCurrentUser = message.sender?._id === currentUser._id || message.sender?._id === currentUser.id
     const messageDiv = document.createElement("div")
     messageDiv.className = `flex ${isFromCurrentUser ? "justify-end" : "justify-start"}`
-    messageDiv.textContent = message.content
+    messageDiv.innerHTML = `
+      <div class="chat-bubble ${isFromCurrentUser ? "sent" : "received"}">
+        ${message.content?.text || message.text || "No content"}
+      </div>
+    `
     messagesContainer.appendChild(messageDiv)
   })
 
   // Scroll to bottom
   messagesContainer.scrollTop = messagesContainer.scrollHeight
-}
-
-function highlightConversationInList(conversationId) {
-  const item = document.querySelector(`[data-conversation-id='${conversationId}']`);
-  if (item) {
-    item.classList.add('has-new-message');
-    // Optionally, add a badge or change background color
-  }
 }
