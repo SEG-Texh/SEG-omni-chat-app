@@ -29,11 +29,14 @@ function initializeSocket() {
 
   // Facebook Specific Events
   socket.on("new_message", (message) => {
-    console.log("📨 New Facebook message:", message, "Current open:", currentFacebookConversationId);
+    console.log("SOCKET EVENT: new_message", message, "Current open:", currentFacebookConversationId);
     if (currentFacebookConversationId === message.conversation) {
-      appendFacebookMessage(message)
+      appendFacebookMessage(message);
+      console.log("Appended message to open chat");
+    } else {
+      console.log("Message for another conversation");
     }
-    updateConversationList(message)
+    updateConversationList(message);
   })
 
   socket.on("disconnect", () => {
@@ -294,7 +297,7 @@ function appendFacebookMessage(message) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }, 30);
 
-  console.log("[appendFacebookMessage] Appended message:", message);
+  console.log("Appending message to DOM", message);
 }
 
 
