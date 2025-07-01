@@ -901,16 +901,14 @@ function appendFacebookMessage(message) {
   const messagesContainer = document.getElementById("facebookMessages")
   if (!messagesContainer) return
 
-  const isFromCurrentUser = message.sender === currentUser._id
+  const isFromCurrentUser = message.sender?._id === currentUser._id || message.sender?._id === currentUser.id
   const messageDiv = document.createElement("div")
-  messageDiv.className = `flex ${isFromCurrentUser ? "justify-end" : "justify-start"} chat-message`
-
+  messageDiv.className = `flex ${isFromCurrentUser ? "justify-end" : "justify-start"}`
   messageDiv.innerHTML = `
-        <div class="chat-bubble ${isFromCurrentUser ? "sent" : "received"}">
-            ${message.content.text}
-        </div>
-    `
-
+    <div class="chat-bubble ${isFromCurrentUser ? "sent" : "received"}">
+      ${message.content?.text || message.text || "No content"}
+    </div>
+  `
   messagesContainer.appendChild(messageDiv)
   messagesContainer.scrollTop = messagesContainer.scrollHeight
 }
