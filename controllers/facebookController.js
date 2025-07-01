@@ -287,7 +287,7 @@ class FacebookController {
         content: { text },
         platform: 'facebook',
         platformRecipientId: recipientPsid,
-        platformMessageId: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        platformMessageId: null,
         status: 'pending',
         direction: 'outbound'
       });
@@ -308,16 +308,18 @@ class FacebookController {
         );
 
         // Update message with platform ID and sent status
-        await Message.updateOne(
-          { _id: newMessage._id },
-          { 
-            $set: { 
-              platformMessageId: response.data.message_id,
-              status: 'sent',
-              timestamp: new Date() 
-            } 
-          }
-        );
+        if (response.data.message_id) {
+          await Message.updateOne(
+            { _id: newMessage._id },
+            { 
+              $set: { 
+                platformMessageId: response.data.message_id,
+                status: 'sent',
+                timestamp: new Date() 
+              } 
+            }
+          );
+        }
 
         // Update conversation last message
         await Conversation.updateOne(
