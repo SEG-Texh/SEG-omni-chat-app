@@ -30,6 +30,7 @@ function initializeSocket() {
   // Facebook Specific Events
   socket.on("new_message", (message) => {
     console.log("📨 New Facebook message:", message)
+    console.log("Socket received new_message", message, "Current open:", currentFacebookConversationId);
     if (currentFacebookConversationId === message.conversation) {
       appendFacebookMessage(message)
     }
