@@ -1,5 +1,4 @@
 // Account Management page specific functionality
-let showMessage = null // Declare showMessage variable
 
 document.addEventListener("DOMContentLoaded", () => {
   loadAccountsData()
