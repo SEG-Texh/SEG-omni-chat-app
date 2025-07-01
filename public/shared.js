@@ -81,9 +81,10 @@ async function apiRequest(url, options = {}) {
     const response = await fetch(url, mergedOptions)
 
     if (response.status === 401) {
-      // Unauthorized - redirect to login
-      logout()
-      return null
+      alert('Session expired or unauthorized. Please log in again.');
+      // Optionally, only logout if on a protected page
+      logout();
+      return null;
     }
 
     return response
