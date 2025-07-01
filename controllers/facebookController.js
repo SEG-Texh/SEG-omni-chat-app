@@ -96,6 +96,11 @@ class FacebookController {
         }));
       }
 
+      // Only set platformMessageId if it exists and is not null
+      if (message.mid) {
+        messageData.platformMessageId = message.mid;
+      }
+
       const newMessage = await Message.create(messageData);
       
       await Conversation.updateOne(
