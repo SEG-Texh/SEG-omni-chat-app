@@ -29,12 +29,8 @@ function initializeSocket() {
 
   // Facebook Specific Events
   socket.on("new_message", (message) => {
-    console.log("SOCKET EVENT: new_message", message, "Current open:", currentFacebookConversationId);
     if (currentFacebookConversationId === message.conversation) {
       appendFacebookMessage(message);
-      console.log("Appended message to open chat");
-    } else {
-      console.log("Message for another conversation");
     }
     updateConversationList(message);
   })
@@ -46,6 +42,11 @@ function initializeSocket() {
   socket.on("connect_error", (err) => {
     console.error("❌ Connection error:", err.message)
   })
+
+  socket.on('joinFacebookConversationRoom', (conversationId) => {
+    socket.join(`conversation_${conversationId}`);
+    console.log(`Socket ${socket.id} joined room conversation_${conversationId}`);
+  });
 }
 
 // Join Facebook rooms
