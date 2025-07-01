@@ -30,12 +30,13 @@ function initializeSocket() {
 
   // Facebook Specific Events
   socket.on("new_message", (message) => {
-    updateConversationList(message); // Always update the sidebar
+    updateConversationList(message)
     if (openFacebookConversationId === message.conversation) {
-      appendFacebookMessage(message); // Instantly show in open chat
+      appendFacebookMessage(message)
+      console.log("Appended message to open chat")
     } else {
-      // Optionally, show a visual notification for background conversations
-      highlightConversationInList(message.conversation);
+      highlightConversationInList(message.conversation)
+      console.log("Message for another conversation")
     }
   })
 
@@ -91,6 +92,7 @@ function renderFacebookConversations() {
     const participant = conversation.participants[0]
     const item = document.createElement("div")
     item.className = "conversation-item"
+    item.setAttribute('data-conversation-id', conversation._id)
     item.innerHTML = `
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-semibold">
@@ -109,7 +111,10 @@ function renderFacebookConversations() {
         </div>
       </div>
     `
-    item.addEventListener("click", () => selectFacebookConversation(conversation, item))
+    item.addEventListener("click", () => {
+      selectFacebookConversation(conversation, item)
+      removeHighlightFromConversation(conversation._id)
+    })
     conversationsList.appendChild(item)
   })
 }
@@ -236,4 +241,30 @@ function displayFacebookMessages(messages) {
 
   // Scroll to bottom
   messagesContainer.scrollTop = messagesContainer.scrollHeight
+}
+
+function highlightConversationInList(conversationId) {
+  const item = document.querySelector(`[data-conversation-id='${conversationId}']`);
+  if (item) {
+    item.classList.add('has-new-message');
+    // Optionally, add a badge element
+    let badge = item.querySelector('.new-message-badge');
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'new-message-badge';
+      badge.textContent = '●';
+      badge.style.color = '#e11d48';
+      badge.style.marginLeft = '8px';
+      item.querySelector('.flex-1').appendChild(badge);
+    }
+  }
+}
+
+function removeHighlightFromConversation(conversationId) {
+  const item = document.querySelector(`[data-conversation-id='${conversationId}']`);
+  if (item) {
+    item.classList.remove('has-new-message');
+    const badge = item.querySelector('.new-message-badge');
+    if (badge) badge.remove();
+  }
 }

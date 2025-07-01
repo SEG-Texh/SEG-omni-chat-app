@@ -179,6 +179,19 @@
   border-color: #3b82f6;
 }
 
+.conversation-item.has-new-message {
+  background: #fef2f2;
+  transition: background 0.2s;
+}
+
+.new-message-badge {
+  font-size: 1.2em;
+  vertical-align: middle;
+  margin-left: 4px;
+  color: #e11d48;
+  pointer-events: none;
+}
+
 /* User role badges */
 .role-badge {
   display: inline-flex;
