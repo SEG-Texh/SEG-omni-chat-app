@@ -404,3 +404,110 @@
 .capitalize { text-transform: capitalize !important; }
 
 /* --- End Tailwind Utility Equivalents --- */
+
+/* --- Login Page Custom Styles --- */
+body.login-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #7f5af0 0%, #6246ea 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#loginContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: none;
+  padding: 0;
+}
+
+.login-card {
+  background: #fff;
+  border-radius: 1.5rem;
+  box-shadow: 0 8px 32px rgba(44, 18, 94, 0.12);
+  padding: 2.5rem 2rem;
+  max-width: 380px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.login-logo {
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.login-title {
+  font-size: 2rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 0.5rem;
+  color: #2d2a4a;
+}
+
+.login-subtitle {
+  font-size: 1.1rem;
+  text-align: center;
+  color: #b8b8d1;
+  margin-bottom: 2rem;
+}
+
+.login-label {
+  font-size: 1rem;
+  color: #4b4b6b;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.login-input {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 1px solid #e0e0f0;
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  margin-bottom: 1.25rem;
+  background: #f8f8ff;
+  transition: border 0.2s;
+}
+.login-input:focus {
+  border-color: #7f5af0;
+  outline: none;
+}
+
+.login-btn {
+  width: 100%;
+  background: #7f5af0;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 0.9rem 0;
+  border: none;
+  border-radius: 0.75rem;
+  margin-top: 0.5rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  box-shadow: 0 2px 8px rgba(127, 90, 240, 0.08);
+}
+.login-btn:hover {
+  background: #6246ea;
+}
+
+.login-error {
+  color: #dc2626;
+  background: #fef2f2;
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  text-align: center;
+  font-size: 0.95rem;
+  margin-top: 1rem;
+  margin-bottom: 0;
+}
+
+@media (max-width: 500px) {
+  .login-card {
+    padding: 1.5rem 0.5rem;
+  }
+}
+/* --- End Login Page Custom Styles --- */
