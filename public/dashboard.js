@@ -39,6 +39,8 @@ async function loadDashboardData() {
 // Update bar chart
 function updateBarChart() {
   const barChart = document.getElementById("barChart")
+  if (!barChart) return
+
   const heights = [40, 65, 30, 80, 45, 70, 55]
 
   barChart.innerHTML = ""
