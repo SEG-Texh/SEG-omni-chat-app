@@ -26,10 +26,12 @@ document.addEventListener("DOMContentLoaded", () => {
 // Setup event listeners
 function setupEventListeners() {
   // Login form
-  document.getElementById("loginForm").addEventListener("submit", handleLogin)
+  const loginForm = document.getElementById("loginForm")
+  if (loginForm) loginForm.addEventListener("submit", handleLogin)
 
   // Logout button
-  document.getElementById("logoutButton").addEventListener("click", logout)
+  const logoutButton = document.getElementById("logoutButton")
+  if (logoutButton) logoutButton.addEventListener("click", logout)
 
   // Tab buttons
   document.querySelectorAll(".tab-btn").forEach((btn) => {
@@ -40,7 +42,8 @@ function setupEventListeners() {
   })
 
   // Add user form
-  document.getElementById("addUserForm").addEventListener("submit", handleAddUser)
+  const addUserForm = document.getElementById("addUserForm")
+  if (addUserForm) addUserForm.addEventListener("submit", handleAddUser)
 }
 
 // Handle login
@@ -236,10 +239,10 @@ async function loadDashboardData() {
     const activeChats = await activeChatsRes.json()
 
     // Update stats
-    document.getElementById("totalUsers").textContent = totalUsers.count || 0
-    document.getElementById("messagesToday").textContent = messagesToday.count || 0
-    document.getElementById("responseRate").textContent = (responseRate.responseRate || 0) + "%"
-    document.getElementById("activeChats").textContent = activeChats.activeChats || 0
+    if (document.getElementById("totalUsers")) document.getElementById("totalUsers").textContent = totalUsers.count || 0
+    if (document.getElementById("messagesToday")) document.getElementById("messagesToday").textContent = messagesToday.count || 0
+    if (document.getElementById("responseRate")) document.getElementById("responseRate").textContent = (responseRate.responseRate || 0) + "%"
+    if (document.getElementById("activeChats")) document.getElementById("activeChats").textContent = activeChats.activeChats || 0
 
     // Update bar chart
     updateBarChart()
