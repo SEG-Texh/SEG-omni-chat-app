@@ -2,7 +2,6 @@
 // let socket = null // Removed duplicate declaration
 // let currentFacebookConversationId = null // Removed duplicate declaration
 // let currentFacebookRecipientId = null // Removed duplicate declaration
-let socket = null;
 let openFacebookConversationId = null;
 let facebookConversations = [];
 
