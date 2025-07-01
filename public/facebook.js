@@ -3,6 +3,7 @@ let socket = null
 let currentFacebookConversationId = null
 let currentFacebookRecipientId = null
 let facebookConversations = []
+let openFacebookConversationId = null // Track the currently open conversation
 
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -29,10 +30,13 @@ function initializeSocket() {
 
   // Facebook Specific Events
   socket.on("new_message", (message) => {
-    if (currentFacebookConversationId === message.conversation) {
-      appendFacebookMessage(message);
+    updateConversationList(message) // Always update the conversation list
+    if (openFacebookConversationId === message.conversation) {
+      appendFacebookMessage(message)
+      console.log("Appended message to open chat")
+    } else {
+      console.log("Message for another conversation")
     }
-    updateConversationList(message);
   })
 
   socket.on("disconnect", () => {
@@ -113,6 +117,7 @@ function renderFacebookConversations() {
 // Select Facebook conversation
 function selectFacebookConversation(conversation, element) {
   currentFacebookConversationId = conversation._id
+  openFacebookConversationId = conversation._id // Set the open conversation
 
   // Find the Facebook participant
   const recipient = conversation.participants.find((p) => p._id !== currentUser.id && p._id !== currentUser._id)
@@ -221,107 +226,10 @@ function displayFacebookMessages(messages) {
     const isFromCurrentUser = message.sender?._id === currentUser._id || message.sender?._id === currentUser.id
     const messageDiv = document.createElement("div")
     messageDiv.className = `flex ${isFromCurrentUser ? "justify-end" : "justify-start"}`
-
-    messageDiv.innerHTML = `
-            <div class="chat-bubble ${isFromCurrentUser ? "sent" : "received"}">
-                ${message.content?.text || message.text || "No content"}
-            </div>
-        `
-
+    messageDiv.textContent = message.content
     messagesContainer.appendChild(messageDiv)
   })
 
   // Scroll to bottom
   messagesContainer.scrollTop = messagesContainer.scrollHeight
 }
-
-// Send Facebook message
-async function sendFacebookMessage() {
-  const messageInput = document.getElementById("facebookMessageInput")
-  const text = messageInput.value.trim()
-
-  if (!text || !currentFacebookConversationId || !currentFacebookRecipientId) {
-    return
-  }
-
-  try {
-    const response = await apiRequest("/api/facebook/messages", {
-      method: "POST",
-      body: JSON.stringify({
-        recipientId: currentFacebookRecipientId,
-        text: text,
-        conversationId: currentFacebookConversationId,
-      }),
-    })
-
-    if (response.ok) {
-      messageInput.value = ""
-      // Reload messages
-      loadFacebookMessages(currentFacebookConversationId)
-    } else {
-      const error = await response.json()
-      alert("Failed to send message: " + (error.error || response.status))
-    }
-  } catch (error) {
-    console.error("Error sending Facebook message:", error)
-    alert("Failed to send message: " + error.message)
-  }
-}
-
-// Append Facebook message (for real-time updates)
-function appendFacebookMessage(message) {
-  const messagesContainer = document.getElementById("facebookMessages");
-  if (!messagesContainer) return;
-
-  let senderId = message.sender?._id || message.sender || null;
-  const isFromCurrentUser = senderId === currentUser._id || senderId === currentUser.id;
-
-  if (currentFacebookConversationId !== message.conversation) {
-    loadFacebookMessages(message.conversation);
-    return;
-  }
-
-  const messageDiv = document.createElement("div");
-  messageDiv.className = `flex ${isFromCurrentUser ? "justify-end" : "justify-start"} chat-message`;
-
-  messageDiv.innerHTML = `
-    <div class="chat-bubble ${isFromCurrentUser ? "sent" : "received"}">
-      ${message.content?.text || message.text || "No content"}
-    </div>
-  `;
-
-  messagesContainer.appendChild(messageDiv);
-
-  // Force layout reflow and scroll
-  void messagesContainer.offsetHeight;
-  setTimeout(() => {
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-  }, 30);
-
-  console.log("Appending message to DOM", message);
-}
-
-
-// Update conversation list (for real-time updates)
-function updateConversationList(message) {
-  // Find the conversation
-  const idx = facebookConversations.findIndex(c => c._id === message.conversation)
-  if (idx !== -1) {
-    // Update last message and timestamp
-    facebookConversations[idx].lastMessage = message.content?.text || message.text
-    facebookConversations[idx].updatedAt = message.createdAt || new Date().toISOString()
-    // Move to top
-    const [updated] = facebookConversations.splice(idx, 1)
-    facebookConversations.unshift(updated)
-    // Re-render the list
-    renderFacebookConversations()
-  } else {
-    // Optionally, fetch the conversation if not found
-    loadFacebookConversations()
-  }
-}
-
-// Import or declare io and apiRequest here
-// Example:
-// io = require('socket.io-client');
-// apiRequest = require('./apiRequest');
