@@ -55,6 +55,7 @@ function joinFacebookRooms() {
   }
 }
 function appendFacebookMessage(message) {
+  console.log("Appending message:", message);
   const messagesContainer = document.getElementById("facebookMessages");
   if (!messagesContainer) return;
 
