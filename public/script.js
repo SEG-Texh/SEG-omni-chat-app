@@ -6,9 +6,6 @@ let currentFacebookRecipientId = null
 let currentWhatsAppConversationId = null
 let currentWhatsAppNumber = null
 
-// Import socket.io client
-const io = require("socket.io-client")
-
 // Initialize the application
 document.addEventListener("DOMContentLoaded", () => {
   // Check if user is already logged in
