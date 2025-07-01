@@ -36,13 +36,12 @@ function initializeSocket() {
   // Facebook Specific Events
   socket.on("new_message", (message) => {
     console.log("Received new_message", message);
-    updateConversationList(message)
     if (openFacebookConversationId === message.conversation) {
-      appendFacebookMessage(message)
-      console.log("Appended message to open chat")
+      appendFacebookMessage(message);
+      console.log("Appended message to open chat");
     } else {
-      highlightConversationInList(message.conversation)
-      console.log("Message for another conversation")
+      highlightConversationInList(message.conversation);
+      console.log("Message for another conversation");
     }
   })
 
