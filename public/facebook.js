@@ -264,18 +264,28 @@ function appendFacebookMessage(message) {
   const messagesContainer = document.getElementById("facebookMessages")
   if (!messagesContainer) return
 
-  const isFromCurrentUser = message.sender === currentUser._id
+  // Accept both string and object sender
+  let senderId = message.sender?._id || message.sender || null;
+  const isFromCurrentUser = senderId === currentUser._id || senderId === currentUser.id;
+
+  // Defensive: if the chat is not open, reload messages (shouldn't happen, but safe)
+  if (currentFacebookConversationId !== message.conversation) {
+    loadFacebookMessages(message.conversation)
+    return;
+  }
+
   const messageDiv = document.createElement("div")
   messageDiv.className = `flex ${isFromCurrentUser ? "justify-end" : "justify-start"} chat-message`
 
   messageDiv.innerHTML = `
-        <div class="chat-bubble ${isFromCurrentUser ? "sent" : "received"}">
-            ${message.content.text}
-        </div>
-    `
+    <div class="chat-bubble ${isFromCurrentUser ? "sent" : "received"}">
+      ${message.content?.text || message.text || "No content"}
+    </div>
+  `
 
   messagesContainer.appendChild(messageDiv)
   messagesContainer.scrollTop = messagesContainer.scrollHeight
+  console.log("[appendFacebookMessage] Appended message:", message)
 }
 
 // Update conversation list (for real-time updates)
