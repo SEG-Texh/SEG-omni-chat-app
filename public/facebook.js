@@ -122,6 +122,11 @@ function selectFacebookConversation(conversation, element) {
       (conversation.platformConversationId && conversation.platformConversationId.split("_")[1])
   }
 
+  // Join the conversation room for real-time updates
+  if (socket && currentFacebookConversationId) {
+    socket.emit("joinFacebookConversationRoom", currentFacebookConversationId)
+  }
+
   // Update active conversation styling
   document.querySelectorAll(".conversation-item").forEach((item) => {
     item.classList.remove("active")
