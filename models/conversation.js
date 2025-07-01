@@ -1,51 +1,11 @@
-// server/models/conversation.js
 const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-const conversationSchema = new mongoose.Schema({
-  participants: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }],
-  platform: {
-    type: String,
-    enum: ['facebook', 'whatsapp', 'email', 'sms'],
-    required: true
-  },
-  platformConversationId: {
-    type: String,
-    required: true,
-    unique: true
-  },
-  status: {
-    type: String,
-    enum: ['active', 'archived', 'pending'],
-    default: 'active'
-  },
-  lastMessage: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Message'
-  },
-  labels: [String],
-  metadata: mongoose.Schema.Types.Mixed
-}, {
-  timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
-});
+const ConversationSchema = new Schema({
+  platform: { type: String, default: 'facebook' },
+  participants: [String], // Facebook user IDs or your user IDs
+  lastMessage: { type: Schema.Types.ObjectId, ref: 'Message' },
+  unreadCount: { type: Number, default: 0 }
+}, { timestamps: true });
 
-// Add virtual for message count
-conversationSchema.virtual('messageCount', {
-  ref: 'Message',
-  localField: '_id',
-  foreignField: 'conversation',
-  count: true
-});
-
-// Indexes for better performance
-conversationSchema.index({ participants: 1 });
-conversationSchema.index({ platform: 1, status: 1 });
-conversationSchema.index({ lastMessage: -1 });
-
-const Conversation = mongoose.model('Conversation', conversationSchema);
-
-module.exports = Conversation;
+module.exports = mongoose.model('Conversation', ConversationSchema);

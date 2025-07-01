@@ -1,445 +1,105 @@
-const axios = require('axios');
-const mongoose = require('mongoose');
-const Message = require('../models/message');
-const User = require('../models/User');
 const Conversation = require('../models/conversation');
+const Message = require('../models/message');
+const axios = require('axios');
 
-let currentFacebookConversationId = null;
+// Facebook Webhook Handler
+exports.webhook = async (req, res) => {
+  const body = req.body;
+  if (body.object === 'page') {
+    for (const entry of body.entry) {
+      for (const event of entry.messaging) {
+        const senderId = event.sender.id;
+        const recipientId = event.recipient.id;
+        const messageText = event.message && event.message.text;
 
-class FacebookController {
-  constructor() {
-    // Method binding
-    this.verifyWebhook = this.verifyWebhook.bind(this);
-    this.handleMessage = this.handleMessage.bind(this);
-    this.processMessage = this.processMessage.bind(this);
-    this.processPostback = this.processPostback.bind(this);
-    this.io = null;
-    this.sendMessage = this.sendMessage.bind(this);
-    this.findOrCreateUser = this.findOrCreateUser.bind(this);
-    this.findOrCreateConversation = this.findOrCreateConversation.bind(this);
-    this.getConversations = this.getConversations.bind(this);
-    this.getMessages = this.getMessages.bind(this);
-  }
-
-  // Webhook verification (unchanged)
-  async verifyWebhook(req, res) {
-    try {
-      const { 'hub.mode': mode, 'hub.verify_token': token, 'hub.challenge': challenge } = req.query;
-      
-      if (mode === 'subscribe' && token === process.env.FACEBOOK_WEBHOOK_VERIFY_TOKEN) {
-        console.log('✅ Webhook verified');
-        return res.status(200).send(challenge);
-      }
-      
-      console.error('❌ Verification failed');
-      return res.sendStatus(403);
-    } catch (error) {
-      console.error('Verify webhook error:', error);
-      return res.sendStatus(500);
-    }
-  }
-
-  // Main message handler (unchanged)
-  async handleMessage(req, res) {
-    try {
-      console.log('📩 Incoming webhook');
-      
-      if (!req.body?.object === 'page') {
-        return res.status(400).json({ error: 'Invalid request format' });
-      }
-
-      for (const entry of req.body.entry) {
-        if (!entry.messaging) continue;
-        
-        for (const event of entry.messaging) {
-          try {
-            if (event.message) {
-              await this.processMessage(event.sender.id, event.message, event.recipient.id);
-            } else if (event.postback) {
-              await this.processPostback(event.sender.id, event.postback, event.recipient.id);
-            }
-          } catch (error) {
-            console.error('Event processing error:', error.message);
-          }
-        }
-      }
-
-      return res.sendStatus(200);
-    } catch (error) {
-      console.error('❌ Webhook processing error:', error);
-      return res.status(500).json({ 
-        error: 'Internal server error',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  }
-
-  // Enhanced processMessage with message direction
-  async processMessage(senderPsid, message, pageId) {
-    try {
-      const user = await this.findOrCreateUser(senderPsid);
-      const conversation = await this.findOrCreateConversation(user._id, pageId, senderPsid);
-
-      const messageData = {
-        conversation: conversation._id,
-        sender: user._id,
-        content: { text: message.text },
-        platform: 'facebook',
-        direction: 'inbound',
-        status: 'received'
-      };
-
-      if (message.attachments) {
-        messageData.content.attachments = message.attachments.map(att => ({
-          type: att.type,
-          url: att.payload?.url
-        }));
-      }
-
-      // Only set platformMessageId if it exists and is not null
-      if (message.mid) {
-        messageData.platformMessageId = message.mid;
-      }
-
-      const newMessage = await Message.create(messageData);
-      
-      await Conversation.updateOne(
-        { _id: conversation._id },
-        { 
-          $set: { lastMessage: newMessage._id },
-          $inc: { unreadCount: 1 }
-        }
-      );
-
-      // Enhanced real-time emission
-      const populatedMessage = await Message.findById(newMessage._id)
-        .populate('sender', 'name profilePic')
-        .lean();
-
-      if (this.io) {
-        // Emit to conversation room
-        this.io.to(`conversation_${conversation._id}`).emit('new_message', populatedMessage);
-        
-        // Emit to user's personal room for notifications
-        this.io.to(`user_${user._id}`).emit('message_notification', {
-          conversationId: conversation._id,
-          message: populatedMessage
-        });
-      }
-
-      return populatedMessage;
-    } catch (error) {
-      console.error('Message processing failed:', error);
-      return null;
-    }
-  }
-  // Enhanced user creation with better error handling
-  async findOrCreateUser(facebookId) {
-    try {
-      const email = `${facebookId}@facebook.local`;
-
-      let user = await User.findOne({
-        $or: [
-          { 'platformIds.facebook': facebookId },
-          { email: email }
-        ]
-      }).select('+platformIds');
-
-      if (!user) {
-        const profile = await this.getUserProfile(facebookId);
-
-        user = new User({
-          name: profile?.name || `Facebook User ${facebookId}`,
-          email,
-          platformIds: { facebook: facebookId },
-          profilePic: profile?.profile_pic || null,
-          lastActive: new Date(),
-          roles: ['customer'],
-          type: 'platform'
-        });
-
-        await user.save();
-        console.log(`👤 Created new user: ${user._id}`);
-      }
-
-      return user;
-    } catch (error) {
-      console.error('⚠️ User creation fallback:', error.message);
-      // Create a minimal user if all else fails
-      return new User({
-        name: `Facebook User ${facebookId}`,
-        email: `${facebookId}@facebook.local`,
-        platformIds: { facebook: facebookId },
-        lastActive: new Date(),
-        roles: ['customer']
-      }).save();
-    }
-  }
-
-  // Enhanced conversation management with labels and status
-  async findOrCreateConversation(userId, pageId, senderPsid) {
-    try {
-      // Use consistent format: pageId_recipientPsid
-      const conversationId = `${pageId}_${senderPsid}`;
-      let conversation = await Conversation.findOne({ platformConversationId: conversationId })
-        .populate('participants', 'name profilePic');
-
-      if (!conversation) {
-        conversation = await Conversation.create({
-          participants: [userId],
+        // 1. Find or create conversation
+        let conversation = await Conversation.findOne({
           platform: 'facebook',
-          platformConversationId: conversationId,
-          labels: ['facebook-inbox'], // Default label
-          status: 'active'
+          participants: { $all: [senderId, recipientId] }
         });
-      }
-
-      return conversation;
-    } catch (error) {
-      console.error('❌ Conversation error:', error);
-      throw error;
-    }
-  }
-
-  // Postback handler (unchanged)
-  async processPostback(senderPsid, postback, pageId) {
-    try {
-      console.log(`🔄 Postback from ${senderPsid}`);
-      
-      const user = await this.findOrCreateUser(senderPsid);
-      const conversation = await this.findOrCreateConversation(user._id, pageId, senderPsid);
-      
-      const newMessage = await Message.create({
-        conversation: conversation._id,
-        sender: user._id,
-        content: { text: `[POSTBACK] ${postback.payload}` },
-        platform: 'facebook',
-        metadata: { postback },
-        status: 'received',
-        direction: 'inbound'
-      });
-
-      await Conversation.updateOne(
-        { _id: conversation._id },
-        { $set: { lastMessage: newMessage._id } }
-      );
-
-      return newMessage;
-    } catch (error) {
-      console.error('❌ Postback processing failed:', error);
-      return null;
-    }
-  }
-
-  // Enhanced sendMessage with better error handling and status tracking
-  async sendMessage(recipientPsid, text, conversationId, senderId) {
-    try {
-      console.log(`✉️ Sending to ${recipientPsid}`);
-
-      let conversation;
-      
-      // If conversationId is provided, try to use that conversation first
-      if (conversationId) {
-        conversation = await Conversation.findById(conversationId);
-        if (conversation) {
-          console.log(`Using existing conversation: ${conversationId}`);
-        }
-      }
-      
-      // If no conversation found, create or find one using consistent format
-      if (!conversation) {
-        // Get the page ID from the Facebook API to ensure consistency
-        let pageId;
-        try {
-          const pageResponse = await axios.get(
-            `https://graph.facebook.com/me`,
-            {
-              params: { access_token: process.env.FACEBOOK_PAGE_ACCESS_TOKEN },
-              timeout: 5000
-            }
-          );
-          pageId = pageResponse.data.id;
-        } catch (error) {
-          console.error('Failed to get page ID, using environment variable:', error.message);
-          pageId = process.env.FACEBOOK_PAGE_ID;
-        }
-
-        // Use the same conversation ID format as incoming messages: pageId_recipientPsid
-        const conversationIdToUse = `${pageId}_${recipientPsid}`;
-        
-        // Find or create a conversation using the same format as incoming messages
-        conversation = await Conversation.findOne({
-          platform: 'facebook',
-          platformConversationId: conversationIdToUse
-        });
-        
         if (!conversation) {
-          // Create a new conversation with only the sender as participant
           conversation = await Conversation.create({
-            participants: [senderId],
             platform: 'facebook',
-            platformConversationId: conversationIdToUse,
-            labels: ['facebook-inbox'],
-            status: 'active'
+            participants: [senderId, recipientId],
+            lastMessage: null,
+            unreadCount: 0
           });
-        }
-      }
-
-      // Create pending message first
-      const newMessage = await Message.create({
-        conversation: conversation._id,
-        sender: senderId,
-        content: { text },
-        platform: 'facebook',
-        platformRecipientId: recipientPsid,
-        platformMessageId: null,
-        status: 'pending',
-        direction: 'outbound'
-      });
-
-      let response;
-      try {
-        response = await axios.post(
-          `https://graph.facebook.com/v13.0/me/messages`,
-          {
-            recipient: { id: recipientPsid },
-            message: { text }
-          },
-          {
-            params: { access_token: process.env.FACEBOOK_PAGE_ACCESS_TOKEN },
-            headers: { 'Content-Type': 'application/json' },
-            timeout: 10000 // Increased timeout
-          }
-        );
-
-        // Update message with platform ID and sent status
-        if (response.data.message_id) {
-          await Message.updateOne(
-            { _id: newMessage._id },
-            { 
-              $set: { 
-                platformMessageId: response.data.message_id,
-                status: 'sent',
-                timestamp: new Date() 
-              } 
-            }
-          );
+          req.io.emit('new_facebook_conversation', conversation);
         }
 
-        // Update conversation last message
-        await Conversation.updateOne(
-          { _id: conversation._id },
-          { $set: { lastMessage: newMessage._id } }
-        );
+        // 2. Save message
+        const message = await Message.create({
+          conversation: conversation._id,
+          sender: senderId,
+          content: messageText,
+          platform: 'facebook'
+        });
 
-        // Return populated message for real-time updates
-        const sentMessage = await Message.findById(newMessage._id)
-          .populate('sender', 'name profilePic');
+        // 3. Update conversation
+        conversation.lastMessage = message._id;
+        conversation.unreadCount += 1;
+        await conversation.save();
 
-        // Emit real-time event if using socket.io
-        if (this.io) {
-          this.io.to(`conversation_${conversation._id}`).emit('new_message', sentMessage);
-        }
-
-        return sentMessage;
-      } catch (error) {
-        // Update message with error status if send fails
-        await Message.updateOne(
-          { _id: newMessage._id },
-          { 
-            $set: { 
-              status: 'failed',
-              error: error.response?.data || error.message 
-            } 
-          }
-        );
-        throw error;
+        // 4. Broadcast message to frontend
+        req.io.to(`conversation_${conversation._id}`).emit('new_message', message);
       }
-    } catch (error) {
-      console.error('❌ Message send failed:', error.response?.data || error.message);
-      throw error;
     }
+    res.sendStatus(200);
+  } else {
+    res.sendStatus(404);
   }
+};
 
-  // New method: Get conversations for API endpoint
-  async getConversations(req, res) {
-    try {
-      const { status, label } = req.query;
-      // Show all Facebook conversations to all users
-      const query = {
-        platform: 'facebook'
-      };
+// Send message to Facebook user
+exports.sendMessage = async (req, res) => {
+  const { conversationId, content } = req.body;
+  const conversation = await Conversation.findById(conversationId);
+  if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
 
-      if (status) query.status = status;
-      if (label) query.labels = label;
+  // Assume req.user.facebookId is your page's ID
+  const senderId = req.user.facebookId;
+  const recipientId = conversation.participants.find(id => id !== senderId);
 
-      const conversations = await Conversation.find(query)
-        .populate('participants', 'name profilePic')
-        .sort('-lastMessage')
-        .lean();
-
-      res.json(conversations);
-    } catch (error) {
-      console.error('Error getting conversations:', error);
-      res.status(500).json({ error: 'Failed to get conversations' });
+  // Send to Facebook
+  await axios.post(
+    `https://graph.facebook.com/v17.0/me/messages?access_token=${process.env.FB_PAGE_TOKEN}`,
+    {
+      recipient: { id: recipientId },
+      message: { text: content }
     }
-  }
+  );
 
-  // New method: Get messages for API endpoint
-  async getMessages(req, res) {
-    try {
-      const id = req.params.id || req.params.conversationId;
-      console.log('Requested conversation ID:', id);
+  // Save message
+  const message = await Message.create({
+    conversation: conversationId,
+    sender: senderId,
+    content,
+    platform: 'facebook'
+  });
 
-      let conversation;
-      if (mongoose.Types.ObjectId.isValid(id)) {
-        conversation = await Conversation.findById(id);
-      }
-      if (!conversation) {
-        conversation = await Conversation.findOne({ platformConversationId: id });
-      }
-      if (!conversation) {
-        return res.status(404).json({ error: 'Conversation not found' });
-      }
+  // Update conversation
+  conversation.lastMessage = message._id;
+  await conversation.save();
 
-      const messages = await Message.find({
-        conversation: conversation._id
-      })
-      .populate('sender', 'name profilePic')
-      .sort('timestamp')
-      .lean();
+  // Broadcast to room
+  req.io.to(`conversation_${conversationId}`).emit('new_message', message);
 
-      res.json(messages);
-    } catch (error) {
-      console.error('Error getting messages:', error);
-      res.status(500).json({ error: 'Failed to get messages' });
-    }
-  }
+  res.json({ success: true, message });
+};
 
-  // Helper method: Get user profile from Facebook
-  async getUserProfile(userId) {
-    try {
-      const response = await axios.get(
-        `https://graph.facebook.com/${userId}`,
-        {
-          params: {
-            fields: 'name,profile_pic',
-            access_token: process.env.FACEBOOK_PAGE_ACCESS_TOKEN
-          },
-          timeout: 5000
-        }
-      );
-      return response.data;
-    } catch (error) {
-      console.error('Failed to fetch Facebook profile:', error.message);
-      return null;
-    }
-  }
+// List conversations for the logged-in user
+exports.listConversations = async (req, res) => {
+  const userId = req.user.facebookId;
+  const conversations = await Conversation.find({
+    platform: 'facebook',
+    participants: userId
+  }).populate('lastMessage').sort({ updatedAt: -1 });
+  res.json(conversations);
+};
 
-  // Method to inject socket.io instance
-  setSocketIO(io) {
-    this.io = io;
-  }
-}
-
-module.exports = new FacebookController();
+// List messages for a conversation
+exports.listMessages = async (req, res) => {
+  const { conversationId } = req.params;
+  const messages = await Message.find({ conversation: conversationId }).sort({ createdAt: 1 });
+  res.json(messages);
+};

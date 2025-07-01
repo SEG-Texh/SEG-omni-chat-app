@@ -154,6 +154,14 @@ io.on('connection', async (socket) => {
   });
 });
 
+// Pass io to controllers via req
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
+// Facebook API routes
+app.use('/api/facebook', facebookRoutes);
 
 // UserStats initialization function
 async function initializeUserStats() {
