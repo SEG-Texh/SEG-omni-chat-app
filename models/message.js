@@ -5,7 +5,10 @@ const MessageSchema = new Schema({
   conversation: { type: Schema.Types.ObjectId, ref: 'Conversation' },
   sender: String, // Facebook user ID or your user ID
   content: String,
-  platform: { type: String, default: 'facebook' }
+  platform: { type: String, default: 'facebook' },
+  platformMessageId: { type: String, default: null }
 }, { timestamps: true });
+
+MessageSchema.index({ platform: 1, platformMessageId: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Message', MessageSchema);

@@ -24,6 +24,12 @@ const UserStats = require('./models/userStats'); // Add this line
 const server = http.createServer(app);
 const io = socket.init(server);
 
+// Attach io to req for all routes
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
 // Initialize database and stats
 connectDB().then(async () => {
   await initializeUserStats(); // Initialize UserStats after DB connection
@@ -152,12 +158,6 @@ io.on('connection', async (socket) => {
     socket.join(`conversation_${conversationId}`);
     console.log(`Socket ${socket.id} joined room conversation_${conversationId}`);
   });
-});
-
-// Pass io to controllers via req
-app.use((req, res, next) => {
-  req.io = io;
-  next();
 });
 
 // Facebook API routes

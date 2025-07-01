@@ -11,6 +11,13 @@ exports.webhook = async (req, res) => {
         const senderId = event.sender.id;
         const recipientId = event.recipient.id;
         const messageText = event.message && event.message.text;
+        const platformMessageId = event.message && event.message.mid;
+
+        // Check for duplicate message
+        if (platformMessageId) {
+          const exists = await Message.findOne({ platform: 'facebook', platformMessageId });
+          if (exists) continue; // Skip duplicate
+        }
 
         // 1. Find or create conversation
         let conversation = await Conversation.findOne({
@@ -32,7 +39,8 @@ exports.webhook = async (req, res) => {
           conversation: conversation._id,
           sender: senderId,
           content: messageText,
-          platform: 'facebook'
+          platform: 'facebook',
+          platformMessageId
         });
 
         // 3. Update conversation
@@ -62,7 +70,7 @@ exports.sendMessage = async (req, res) => {
 
   // Send to Facebook
   await axios.post(
-    `https://graph.facebook.com/v17.0/me/messages?access_token=${process.env.FB_PAGE_TOKEN}`,
+    `https://graph.facebook.com/v17.0/me/messages?access_token=${process.env.FACEBOOK_PAGE_ACCESS_TOKEN}`,
     {
       recipient: { id: recipientId },
       message: { text: content }
