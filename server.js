@@ -18,6 +18,7 @@ const messageRoutes = require('./routes/messages');
 const dashboardRoutes = require('./routes/dashboard');
 const User = require('./models/User');
 const Message = require('./models/message');
+const Conversation = require('./models/conversation'); // ❗ ADD THIS
 const UserStats = require('./models/userStats'); // Add this line
 
 const server = http.createServer(app);
@@ -117,7 +118,7 @@ io.on('connection', async (socket) => {
       });
 
       // Emit to all users in the conversation room
-      io.to(`conversation_${conversationId}`).emit('newMessage', savedMessage);
+      io.to(`conversation_${conversationId}`).emit('new_message', savedMessage);
     } catch (err) {
       socket.emit('error', { message: 'Failed to send message' });
     }

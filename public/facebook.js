@@ -2,71 +2,79 @@
 // let socket = null // Removed duplicate declaration
 // let currentFacebookConversationId = null // Removed duplicate declaration
 // let currentFacebookRecipientId = null // Removed duplicate declaration
-let facebookConversations = []
-let openFacebookConversationId = null // Track the currently open conversation
-
+let socket = null;
+let openFacebookConversationId = null;
+let facebookConversations = [];
 
 document.addEventListener("DOMContentLoaded", () => {
-  initializeSocket()
-  loadFacebookConversations()
-})
+  initializeSocket();
+  loadFacebookConversations();
+});
 
-// Initialize socket connection
 function initializeSocket() {
-  if (!currentUser?.token) return
+  if (!currentUser?.token) return;
 
   socket = io("https://chat-app-omni-33e1e5eaa993.herokuapp.com", {
     auth: { token: currentUser.token },
     transports: ["websocket"],
     reconnectionAttempts: 5,
-    reconnectionDelay: 100,
-  })
+    reconnectionDelay: 500,
+  });
 
-  // Connection Events
   socket.on("connect", () => {
-    console.log("✅ Socket connected:", socket.id)
-    joinFacebookRooms()
-  })
-  socket.on('message_notification', (data) => {
-    if (data.conversationId !== currentFacebookConversationId) {
-      showNewMessageNotification(data.message);
+    console.log("✅ Socket connected:", socket.id);
+    joinFacebookRooms();
+  });
+
+  // Listen for real-time messages
+  socket.on("new_message", (message) => {
+    console.log("📩 new_message received:", message);
+
+    const msgConvId = String(message.conversation);
+    const isCurrent = String(openFacebookConversationId) === msgConvId;
+
+    if (isCurrent) {
+      appendFacebookMessage(message);
+    } else {
+      highlightConversationInList(msgConvId);
     }
   });
 
-  // Facebook Specific Events
-  socket.on("new_message", (message) => {
-    console.log("Received new_message", message);
-    if (openFacebookConversationId === message.conversation) {
-      appendFacebookMessage(message);
-      console.log("Appended message to open chat");
-    } else {
-      highlightConversationInList(message.conversation);
-      console.log("Message for another conversation");
-    }
-  })
-
   socket.on("disconnect", () => {
-    console.log("🔌 Disconnected from socket")
-  })
+    console.log("🔌 Socket disconnected");
+  });
 
   socket.on("connect_error", (err) => {
-    console.error("❌ Connection error:", err.message)
-  })
-
-  socket.on('joinFacebookConversationRoom', (conversationId) => {
-    socket.join(`conversation_${conversationId}`);
-    console.log(`Socket ${socket.id} joined room conversation_${conversationId}`);
+    console.error("❌ Socket error:", err.message);
   });
 }
 
-// Join Facebook rooms
 function joinFacebookRooms() {
-  if (socket) {
-    socket.emit("joinFacebookRoom")
-    if (currentUser?.facebookId) {
-      socket.emit("joinUserFacebookRooms", currentUser.facebookId)
-    }
+  if (socket && currentUser?.facebookId) {
+    socket.emit("joinFacebookRoom");
+    socket.emit("joinUserFacebookRooms", currentUser.facebookId);
   }
+}
+function appendFacebookMessage(message) {
+  const messagesContainer = document.getElementById("facebookMessages");
+  if (!messagesContainer) return;
+
+  const isFromCurrentUser =
+    message.sender?._id === currentUser._id ||
+    message.sender?._id === currentUser.id;
+
+  const messageDiv = document.createElement("div");
+  messageDiv.className = `flex ${isFromCurrentUser ? "justify-end" : "justify-start"}`;
+  messageDiv.innerHTML = `
+    <div class="chat-bubble ${isFromCurrentUser ? "sent" : "received"}">
+      ${message.content?.text || message.text || "No content"}
+    </div>
+  `;
+
+  messagesContainer.appendChild(messageDiv);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+  console.log("✅ Message appended to DOM");
 }
 
 // Load Facebook conversations
@@ -126,35 +134,35 @@ function renderFacebookConversations() {
 
 // Select Facebook conversation
 function selectFacebookConversation(conversation, element) {
-  currentFacebookConversationId = conversation._id
-  openFacebookConversationId = conversation._id // Set the open conversation
+  currentFacebookConversationId = conversation._id;
+  openFacebookConversationId = conversation._id;
 
-  // Find the Facebook participant
-  const recipient = conversation.participants.find((p) => p._id !== currentUser.id && p._id !== currentUser._id)
+  const recipient = conversation.participants.find(
+    (p) => p._id !== currentUser._id && p._id !== currentUser.id
+  );
 
   if (recipient) {
     currentFacebookRecipientId =
       recipient.facebookId ||
       (recipient.platformIds && recipient.platformIds.facebook) ||
       recipient.platformSenderId ||
-      (conversation.platformConversationId && conversation.platformConversationId.split("_")[1])
+      (conversation.platformConversationId?.split("_")[1]);
   }
 
-  // Join the conversation room for real-time updates
+  // Join conversation room
   if (socket && currentFacebookConversationId) {
-    socket.emit("joinFacebookConversationRoom", currentFacebookConversationId)
+    socket.emit("joinFacebookConversationRoom", currentFacebookConversationId);
   }
 
-  // Update active conversation styling
-  document.querySelectorAll(".conversation-item").forEach((item) => {
-    item.classList.remove("active")
-  })
-  element.classList.add("active")
+  // UI highlight
+  document.querySelectorAll(".conversation-item").forEach((el) => el.classList.remove("active"));
+  element.classList.add("active");
+  removeHighlightFromConversation(conversation._id);
 
-  // Load messages and show chat interface
-  loadFacebookMessages(conversation._id)
-  showFacebookChatInterface(conversation)
+  loadFacebookMessages(conversation._id);
+  showFacebookChatInterface(conversation);
 }
+
 
 // Load Facebook messages
 async function loadFacebookMessages(conversationId) {
@@ -251,19 +259,19 @@ function displayFacebookMessages(messages) {
 function highlightConversationInList(conversationId) {
   const item = document.querySelector(`[data-conversation-id='${conversationId}']`);
   if (item) {
-    item.classList.add('has-new-message');
-    // Optionally, add a badge element
-    let badge = item.querySelector('.new-message-badge');
-    if (!badge) {
-      badge = document.createElement('span');
+    item.classList.add("has-new-message");
+
+    if (!item.querySelector('.new-message-badge')) {
+      const badge = document.createElement('span');
       badge.className = 'new-message-badge';
       badge.textContent = '●';
       badge.style.color = '#e11d48';
       badge.style.marginLeft = '8px';
-      item.querySelector('.flex-1').appendChild(badge);
+      item.querySelector('.flex-1')?.appendChild(badge);
     }
   }
 }
+
 
 function removeHighlightFromConversation(conversationId) {
   const item = document.querySelector(`[data-conversation-id='${conversationId}']`);
