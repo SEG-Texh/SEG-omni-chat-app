@@ -267,32 +267,37 @@ async function sendFacebookMessage() {
 
 // Append Facebook message (for real-time updates)
 function appendFacebookMessage(message) {
-  const messagesContainer = document.getElementById("facebookMessages")
-  if (!messagesContainer) return
+  const messagesContainer = document.getElementById("facebookMessages");
+  if (!messagesContainer) return;
 
-  // Accept both string and object sender
   let senderId = message.sender?._id || message.sender || null;
   const isFromCurrentUser = senderId === currentUser._id || senderId === currentUser.id;
 
-  // Defensive: if the chat is not open, reload messages (shouldn't happen, but safe)
   if (currentFacebookConversationId !== message.conversation) {
-    loadFacebookMessages(message.conversation)
+    loadFacebookMessages(message.conversation);
     return;
   }
 
-  const messageDiv = document.createElement("div")
-  messageDiv.className = `flex ${isFromCurrentUser ? "justify-end" : "justify-start"} chat-message`
+  const messageDiv = document.createElement("div");
+  messageDiv.className = `flex ${isFromCurrentUser ? "justify-end" : "justify-start"} chat-message`;
 
   messageDiv.innerHTML = `
     <div class="chat-bubble ${isFromCurrentUser ? "sent" : "received"}">
       ${message.content?.text || message.text || "No content"}
     </div>
-  `
+  `;
 
-  messagesContainer.appendChild(messageDiv)
-  messagesContainer.scrollTop = messagesContainer.scrollHeight
-  console.log("[appendFacebookMessage] Appended message:", message)
+  messagesContainer.appendChild(messageDiv);
+
+  // Force layout reflow and scroll
+  void messagesContainer.offsetHeight;
+  setTimeout(() => {
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }, 30);
+
+  console.log("[appendFacebookMessage] Appended message:", message);
 }
+
 
 // Update conversation list (for real-time updates)
 function updateConversationList(message) {
