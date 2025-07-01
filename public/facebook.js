@@ -19,6 +19,10 @@ async function loadConversations() {
   const res = await fetch('/api/facebook/conversations', {
     headers: { Authorization: `Bearer ${token}` }
   });
+  if (!res.ok) {
+    alert('Failed to load conversations.');
+    return;
+  }
   conversations = await res.json();
   renderConversations();
 }
@@ -47,6 +51,10 @@ async function loadMessages(conversationId) {
   const res = await fetch(`/api/facebook/messages/${conversationId}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
+  if (!res.ok) {
+    alert('Failed to load messages.');
+    return;
+  }
   const messages = await res.json();
   renderMessages(messages);
 }
@@ -112,7 +120,7 @@ async function sendMessageHandler() {
   const input = document.getElementById('messageInput');
   const content = input.value.trim();
   if (!content || !currentConversationId) return;
-  await fetch('/api/facebook/send', {
+  const res = await fetch('/api/facebook/send', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -120,6 +128,10 @@ async function sendMessageHandler() {
     },
     body: JSON.stringify({ conversationId: currentConversationId, content })
   });
+  if (!res.ok) {
+    alert('Failed to send message.');
+    return;
+  }
   input.value = '';
 }
 

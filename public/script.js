@@ -233,6 +233,10 @@ async function loadDashboardData() {
       }),
     ])
 
+    if (!totalUsersRes.ok || !messagesTodayRes.ok || !responseRateRes.ok || !activeChatsRes.ok) {
+      throw new Error('Failed to load dashboard data.');
+    }
+
     const totalUsers = await totalUsersRes.json()
     const messagesToday = await messagesTodayRes.json()
     const responseRate = await responseRateRes.json()
@@ -247,6 +251,7 @@ async function loadDashboardData() {
     // Update bar chart
     updateBarChart()
   } catch (error) {
+    alert("Error loading dashboard data: " + (error.message || error));
     console.error("Error loading dashboard data:", error)
   }
 }
