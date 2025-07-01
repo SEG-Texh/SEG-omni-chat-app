@@ -64,8 +64,8 @@ exports.sendMessage = async (req, res) => {
   const conversation = await Conversation.findById(conversationId);
   if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
 
-  // Assume req.user.facebookId is your page's ID
-  const senderId = req.user.facebookId;
+  // Use req.user._id or req.user.id as senderId
+  const senderId = req.user._id || req.user.id;
   const recipientId = conversation.participants.find(id => id !== senderId);
 
   // Send to Facebook
@@ -97,7 +97,7 @@ exports.sendMessage = async (req, res) => {
 
 // List conversations for the logged-in user
 exports.listConversations = async (req, res) => {
-  const userId = req.user.facebookId;
+  const userId = req.user._id || req.user.id;
   const conversations = await Conversation.find({
     platform: 'facebook',
     participants: userId
