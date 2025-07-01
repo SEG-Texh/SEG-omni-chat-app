@@ -254,10 +254,9 @@ async function loadDashboardData() {
 // Update bar chart
 function updateBarChart() {
   const barChart = document.getElementById("barChart")
+  if (!barChart) return
   const heights = [40, 65, 30, 80, 45, 70, 55]
-
   barChart.innerHTML = ""
-
   heights.forEach((height, index) => {
     const bar = document.createElement("div")
     bar.className = "flex-1 bg-indigo-500 rounded-t-sm opacity-80 hover:opacity-100 transition-opacity cursor-pointer"
