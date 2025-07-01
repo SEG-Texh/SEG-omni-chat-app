@@ -146,6 +146,11 @@ io.on('connection', async (socket) => {
       name: socket.user.name
     });
   });
+
+  socket.on('joinFacebookConversationRoom', (conversationId) => {
+    socket.join(`conversation_${conversationId}`);
+    console.log(`Socket ${socket.id} joined room conversation_${conversationId}`);
+  });
 });
 
 
