@@ -19,6 +19,11 @@
   color: #1e293b;
   background: #f8fafc;
 }
+#facebookMessages {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
 
 .tab-btn.active {
   color: #4f46e5;

@@ -170,10 +170,10 @@ function showFacebookChatInterface(conversation) {
             </div>
         </div>
 
-        <!-- Messages -->
-        <div id="facebookMessages" class="flex-1 overflow-y-auto p-4 space-y-4">
-            <!-- Messages will be loaded here -->
-        </div>
+<!-- Messages Container -->
+<div class="flex-1 overflow-hidden flex flex-col">
+  <div id="facebookMessages" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
+</div>
 
         <!-- Message Input -->
         <div class="p-4 border-t border-slate-200">
