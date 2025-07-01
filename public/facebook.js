@@ -1,4 +1,13 @@
-const facebookSocket = io({ auth: { token: localStorage.getItem('token') } });
+// Get current user and token from localStorage
+const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+const token = currentUser.token;
+
+// Redirect to login if not authenticated
+if (!token) {
+  window.location.href = 'login.html';
+}
+
+const facebookSocket = io({ auth: { token } });
 let currentConversationId = null;
 let conversations = [];
 
@@ -9,7 +18,7 @@ const chatArea = document.getElementById('facebookChatArea');
 // Load and render conversations
 async function loadConversations() {
   const res = await fetch('/api/facebook/conversations', {
-    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    headers: { Authorization: `Bearer ${token}` }
   });
   conversations = await res.json();
   renderConversations();
@@ -37,7 +46,7 @@ function renderConversations() {
 // Load and render messages for a conversation
 async function loadMessages(conversationId) {
   const res = await fetch(`/api/facebook/messages/${conversationId}`, {
-    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    headers: { Authorization: `Bearer ${token}` }
   });
   const messages = await res.json();
   renderMessages(messages);
@@ -108,7 +117,7 @@ async function sendMessageHandler() {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${localStorage.getItem('token')}`
+      Authorization: `Bearer ${token}`
     },
     body: JSON.stringify({ conversationId: currentConversationId, content })
   });
