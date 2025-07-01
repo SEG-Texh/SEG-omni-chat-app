@@ -147,7 +147,8 @@ class FacebookController {
           platformIds: { facebook: facebookId },
           profilePic: profile?.profile_pic || null,
           lastActive: new Date(),
-          roles: ['customer']
+          roles: ['customer'],
+          type: 'platform'
         });
 
         await user.save();
