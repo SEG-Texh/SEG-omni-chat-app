@@ -1,5 +1,5 @@
 // Global variables
-let currentUser = null
+// let currentUser = null
 let socket = null
 let currentFacebookConversationId = null
 let currentFacebookRecipientId = null

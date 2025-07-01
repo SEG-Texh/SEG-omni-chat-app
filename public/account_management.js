@@ -177,7 +177,7 @@ window.editUser = editUser
 window.deleteUser = deleteUser
 
 // Example implementations for undeclared variables
-currentUser = { token: "exampleToken" } // Example currentUser object
+// currentUser = { token: "exampleToken" } // Example currentUser object
 showMessage = (elementId, type, message) => {
   const element = document.getElementById(elementId)
   if (element) {
