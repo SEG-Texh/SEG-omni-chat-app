@@ -13,6 +13,7 @@ class FacebookController {
     this.handleMessage = this.handleMessage.bind(this);
     this.processMessage = this.processMessage.bind(this);
     this.processPostback = this.processPostback.bind(this);
+    this.io = null;
     this.sendMessage = this.sendMessage.bind(this);
     this.findOrCreateUser = this.findOrCreateUser.bind(this);
     this.findOrCreateConversation = this.findOrCreateConversation.bind(this);
@@ -76,8 +77,6 @@ class FacebookController {
   // Enhanced processMessage with message direction
   async processMessage(senderPsid, message, pageId) {
     try {
-      console.log(`Processing message from ${senderPsid}`);
-      
       const user = await this.findOrCreateUser(senderPsid);
       const conversation = await this.findOrCreateConversation(user._id, pageId, senderPsid);
 
@@ -86,46 +85,49 @@ class FacebookController {
         sender: user._id,
         content: { text: message.text },
         platform: 'facebook',
-        platformMessageId: message.mid,
-        platformSenderId: senderPsid,
-        platformRecipientId: pageId,
-        status: 'received',
-        direction: 'inbound' // Added direction field
+        direction: 'inbound',
+        status: 'received'
       };
 
       if (message.attachments) {
         messageData.content.attachments = message.attachments.map(att => ({
           type: att.type,
-          url: att.payload?.url,
-          name: att.payload?.name || null
+          url: att.payload?.url
         }));
       }
 
       const newMessage = await Message.create(messageData);
       
-      // Update conversation with last message and increment unread count if needed
       await Conversation.updateOne(
         { _id: conversation._id },
         { 
           $set: { lastMessage: newMessage._id },
-          $inc: { unreadCount: 1 } // Track unread messages
+          $inc: { unreadCount: 1 }
         }
       );
 
-      // Emit real-time event if using socket.io
+      // Enhanced real-time emission
+      const populatedMessage = await Message.findById(newMessage._id)
+        .populate('sender', 'name profilePic')
+        .lean();
+
       if (this.io) {
-        const populatedMessage = await Message.findById(newMessage._id)
-          .populate('sender', 'name profilePic');
+        // Emit to conversation room
         this.io.to(`conversation_${conversation._id}`).emit('new_message', populatedMessage);
+        
+        // Emit to user's personal room for notifications
+        this.io.to(`user_${user._id}`).emit('message_notification', {
+          conversationId: conversation._id,
+          message: populatedMessage
+        });
       }
 
-      return newMessage;
+      return populatedMessage;
     } catch (error) {
-      console.error('❌ Message processing failed:', error.message);
+      console.error('Message processing failed:', error);
       return null;
     }
   }
-
   // Enhanced user creation with better error handling
   async findOrCreateUser(facebookId) {
     try {

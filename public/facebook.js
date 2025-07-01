@@ -19,7 +19,7 @@ function initializeSocket() {
     auth: { token: currentUser.token },
     transports: ["websocket"],
     reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
+    reconnectionDelay: 100,
   })
 
   // Connection Events
@@ -27,6 +27,11 @@ function initializeSocket() {
     console.log("✅ Socket connected:", socket.id)
     joinFacebookRooms()
   })
+  socket.on('message_notification', (data) => {
+    if (data.conversationId !== currentFacebookConversationId) {
+      showNewMessageNotification(data.message);
+    }
+  });
 
   // Facebook Specific Events
   socket.on("new_message", (message) => {
