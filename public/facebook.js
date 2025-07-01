@@ -1,4 +1,4 @@
-const socket = io({ auth: { token: localStorage.getItem('token') } });
+const facebookSocket = io({ auth: { token: localStorage.getItem('token') } });
 let currentConversationId = null;
 let conversations = [];
 
@@ -76,12 +76,12 @@ function renderMessages(messages) {
 
 function selectConversation(conversationId) {
   currentConversationId = conversationId;
-  socket.emit('joinFacebookConversationRoom', conversationId);
+  facebookSocket.emit('joinFacebookConversationRoom', conversationId);
   loadMessages(conversationId);
 }
 
 // Real-time new message
-socket.on('new_message', (message) => {
+facebookSocket.on('new_message', (message) => {
   if (message.conversation === currentConversationId) {
     const messagesContainer = document.getElementById('messagesContainer');
     if (messagesContainer) {
