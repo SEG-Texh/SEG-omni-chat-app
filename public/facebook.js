@@ -2,6 +2,7 @@
 let socket = null
 let currentFacebookConversationId = null
 let currentFacebookRecipientId = null
+let facebookConversations = []
 
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -62,45 +63,47 @@ async function loadFacebookConversations() {
 
   try {
     const response = await apiRequest("/api/facebook/conversations")
-    const conversations = await response.json()
+    facebookConversations = await response.json()
 
-    conversationsList.innerHTML = ""
-
-    if (conversations.length === 0) {
-      conversationsList.innerHTML = '<div class="p-4 text-center text-slate-500">No conversations found</div>'
-      return
-    }
-
-    conversations.forEach((conversation) => {
-      const participant = conversation.participants[0]
-      const item = document.createElement("div")
-      item.className = "conversation-item"
-      item.innerHTML = `
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-semibold">
-                        👤
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="font-medium text-slate-900 truncate">
-                            ${participant?.name || "Unknown User"}
-                        </div>
-                        <div class="text-sm text-slate-500 truncate">
-                            ${conversation.lastMessage || "No messages yet"}
-                        </div>
-                    </div>
-                    <div class="text-xs text-slate-400">
-                        ${new Date(conversation.updatedAt).toLocaleDateString()}
-                    </div>
-                </div>
-            `
-
-      item.addEventListener("click", () => selectFacebookConversation(conversation, item))
-      conversationsList.appendChild(item)
-    })
+    renderFacebookConversations()
   } catch (error) {
     console.error("Error loading Facebook conversations:", error)
     conversationsList.innerHTML = '<div class="p-4 text-center text-slate-500">Error loading conversations</div>'
   }
+}
+
+function renderFacebookConversations() {
+  const conversationsList = document.getElementById("facebookConversationsList")
+  conversationsList.innerHTML = ""
+  if (facebookConversations.length === 0) {
+    conversationsList.innerHTML = '<div class="p-4 text-center text-slate-500">No conversations found</div>'
+    return
+  }
+  facebookConversations.forEach((conversation) => {
+    const participant = conversation.participants[0]
+    const item = document.createElement("div")
+    item.className = "conversation-item"
+    item.innerHTML = `
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-semibold">
+          👤
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="font-medium text-slate-900 truncate">
+            ${participant?.name || "Unknown User"}
+          </div>
+          <div class="text-sm text-slate-500 truncate">
+            ${conversation.lastMessage || "No messages yet"}
+          </div>
+        </div>
+        <div class="text-xs text-slate-400">
+          ${new Date(conversation.updatedAt).toLocaleDateString()}
+        </div>
+      </div>
+    `
+    item.addEventListener("click", () => selectFacebookConversation(conversation, item))
+    conversationsList.appendChild(item)
+  })
 }
 
 // Select Facebook conversation
@@ -277,7 +280,21 @@ function appendFacebookMessage(message) {
 
 // Update conversation list (for real-time updates)
 function updateConversationList(message) {
-  console.log("Updating conversation list with new message:", message)
+  // Find the conversation
+  const idx = facebookConversations.findIndex(c => c._id === message.conversation)
+  if (idx !== -1) {
+    // Update last message and timestamp
+    facebookConversations[idx].lastMessage = message.content?.text || message.text
+    facebookConversations[idx].updatedAt = message.createdAt || new Date().toISOString()
+    // Move to top
+    const [updated] = facebookConversations.splice(idx, 1)
+    facebookConversations.unshift(updated)
+    // Re-render the list
+    renderFacebookConversations()
+  } else {
+    // Optionally, fetch the conversation if not found
+    loadFacebookConversations()
+  }
 }
 
 // Import or declare io and apiRequest here
