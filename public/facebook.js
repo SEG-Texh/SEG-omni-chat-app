@@ -36,6 +36,7 @@ function initializeSocket() {
       console.log("Appended message to open chat")
     } else {
       console.log("Message for another conversation")
+      highlightConversationInList(message.conversation)
     }
   })
 
@@ -232,4 +233,12 @@ function displayFacebookMessages(messages) {
 
   // Scroll to bottom
   messagesContainer.scrollTop = messagesContainer.scrollHeight
+}
+
+function highlightConversationInList(conversationId) {
+  const item = document.querySelector(`[data-conversation-id='${conversationId}']`);
+  if (item) {
+    item.classList.add('has-new-message');
+    // Optionally, add a badge or change background color
+  }
 }
