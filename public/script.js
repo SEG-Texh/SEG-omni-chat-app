@@ -92,13 +92,15 @@ async function handleLogin(e) {
 
 // Show the main application
 function showApp() {
-  document.getElementById("loginContainer").classList.add("hidden")
-  document.getElementById("appContainer").classList.remove("hidden")
+  const loginContainer = document.getElementById("loginContainer")
+  const appContainer = document.getElementById("appContainer")
+  if (loginContainer) loginContainer.classList.add("hidden")
+  if (appContainer) appContainer.classList.remove("hidden")
 
   // Update user info in header
-  document.getElementById("userName").textContent = currentUser.name
-  document.getElementById("userAvatar").textContent = currentUser.name?.[0] || "U"
-  document.getElementById("userRole").textContent = currentUser.role
+  if (document.getElementById("userName")) document.getElementById("userName").textContent = currentUser.name
+  if (document.getElementById("userAvatar")) document.getElementById("userAvatar").textContent = currentUser.name?.[0] || "U"
+  if (document.getElementById("userRole")) document.getElementById("userRole").textContent = currentUser.role
 
   // Initialize socket connection
   initializeSocket(currentUser.token)
@@ -117,12 +119,14 @@ function logout() {
     socket = null
   }
 
-  document.getElementById("loginContainer").classList.remove("hidden")
-  document.getElementById("appContainer").classList.add("hidden")
+  const loginContainer = document.getElementById("loginContainer")
+  const appContainer = document.getElementById("appContainer")
+  if (loginContainer) loginContainer.classList.remove("hidden")
+  if (appContainer) appContainer.classList.add("hidden")
 
   // Reset form
-  document.getElementById("loginForm").reset()
-  document.getElementById("loginError").classList.add("hidden")
+  if (document.getElementById("loginForm")) document.getElementById("loginForm").reset()
+  if (document.getElementById("loginError")) document.getElementById("loginError").classList.add("hidden")
 }
 
 // Switch tabs
