@@ -1,5 +1,4 @@
 // Dashboard page specific functionality
-const currentUser = {} // Declare currentUser variable
 
 document.addEventListener("DOMContentLoaded", () => {
   loadDashboardData()

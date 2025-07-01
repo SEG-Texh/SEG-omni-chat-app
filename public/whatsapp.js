@@ -1,7 +1,6 @@
 // WhatsApp page specific functionality
 let currentWhatsAppConversationId = null
 let currentWhatsAppNumber = null
-let currentUser = null // Declare currentUser variable
 
 document.addEventListener("DOMContentLoaded", () => {
   loadWhatsAppConversations()
@@ -198,12 +197,4 @@ async function sendWhatsAppMessage() {
     console.error("Error sending WhatsApp message:", error)
     alert("Failed to send message: " + error.message)
   }
-}
-
-// Example declarations for currentUser
-// These should be replaced with actual imports or declarations
-currentUser = {
-  token: "your_token_here",
-  _id: "your_user_id_here",
-  id: "your_user_id_here",
 }
