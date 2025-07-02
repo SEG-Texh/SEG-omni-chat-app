@@ -1,10 +1,11 @@
-const http = require('http');
 const express = require('express');
 const socketIo = require('socket.io');
-const app = require('./app');
 const cors = require('cors');
 const path = require('path');
 const jwt = require('jsonwebtoken');
+
+// Initialize Express app
+const app = express();
 
 // CORS configuration for webhook endpoints
 app.use(cors({
@@ -13,7 +14,15 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Auth-Token'],
   exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar']
 }));
+
+// Load environment variables
 require('dotenv').config();
+
+// Middleware
+app.use(express.json());
+app.use(express.static(path.join(__dirname, './public')));
+app.use('/css', express.static(path.join(__dirname, '../css')));
+app.use('/js', express.static(path.join(__dirname, '../js')));
 const socket = require('./config/socket');
 const connectDB = require('./config/database');
 const bcrypt = require('bcryptjs');
