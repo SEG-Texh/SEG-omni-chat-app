@@ -325,8 +325,6 @@ async function initializeUserStats() {
     socket.userId = user._id.toString();
     socket.user = user;
     next();
-  } catch (err) {
-    next(new Error('Authentication error'));
   }
 }
 
