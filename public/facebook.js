@@ -29,18 +29,30 @@ window.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
+      // Set up error handlers first
+      facebookSocket.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+        reject(error);
+      });
+
+      facebookSocket.on('connect_timeout', () => {
+        console.error('Socket connection timeout');
+        reject(new Error('Socket connection timeout'));
+      });
+
+      facebookSocket.on('error', (error) => {
+        console.error('Socket error:', error);
+        reject(error);
+      });
+
       const connectTimeout = setTimeout(() => {
         reject(new Error('Socket connection timeout'));
       }, 5000);
 
       facebookSocket.on('connect', () => {
         clearTimeout(connectTimeout);
+        console.log('Socket connected successfully');
         resolve();
-      });
-
-      facebookSocket.on('connect_error', (error) => {
-        clearTimeout(connectTimeout);
-        reject(error);
       });
     });
 
@@ -80,6 +92,27 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   }
 });
+
+// Add error handling for socket disconnection
+if (facebookSocket) {
+  facebookSocket.on('disconnect', (reason) => {
+    console.error('Socket disconnected:', reason);
+    // Optionally show a message to the user
+    alert('Connection lost. Please refresh the page.');
+  });
+
+  facebookSocket.on('connect_error', (error) => {
+    console.error('Socket connection error:', error);
+    // Optionally show a message to the user
+    alert('Connection failed. Please check your internet connection.');
+  });
+
+  facebookSocket.on('connect_timeout', () => {
+    console.error('Socket connection timeout');
+    // Optionally show a message to the user
+    alert('Connection timed out. Please check your internet connection.');
+  });
+}
 
 // Initialize UI elements
 function initializeUI() {
