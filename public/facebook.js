@@ -18,14 +18,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     let conversations = [];
     let facebookUnreadConversations = new Set();
     let facebookSocket = null;
-    let facebookNotificationSound = null;
-
-    // Try to load notification sound
-    try {
-      facebookNotificationSound = new Audio('/sounds/notification.mp3');
-    } catch (e) {
-      console.error('Failed to load notification sound:', e);
-    }
 
     // Initialize socket with token
     facebookSocket = io({ auth: { token: currentUser.token } });
@@ -69,12 +61,6 @@ window.addEventListener('DOMContentLoaded', async () => {
           updateFacebookConversationBadge(message.conversation);
           // Show browser notification
           showFacebookNewMessageNotification(message.content || 'New message');
-          // Try to play sound if available
-          try {
-            if (facebookNotificationSound) facebookNotificationSound.play();
-          } catch (e) {
-            console.error('Failed to play notification sound:', e);
-          }
         }
       });
     }
