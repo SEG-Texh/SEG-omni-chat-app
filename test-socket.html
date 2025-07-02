@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>WebSocket Test</h1>
+    <div id="status">Connecting...</div>
+    <div id="messages"></div>
+    <button onclick="sendMessage()">Send Test Message</button>
+    <script>
+        const socket = io('https://omni-chat-app.onrender.com', {
+            transports: ['websocket'],
+            withCredentials: true
+        });
+
+        socket.on('connect', () => {
+            document.getElementById('status').textContent = 'Connected!';
+            console.log('Connected to WebSocket server');
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('status').textContent = 'Disconnected';
+            console.log('Disconnected from WebSocket server');
+        });
+
+        socket.on('error', (error) => {
+            console.error('WebSocket error:', error);
+            document.getElementById('status').textContent = 'Error: ' + error;
+        });
+
+        function sendMessage() {
+            socket.emit('test_message', { message: 'Hello from test client!' });
+        }
+
+        socket.on('new_message', (data) => {
+            const messages = document.getElementById('messages');
+            const message = document.createElement('div');
+            message.textContent = JSON.stringify(data);
+            messages.appendChild(message);
+        });
+    </script>
+</body>
+</html>
