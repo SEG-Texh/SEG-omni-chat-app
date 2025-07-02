@@ -18,8 +18,7 @@ exports.testWebhook = async (req, res) => {
   });
 };
 
-// Facebook Webhook Handler
-exports.webhook = async (req, res) => {
+
 
 // Facebook Webhook Handler
 exports.webhook = async (req, res) => {
