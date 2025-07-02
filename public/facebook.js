@@ -1,3 +1,9 @@
+// Initialize Facebook-specific variables
+let currentConversationId = null;
+let conversations = [];
+let facebookUnreadConversations = new Set();
+let facebookSocket = null;
+
 // Initialize Facebook after DOM is loaded
 window.addEventListener('DOMContentLoaded', async () => {
   try {
@@ -12,12 +18,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (!conversationsList || !chatArea) {
       throw new Error('Required DOM elements not found');
     }
-
-    // Initialize variables
-    let currentConversationId = null;
-    let conversations = [];
-    let facebookUnreadConversations = new Set();
-    let facebookSocket = null;
 
     // Initialize socket with token
     facebookSocket = io({ auth: { token: currentUser.token } });
