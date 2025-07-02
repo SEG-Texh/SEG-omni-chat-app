@@ -38,9 +38,7 @@ function showFacebookNewMessageNotification(text) {
 
 // Load and render conversations
 async function loadConversations() {
-  const res = await fetch('/api/facebook/conversations', {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  const res = await apiRequest('/api/facebook/conversations');
   if (!res.ok) {
     alert('Failed to load conversations.');
     return;
@@ -72,9 +70,7 @@ function renderConversations() {
 
 // Load and render messages for a conversation
 async function loadMessages(conversationId) {
-  const res = await fetch(`/api/facebook/messages/${conversationId}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  const res = await apiRequest(`/api/facebook/messages/${conversationId}`);
   if (!res.ok) {
     alert('Failed to load messages.');
     return;
@@ -161,11 +157,10 @@ async function sendMessageHandler() {
   const input = document.getElementById('messageInput');
   const content = input.value.trim();
   if (!content || !currentConversationId) return;
-  const res = await fetch('/api/facebook/send', {
+  const res = await apiRequest('/api/facebook/send', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify({ conversationId: currentConversationId, content })
   });
