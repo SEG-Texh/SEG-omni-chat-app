@@ -1,16 +1,30 @@
-// Initialize Facebook-specific variables
-let currentConversationId = null;
-let conversations = [];
-let facebookUnreadConversations = new Set();
-let facebookNotificationSound = new Audio('/sounds/notification.mp3'); // Ensure this file exists
-let facebookSocket = null;
-
-// Initialize Facebook after authentication is confirmed
-async function initializeFacebook() {
+// Initialize Facebook after DOM is loaded
+window.addEventListener('DOMContentLoaded', async () => {
   try {
     // Ensure we have a valid token
     if (!currentUser?.token) {
       throw new Error('No valid token found');
+    }
+
+    // DOM Elements
+    const conversationsList = document.getElementById('facebookConversationsList');
+    const chatArea = document.getElementById('facebookChatArea');
+    if (!conversationsList || !chatArea) {
+      throw new Error('Required DOM elements not found');
+    }
+
+    // Initialize variables
+    let currentConversationId = null;
+    let conversations = [];
+    let facebookUnreadConversations = new Set();
+    let facebookSocket = null;
+    let facebookNotificationSound = null;
+
+    // Try to load notification sound
+    try {
+      facebookNotificationSound = new Audio('/sounds/notification.mp3');
+    } catch (e) {
+      console.error('Failed to load notification sound:', e);
     }
 
     // Initialize socket with token
@@ -67,6 +81,10 @@ async function initializeFacebook() {
 
     // Load conversations after successful connection
     await loadConversations();
+
+    // Initialize UI elements
+    initializeUI();
+
   } catch (error) {
     console.error('Facebook initialization failed:', error);
     alert('Failed to initialize Facebook chat. Please try again.');
@@ -75,19 +93,34 @@ async function initializeFacebook() {
       window.location.href = 'login.html';
     }
   }
-}
-
-// Check authentication and initialize Facebook
-window.addEventListener('DOMContentLoaded', () => {
-  // Wait for shared.js to initialize currentUser
-  if (!currentUser) {
-    setTimeout(() => {
-      initializeFacebook();
-    }, 100); // Small delay to ensure shared.js has initialized
-  } else {
-    initializeFacebook();
-  }
 });
+
+// Initialize UI elements
+function initializeUI() {
+  // DOM Elements
+  const conversationsList = document.getElementById('facebookConversationsList');
+  const chatArea = document.getElementById('facebookChatArea');
+
+  if (!conversationsList || !chatArea) {
+    console.error('Required DOM elements not found');
+    return;
+  }
+
+  // Initialize conversation list
+  conversationsList.innerHTML = '<div class="p-4 text-center text-slate-500">Loading conversations...</div>';
+
+  // Initialize chat area
+  chatArea.innerHTML = `
+    <div class="flex-1 flex flex-col">
+      <div class="flex-1 flex items-center justify-center text-slate-500">
+        <div class="text-center">
+          <div class="text-4xl mb-4">💬</div>
+          <div class="text-lg">Select a conversation to start chatting</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
 
 // DOM elements
 const conversationsList = document.getElementById('facebookConversationsList');
