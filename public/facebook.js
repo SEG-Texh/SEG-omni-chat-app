@@ -1,16 +1,46 @@
-// Use currentUser from shared.js
-const token = currentUser && currentUser.token;
-
-// Redirect to login if not authenticated
-if (!token) {
-  window.location.href = 'login.html';
-}
-
-const facebookSocket = io({ auth: { token } });
+// Initialize Facebook-specific variables
 let currentConversationId = null;
 let conversations = [];
 let facebookUnreadConversations = new Set();
 let facebookNotificationSound = new Audio('/sounds/notification.mp3'); // Ensure this file exists
+let facebookSocket = null;
+
+// Initialize Facebook after authentication is confirmed
+async function initializeFacebook() {
+  // Ensure we have a valid token
+  if (!currentUser?.token) {
+    window.location.href = 'login.html';
+    return;
+  }
+
+  // Initialize socket with token
+  facebookSocket = io({ auth: { token: currentUser.token } });
+  
+  // Set up socket listeners
+  facebookSocket.on('connect', () => {
+    console.log('Connected to Facebook socket');
+  });
+
+  facebookSocket.on('connect_error', (error) => {
+    console.error('Facebook socket connection error:', error);
+    // Handle connection error - show error message or retry
+  });
+
+  // Load conversations after socket is connected
+  await loadConversations();
+}
+
+// Check authentication and initialize Facebook
+window.addEventListener('DOMContentLoaded', () => {
+  // Wait for shared.js to initialize currentUser
+  if (!currentUser) {
+    setTimeout(() => {
+      initializeFacebook();
+    }, 100); // Small delay to ensure shared.js has initialized
+  } else {
+    initializeFacebook();
+  }
+});
 
 // DOM elements
 const conversationsList = document.getElementById('facebookConversationsList');
@@ -171,10 +201,16 @@ async function sendMessageHandler() {
   input.value = '';
 }
 
-// On page load
-window.addEventListener('DOMContentLoaded', async () => {
-  // You need to set window.facebookPageId to your page's ID (from backend or config)
-  // For demo, you can hardcode or fetch it from the backend
-  window.facebookPageId = 'YOUR_PAGE_ID'; // <-- Set this!
-  await loadConversations();
+// Initialize Facebook page
+async function initializeFacebookPage() {
+  // Set Facebook page ID (you'll need to replace this with your actual page ID)
+  window.facebookPageId = 'YOUR_PAGE_ID'; // <-- Replace with your actual Facebook page ID
+  
+  // Initialize the page
+  await initializeFacebook();
+}
+
+// Initialize page after authentication
+window.addEventListener('DOMContentLoaded', () => {
+  initializeFacebookPage();
 });
