@@ -2,6 +2,25 @@ const Conversation = require('../models/conversation');
 const Message = require('../models/message');
 const axios = require('axios');
 
+// Test endpoint to verify webhook
+exports.testWebhook = async (req, res) => {
+  console.log('Test Webhook Request:', {
+    method: req.method,
+    url: req.url,
+    headers: req.headers,
+    query: req.query,
+    body: req.body
+  });
+  
+  res.json({
+    status: 'success',
+    message: 'Test webhook endpoint working'
+  });
+};
+
+// Facebook Webhook Handler
+exports.webhook = async (req, res) => {
+
 // Facebook Webhook Handler
 exports.webhook = async (req, res) => {
   const body = req.body;
