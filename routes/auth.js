@@ -57,16 +57,27 @@ router.post('/register', auth, async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log('Login attempt:', { email });
 
     // Find user and include password
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
+      console.error('User not found:', email);
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
+    console.log('User found:', { 
+      id: user._id,
+      name: user.name,
+      role: user.role
+    });
+
     // Check password
     const isMatch = await user.comparePassword(password);
+    console.log('Password match result:', isMatch);
+
     if (!isMatch) {
+      console.error('Password mismatch for user:', user._id);
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
@@ -81,6 +92,7 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    console.log('Login successful for user:', user._id);
     res.json({
       token,
       user: {
@@ -92,6 +104,7 @@ router.post('/login', async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({ error: error.message });
   }
 });
