@@ -171,7 +171,12 @@ function switchTab(tabName, event) {
 
 // Initialize socket connection
 function initializeSocket(token) {
-  socket = io("https://chat-app-omni-33e1e5eaa993.herokuapp.com", {
+  // Use localtunnel for development
+  const socketUrl = process.env.NODE_ENV === 'production' 
+    ? 'https://chat-app-omni-33e1e5eaa993.herokuapp.com'
+    : 'https://polite-dingos-judge.loca.lt';
+  
+  socket = io(socketUrl, {
     auth: { token: token },
     transports: ["websocket"],
     reconnectionAttempts: 5,

@@ -1,10 +1,10 @@
 {
   "name": "omni-chat-app",
   "version": "1.0.0",
-"main": "server.js",
-
+  "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "localtunnel": "node run-localtunnel.js",
     "overrides": {
       "utf7>semver": "^5.7.2"
     },
@@ -30,5 +30,8 @@
     "nodemailer": "^6.10.1",
     "request": "^2.88.2",
     "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "localtunnel": "^2.0.2"
   }
 }

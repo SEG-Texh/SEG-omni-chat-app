@@ -5,6 +5,14 @@ const app = require('./app');
 const cors = require('cors');
 const path = require('path');
 const jwt = require('jsonwebtoken');
+
+// CORS configuration for webhook endpoints
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Auth-Token'],
+  exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar']
+}));
 require('dotenv').config();
 const socket = require('./config/socket');
 const connectDB = require('./config/database');

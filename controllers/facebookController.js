@@ -5,6 +5,59 @@ const axios = require('axios');
 // Facebook Webhook Handler
 exports.webhook = async (req, res) => {
   const body = req.body;
+  
+  console.log('Facebook webhook received request:', {
+    timestamp: new Date(),
+    method: req.method,
+    path: req.path,
+    query: req.query,
+    headers: req.headers,
+    body
+  });
+
+  // Check if this is a webhook verification request
+  if (req.query['hub.mode'] === 'subscribe') {
+    console.log('Attempting webhook verification...');
+    console.log('Request details:', {
+      method: req.method,
+      path: req.path,
+      query: req.query,
+      headers: req.headers
+    });
+    
+    const verifyToken = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+    
+    console.log('Verification tokens:', {
+      received: verifyToken,
+      expected: process.env.FACEBOOK_VERIFY_TOKEN,
+      match: verifyToken === process.env.FACEBOOK_VERIFY_TOKEN
+    });
+    
+    if (!verifyToken) {
+      console.error('No verification token provided in query');
+      return res.status(403).send('No verification token provided');
+    }
+    
+    if (!process.env.FACEBOOK_VERIFY_TOKEN) {
+      console.error('FACEBOOK_VERIFY_TOKEN not set in environment');
+      return res.status(403).send('Server verify token not configured');
+    }
+    
+    if (verifyToken === process.env.FACEBOOK_VERIFY_TOKEN) {
+      console.log('Verification token matches! Sending challenge:', challenge);
+      return res.status(200).send(challenge);
+    } else {
+      console.error('Verification token mismatch!');
+      console.error('Tokens do not match:', {
+        received: verifyToken,
+        expected: process.env.FACEBOOK_VERIFY_TOKEN
+      });
+      return res.status(403).send('Verification token mismatch');
+    }
+  }
+
+  // Handle incoming messages
   if (body.object === 'page') {
     for (const entry of body.entry) {
       for (const event of entry.messaging) {
@@ -60,11 +113,9 @@ exports.webhook = async (req, res) => {
 
 // Send message to Facebook user
 exports.sendMessage = async (req, res) => {
-  const { conversationId, content } = req.body;
-  const conversation = await Conversation.findById(conversationId);
-  if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
-
-  // Use req.user._id or req.user.id as senderId
+    const { conversationId, content } = req.body;
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
   const senderId = req.user._id || req.user.id;
   const recipientId = conversation.participants.find(id => id !== senderId);
 
