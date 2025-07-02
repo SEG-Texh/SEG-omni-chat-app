@@ -229,123 +229,22 @@ async function initializeUserStats() {
   } catch (err) {
     next(new Error('Authentication error'));
   }
-});
-
-const connectedUsers = new Map();
-
-io.on('connection', async (socket) => {
-  console.log(`🟢 User connected: ${socket.user.name} (${socket.id})`);
-
-  connectedUsers.set(socket.userId, { socketId: socket.id, user: socket.user });
-  await User.findByIdAndUpdate(socket.userId, { isOnline: true });
-  socket.join(socket.userId); // Optional: for personal notifications
-
-  // Broadcast that user is online
-  socket.broadcast.emit('userOnline', {
-    userId: socket.userId,
-    name: socket.user.name,
-    role: socket.user.role
-  });
-
-  // JOIN ALL CONVERSATION ROOMS
-  socket.on('joinConversations', async () => {
-    try {
-      const conversations = await Conversation.find({ participants: socket.user._id });
-      conversations.forEach(conv => {
-        socket.join(`conversation_${conv._id}`);
-      });
-    } catch (err) {
-      console.error('Error joining conversations:', err.message);
-    }
-  });
-
-  // SEND A MESSAGE
-  socket.on('sendMessage', async ({ conversationId, content, platform }) => {
-    try {
-      const message = new Message({
-        conversation: conversationId,
-        sender: socket.user._id,
-        content,
-        platform
-      });
-
-      const savedMessage = await message.save();
-      await savedMessage.populate('sender', 'name avatar');
-
-      // Update conversation metadata
-      await Conversation.findByIdAndUpdate(conversationId, {
-        lastMessage: savedMessage._id,
-        $inc: { unreadCount: 1 }
-      });
-
-      // Emit to all users in the conversation room
-      io.to(`conversation_${conversationId}`).emit('new_message', savedMessage);
-    } catch (err) {
-      socket.emit('error', { message: 'Failed to send message' });
-    }
-  });
-
-  // TYPING INDICATOR
-  socket.on('typing', ({ conversationId, isTyping }) => {
-    socket.to(`conversation_${conversationId}`).emit('userTyping', {
-      userId: socket.userId,
-      name: socket.user.name,
-      isTyping
-    });
-  });
-
-  // DISCONNECT
-  socket.on('disconnect', async () => {
-    console.log(`🔴 User disconnected: ${socket.user.name}`);
-    connectedUsers.delete(socket.userId);
-    await User.findByIdAndUpdate(socket.userId, {
-      isOnline: false,
-      lastSeen: new Date()
-    });
-
-    socket.broadcast.emit('userOffline', {
-      userId: socket.userId,
-      name: socket.user.name
-    });
-  });
-
-  socket.on('joinFacebookConversationRoom', (conversationId) => {
-    socket.join(`conversation_${conversationId}`);
-    console.log(`Socket ${socket.id} joined room conversation_${conversationId}`);
-  });
-});
-
-// Facebook API routes
-app.use('/api/facebook', facebookRoutes);
-
-// UserStats initialization function
-async function initializeUserStats() {
-  try {
-    const exists = await UserStats.findOne({});
-    if (!exists) {
-      const count = await User.countDocuments();
-      await UserStats.create({ totalUsers: count });
-      console.log('✅ UserStats initialized with', count, 'users');
-    } else {
-      console.log('ℹ️ UserStats already exists with', exists.totalUsers, 'users');
-    }
-  } catch (error) {
-    console.error('❌ Error initializing UserStats:', error.message);
-    // Consider whether you want to proceed with server startup or exit
-  }
 }
 
-const createDefaultAdmin = async () => {
-  const exists = await User.findOne({ role: 'admin' });
-  if (!exists) {
-    const admin = new User({
-      name: 'Admin',
-      email: 'admin@example.com',
-      password: 'admin123',
-      role: 'admin'
-    });
-    await admin.save();
-    console.log('✅ Default admin created: admin@example.com / admin123');
+async function createDefaultAdmin() {
+  try {
+    const admin = await User.findOne({ role: 'admin' });
+    if (!admin) {
+      const user = new User({
+        name: 'Admin',
+        email: 'admin@example.com',
+        password: await bcrypt.hash('admin123', 10),
+        role: 'admin'
+      });
+      await user.save();
+      console.log('✅ Default admin created');
+    }
+  } catch (error) {
+    console.error('❌ Error creating default admin:', error.message);
   }
 };
-
