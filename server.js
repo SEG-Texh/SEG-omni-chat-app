@@ -3,6 +3,7 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const jwt = require('jsonwebtoken');
+const http = require('http');
 
 // Initialize Express app
 const app = express();
@@ -23,20 +24,31 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, './public')));
 app.use('/css', express.static(path.join(__dirname, '../css')));
 app.use('/js', express.static(path.join(__dirname, '../js')));
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/facebook', facebookRoutes);
+app.use('/api/conversation', conversationRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/chats', dashboardRoutes);
+
+// Initialize database and stats
 const socket = require('./config/socket');
 const connectDB = require('./config/database');
 const bcrypt = require('bcryptjs');
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
-const facebookRoutes = require('./routes/facebook'); // ✅
+const facebookRoutes = require('./routes/facebook');
 const conversationRoutes = require('./routes/conversation');
 const messageRoutes = require('./routes/messages');
 const dashboardRoutes = require('./routes/dashboard');
 const User = require('./models/User');
 const Message = require('./models/message');
-const Conversation = require('./models/conversation'); // ❗ ADD THIS
-const UserStats = require('./models/userStats'); // Add this line
+const Conversation = require('./models/conversation');
+const UserStats = require('./models/userStats');
 
 const server = http.createServer(app);
 const io = socket.init(server);
