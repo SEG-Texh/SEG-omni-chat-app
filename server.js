@@ -39,7 +39,6 @@ app.use('/api/facebook', facebookRoutes);
 app.use('/api/conversation', conversationRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/chats', chatRoutes);
 
 // Initialize socket.io
 const server = http.createServer(app);
@@ -72,6 +71,11 @@ io.use(async (socket, next) => {
   }
 });
 
+// Models
+const Message = require('./models/message');
+const Conversation = require('./models/conversation');
+const UserStats = require('./models/userStats');
+
 // Initialize database connection
 const connectDB = require('./config/database');
 connectDB().then(() => {
@@ -88,13 +92,10 @@ connectDB().then(() => {
   process.exit(1);
 });
 
-// Models
-const User = require('./models/User');
-const Message = require('./models/message');
-const Conversation = require('./models/conversation');
-const UserStats = require('./models/userStats');
+// Models and utilities
+const socket = require('./config/socket');
 
-// UserStats initialization function
+// Initialize UserStats
 async function initializeUserStats() {
   try {
     const exists = await UserStats.findOne({});
@@ -110,6 +111,7 @@ async function initializeUserStats() {
   }
 }
 
+// Create default admin
 async function createDefaultAdmin() {
   try {
     const admin = await User.findOne({ role: 'admin' });
@@ -127,6 +129,29 @@ async function createDefaultAdmin() {
     console.error('❌ Error creating default admin:', error.message);
   }
 }
+
+// Use imported functions instead of defining them here
+
+// Add error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something went wrong!' });
+});
+
+// Set up health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+// Add error handling for socket.io
+io.on('error', (error) => {
+  console.error('Socket.io error:', error);
+});
+
+// Add error handling for server
+server.on('error', (error) => {
+  console.error('Server error:', error);
+});
 
 // Add error handling middleware
 app.use((err, req, res, next) => {
@@ -236,37 +261,25 @@ io.on('connection', async (socket) => {
   }
 });
 
-// Initialize UserStats
-async function initializeUserStats() {
-  try {
-    const exists = await UserStats.findOne({});
-    if (!exists) {
-      const count = await User.countDocuments();
-      await UserStats.create({ totalUsers: count });
-      console.log('✅ UserStats initialized with', count, 'users');
-    } else {
-      console.log('ℹ️ UserStats already exists with', exists.totalUsers, 'users');
-    }
-  } catch (error) {
-    console.error('❌ Error initializing UserStats:', error.message);
-  }
-}
+// Use imported functions instead of defining them here
 
-// Create default admin
-async function createDefaultAdmin() {
-  try {
-    const admin = await User.findOne({ role: 'admin' });
-    if (!admin) {
-      const user = new User({
-        name: 'Admin',
-        email: 'admin@example.com',
-        password: await bcrypt.hash('admin123', 10),
-        role: 'admin'
-      });
-      await user.save();
-      console.log('✅ Default admin created');
-    }
-  } catch (error) {
-    console.error('❌ Error creating default admin:', error.message);
-  }
-};
+// Add error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something went wrong!' });
+});
+
+// Set up health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+// Add error handling for socket.io
+io.on('error', (error) => {
+  console.error('Socket.io error:', error);
+});
+
+// Add error handling for server
+server.on('error', (error) => {
+  console.error('Server error:', error);
+});
