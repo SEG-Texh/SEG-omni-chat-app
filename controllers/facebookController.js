@@ -17,43 +17,42 @@ exports.webhook = async (req, res) => {
 
   // Check if this is a webhook verification request
   if (req.query['hub.mode'] === 'subscribe') {
-    console.log('Attempting webhook verification...');
-    console.log('Request details:', {
-      method: req.method,
-      path: req.path,
-      query: req.query,
-      headers: req.headers
+    console.log('Facebook Webhook Verification Attempt');
+    console.log('Request Headers:', JSON.stringify(req.headers, null, 2));
+    console.log('Request Query:', JSON.stringify(req.query, null, 2));
+    console.log('Environment Variables:', {
+      FACEBOOK_VERIFY_TOKEN: process.env.FACEBOOK_VERIFY_TOKEN,
+      NODE_ENV: process.env.NODE_ENV
     });
-    
+
+    const mode = req.query['hub.mode'];
     const verifyToken = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
-    
-    console.log('Verification tokens:', {
-      received: verifyToken,
-      expected: process.env.FACEBOOK_VERIFY_TOKEN,
-      match: verifyToken === process.env.FACEBOOK_VERIFY_TOKEN
+
+    console.log('Verification Data:', {
+      mode,
+      verifyToken,
+      challenge
     });
-    
-    if (!verifyToken) {
-      console.error('No verification token provided in query');
-      return res.status(403).send('No verification token provided');
-    }
-    
-    if (!process.env.FACEBOOK_VERIFY_TOKEN) {
-      console.error('FACEBOOK_VERIFY_TOKEN not set in environment');
-      return res.status(403).send('Server verify token not configured');
-    }
-    
-    if (verifyToken === process.env.FACEBOOK_VERIFY_TOKEN) {
-      console.log('Verification token matches! Sending challenge:', challenge);
-      return res.status(200).send(challenge);
+
+    // Check if this is a verification request
+    if (mode && mode === 'subscribe') {
+      console.log('Mode is subscribe');
+      
+      // Check if verify token matches
+      if (verifyToken === process.env.FACEBOOK_VERIFY_TOKEN) {
+        console.log('Verify token matches!');
+        console.log('Sending challenge:', challenge);
+        return res.status(200).send(challenge);
+      } else {
+        console.error('Verify token mismatch!');
+        console.error('Expected:', process.env.FACEBOOK_VERIFY_TOKEN);
+        console.error('Received:', verifyToken);
+        return res.status(403).send('Verification token mismatch');
+      }
     } else {
-      console.error('Verification token mismatch!');
-      console.error('Tokens do not match:', {
-        received: verifyToken,
-        expected: process.env.FACEBOOK_VERIFY_TOKEN
-      });
-      return res.status(403).send('Verification token mismatch');
+      console.error('Invalid mode:', mode);
+      return res.status(403).send('Invalid verification mode');
     }
   }
 
