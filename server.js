@@ -86,8 +86,13 @@ const UserStats = require('./models/userStats');
 
 // Initialize database connection
 const connectDB = require('./config/database');
-connectDB().then(() => {
-  console.log('✅ Database connected');
+
+// Try connecting with a timeout
+console.log('Attempting database connection...');
+const connectionPromise = connectDB();
+
+connectionPromise.then(() => {
+  console.log('✅ Database connected successfully');
   // Start server after successful database connection
   const PORT = process.env.PORT || 3000;
   server.listen(PORT, () => {
@@ -96,7 +101,12 @@ connectDB().then(() => {
     createDefaultAdmin();
   });
 }).catch(err => {
-  console.error('❌ Failed to connect to database:', err.message);
+  console.error('❌ Failed to connect to database:', err);
+  console.error('Error details:', {
+    name: err.name,
+    message: err.message,
+    stack: err.stack
+  });
   process.exit(1);
 });
 

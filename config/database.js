@@ -29,14 +29,7 @@ const connectDB = async () => {
       socketTimeoutMS: 45000,
       family: 4, // Use IPv4, as IPv6 can cause issues
       retryWrites: true,
-      w: 'majority',
-      keepAlive: true,
-      keepAliveInitialDelay: 300000,
-      autoIndex: false, // Don't build indexes automatically
-      poolSize: 10, // Maintain up to 10 socket connections
-      serverSelectionTryOnce: false, // Keep trying with other servers if a server is down
-      heartbeatFrequencyMS: 10000, // Heartbeat every 10 seconds
-      minHeartbeatFrequencyMS: 500 // Heartbeat at least every 500ms
+      w: 'majority'
     };
 
     mongoose.connection.on('connected', () => {
