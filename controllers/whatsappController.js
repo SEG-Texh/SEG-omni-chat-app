@@ -117,7 +117,14 @@ class WhatsAppController {
         platformMessageId
       });
       await chat.save();
-  
+
+      // Emit real-time event after saving
+      const io = require('../config/socket').getIO();
+      io.to(`conversation_${conversation._id}`).emit('new_message', {
+        ...chat.toObject(),
+        platform: 'whatsapp',
+      });
+
       // Auto reply example
       if (text.toLowerCase().includes('hello')) {
         await this.sendMessage(phoneNumber, 'Hello! Thanks for reaching out. How can I assist you?');
@@ -162,7 +169,14 @@ class WhatsAppController {
         platformMessageId
       });
       await chat.save();
-      
+
+      // Emit real-time event after saving
+      const io = require('../config/socket').getIO();
+      io.to(`conversation_${conversationId}`).emit('new_message', {
+        ...chat.toObject(),
+        platform: 'whatsapp',
+      });
+
       return response.data;
     } catch (error) {
       console.error('WHATSAPP API ERROR:', error.response?.data || error.message);

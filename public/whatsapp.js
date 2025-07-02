@@ -2,9 +2,63 @@
 let currentWhatsAppConversationId = null
 let currentWhatsAppNumber = null
 
+// --- Socket.io setup ---
+let whatsappSocket = null;
+let unreadConversations = new Set();
+let notificationSound = new Audio('/sounds/notification.mp3'); // Place a notification.mp3 in public/sounds/
+
+function connectWhatsAppSocket() {
+  if (!whatsappSocket) {
+    whatsappSocket = io({ auth: { token: currentUser?.token } });
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-  loadWhatsAppConversations()
-})
+  connectWhatsAppSocket();
+  loadWhatsAppConversations();
+  // Listen for real-time new messages
+  if (whatsappSocket) {
+    whatsappSocket.on('new_message', (message) => {
+      // If message is for the active conversation, update chat instantly
+      if (message.conversation === currentWhatsAppConversationId) {
+        displayWhatsAppMessages([message], true); // true = append single message
+        // Optionally scroll chat to bottom
+        const messagesContainer = document.getElementById('whatsappMessagesContainer');
+        if (messagesContainer) {
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+      } else {
+        // Mark as unread
+        unreadConversations.add(message.conversation);
+        updateWhatsAppConversationBadge(message.conversation);
+        // Show browser notification
+        showNewMessageNotification('WhatsApp', message.content?.text || 'New message');
+        // Play sound
+        if (notificationSound) notificationSound.play().catch(()=>{});
+      }
+    });
+  }
+});
+
+function updateWhatsAppConversationBadge(conversationId) {
+  const el = document.querySelector(`[data-conversation-id="${conversationId}"] .unread-badge`);
+  if (el) el.style.display = 'inline-block';
+}
+
+function clearWhatsAppConversationBadge(conversationId) {
+  unreadConversations.delete(conversationId);
+  const el = document.querySelector(`[data-conversation-id="${conversationId}"] .unread-badge`);
+  if (el) el.style.display = 'none';
+}
+
+function showNewMessageNotification(platform, text) {
+  if (window.Notification && Notification.permission === 'granted') {
+    new Notification(`${platform} New Message`, { body: text });
+  } else if (window.Notification && Notification.permission !== 'denied') {
+    Notification.requestPermission();
+  }
+}
+
 
 // Load WhatsApp conversations
 async function loadWhatsAppConversations() {
@@ -27,6 +81,7 @@ async function loadWhatsAppConversations() {
       const participant = conversation.participants[0]
       const item = document.createElement("div")
       item.className = "conversation-item"
+      item.setAttribute('data-conversation-id', conversation._id);
       item.innerHTML = `
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-green-500 text-white rounded-full flex items-center justify-center font-semibold">
@@ -43,6 +98,7 @@ async function loadWhatsAppConversations() {
                     <div class="text-xs text-slate-400">
                         ${new Date(conversation.updatedAt).toLocaleDateString()}
                     </div>
+                    <span class="unread-badge" style="display:${unreadConversations.has(conversation._id) ? 'inline-block' : 'none'};background:red;color:white;border-radius:50%;padding:2px 6px;font-size:10px;margin-left:5px;">●</span>
                 </div>
             `
 
@@ -59,6 +115,14 @@ async function loadWhatsAppConversations() {
 function selectWhatsAppConversation(conversation, element) {
   currentWhatsAppConversationId = conversation._id
   currentWhatsAppNumber = conversation.participants?.[0]?.platformIds?.whatsapp || conversation.platformConversationId
+
+  // Join socket room for this conversation
+  if (whatsappSocket) {
+    whatsappSocket.emit('joinWhatsAppConversationRoom', conversation._id);
+  }
+
+  // Clear unread badge
+  clearWhatsAppConversationBadge(conversation._id);
 
   // Update active conversation styling
   document.querySelectorAll(".conversation-item").forEach((item) => {
@@ -104,7 +168,7 @@ function showWhatsAppChatInterface(conversation) {
         </div>
 
         <!-- Messages -->
-        <div id="whatsappMessages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-green-50">
+        <div id="whatsappMessagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4 bg-green-50">
             <!-- Messages will be loaded here -->
         </div>
 
@@ -141,28 +205,53 @@ function showWhatsAppChatInterface(conversation) {
 }
 
 // Display WhatsApp messages
-function displayWhatsAppMessages(messages) {
-  const messagesContainer = document.getElementById("whatsappMessages")
-  if (!messagesContainer) return
-
-  messagesContainer.innerHTML = ""
-
-  messages.forEach((message) => {
-    const isFromCurrentUser = message.sender?._id === currentUser._id || message.sender?._id === currentUser.id
-    const messageDiv = document.createElement("div")
-    messageDiv.className = `flex ${isFromCurrentUser ? "justify-end" : "justify-start"}`
-
-    messageDiv.innerHTML = `
-            <div class="chat-bubble whatsapp ${isFromCurrentUser ? "sent" : "received"}">
-                ${message.content?.text || message.text || "No content"}
-            </div>
-        `
-
-    messagesContainer.appendChild(messageDiv)
-  })
-
+function displayWhatsAppMessages(messages, append = false) {
+  const chatArea = document.getElementById("whatsappChatArea");
+  if (!chatArea) return;
+  if (!append) {
+    // Render full chat UI structure
+    chatArea.innerHTML = `
+      <!-- Chat Header -->
+      <div class="p-4 border-b border-slate-200 bg-slate-50">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-green-500 text-white rounded-full flex items-center justify-center font-semibold">📱</div>
+          <div>
+            <div class="font-medium">${messages.length && messages[0].sender?.name ? messages[0].sender.name : "Unknown User"}</div>
+          </div>
+        </div>
+      </div>
+      <!-- Messages Container -->
+      <div id="whatsappMessagesContainer" class="flex-1 overflow-y-auto p-4" style="height:300px;"></div>
+      <!-- Message Input -->
+      <div class="border-t p-4 flex gap-2">
+        <input id="whatsappMessageInput" class="flex-1 border rounded px-3 py-2" placeholder="Type a message...">
+        <button id="sendWhatsAppButton" class="bg-green-600 text-white px-4 py-2 rounded">Send</button>
+      </div>
+    `;
+  }
+  const messagesContainer = document.getElementById("whatsappMessagesContainer");
+  if (!messagesContainer) return;
+  if (!append) messagesContainer.innerHTML = '';
+  (Array.isArray(messages) ? messages : [messages]).forEach((msg) => {
+    const isMine = msg.direction === "outbound";
+    const msgDiv = document.createElement("div");
+    msgDiv.className = `mb-2 flex ${isMine ? "justify-end" : "justify-start"}`;
+    msgDiv.innerHTML = `
+      <div class="px-3 py-2 rounded-lg ${isMine ? "bg-green-500 text-white" : "bg-slate-200"} max-w-xs">
+        ${msg.content?.text || ""}
+      </div>
+    `;
+    messagesContainer.appendChild(msgDiv);
+  });
   // Scroll to bottom
-  messagesContainer.scrollTop = messagesContainer.scrollHeight
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  // Attach send handler (only if not append)
+  if (!append) {
+    const sendBtn = document.getElementById("sendWhatsAppButton");
+    const input = document.getElementById("whatsappMessageInput");
+    if (sendBtn) sendBtn.onclick = sendWhatsAppMessage;
+    if (input) input.onkeydown = (e) => { if (e.key === "Enter") sendWhatsAppMessage(); };
+  }
 }
 
 // Send WhatsApp message
