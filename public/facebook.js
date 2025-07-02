@@ -22,11 +22,21 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Initialize socket with token
     facebookSocket = io({
       auth: { token: currentUser.token },
-      transports: ['websocket', 'polling'],
+      // Force polling as the transport method
+      transports: ['polling'],
+      // Disable WebSocket to avoid Heroku issues
+      upgrade: false,
+      // Enable reconnection
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000
+      reconnectionDelayMax: 5000,
+      // Add timeout for initial connection
+      timeout: 5000,
+      // Add query parameters
+      query: {
+        token: currentUser.token
+      }
     });
 
     // Wait for socket to connect
@@ -62,14 +72,13 @@ window.addEventListener('DOMContentLoaded', async () => {
         alert('Connection lost. Please refresh the page.');
       });
 
-      const connectTimeout = setTimeout(() => {
-        reject(new Error('Socket connection timeout'));
-      }, 5000);
-
-      facebookSocket.on('connect', () => {
-        clearTimeout(connectTimeout);
-        console.log('Socket connected successfully');
-        resolve();
+      // Set up disconnection handler
+      facebookSocket.on('disconnect', (reason) => {
+        console.error('Socket disconnected:', reason);
+        // Don't show alert for transport errors
+        if (reason !== 'transport error') {
+          alert('Connection lost. Please refresh the page.');
+        }
       });
 
       // Set up message event listeners
@@ -91,14 +100,16 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
       });
 
-      // Set up disconnection handler
-      facebookSocket.on('disconnect', (reason) => {
-        console.error('Socket disconnected:', reason);
-        if (reason === 'io server disconnect') {
-          // The server closed the connection
-          alert('Connection lost. Please refresh the page.');
-        }
+      // Wait for successful connection
+      facebookSocket.on('connect', () => {
+        console.log('Socket connected successfully');
+        resolve();
       });
+
+      // Add timeout
+      const connectTimeout = setTimeout(() => {
+        reject(new Error('Socket connection timeout'));
+      }, 5000);
     });
 
     // Only proceed if socket is connected
