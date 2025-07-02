@@ -113,15 +113,114 @@ server.on('error', (error) => {
 io.use(async (socket, next) => {
   try {
     const token = socket.handshake.auth.token;
+    if (!token) {
+      return next(new Error('Authentication error'));
+    }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
     const user = await User.findById(decoded.userId).select('-password');
-    if (!user) return next(new Error('Authentication error'));
+    if (!user) {
+      return next(new Error('Authentication error'));
+    }
 
     socket.userId = user._id.toString();
     socket.user = user;
     next();
   } catch (err) {
+    console.error('WebSocket authentication error:', err);
     next(new Error('Authentication error'));
+  }
+});
+
+// Set up the connection handler after authentication middleware
+io.on('connection', async (socket) => {
+  try {
+    console.log(`🟢 User connected: ${socket.user.name} (${socket.id})`);
+    
+    connectedUsers.set(socket.userId, { socketId: socket.id, user: socket.user });
+    await User.findByIdAndUpdate(socket.userId, { isOnline: true });
+    socket.join(socket.userId); // Optional: for personal notifications
+
+    // Broadcast that user is online
+    socket.broadcast.emit('userOnline', {
+      userId: socket.userId,
+      name: socket.user.name,
+      role: socket.user.role
+    });
+
+    // JOIN ALL CONVERSATION ROOMS
+    socket.on('joinConversations', async () => {
+      try {
+        const conversations = await Conversation.find({ participants: socket.user._id });
+        conversations.forEach(conv => {
+          socket.join(`conversation_${conv._id}`);
+        });
+      } catch (err) {
+        console.error('Error joining conversations:', err.message);
+      }
+    });
+
+    // SEND A MESSAGE
+    socket.on('sendMessage', async ({ conversationId, content, platform }) => {
+      try {
+        const message = new Message({
+          conversation: conversationId,
+          sender: socket.user._id,
+          content,
+          platform
+        });
+
+        const savedMessage = await message.save();
+        await savedMessage.populate('sender', 'name avatar');
+
+        // Update conversation metadata
+        await Conversation.findByIdAndUpdate(conversationId, {
+          lastMessage: savedMessage._id,
+          $inc: { unreadCount: 1 }
+        });
+
+        // Emit to all users in the conversation room
+        io.to(`conversation_${conversationId}`).emit('new_message', savedMessage);
+      } catch (err) {
+        socket.emit('error', { message: 'Failed to send message' });
+        console.error('Error sending message:', err);
+      }
+    });
+
+    // TYPING INDICATOR
+    socket.on('typing', ({ conversationId, isTyping }) => {
+      socket.to(`conversation_${conversationId}`).emit('userTyping', {
+        userId: socket.userId,
+        name: socket.user.name,
+        isTyping
+      });
+    });
+
+    // DISCONNECT
+    socket.on('disconnect', async () => {
+      try {
+        console.log(`🔴 User disconnected: ${socket.user.name}`);
+        connectedUsers.delete(socket.userId);
+        await User.findByIdAndUpdate(socket.userId, {
+          isOnline: false,
+          lastSeen: new Date()
+        });
+
+        socket.broadcast.emit('userOffline', {
+          userId: socket.userId,
+          name: socket.user.name
+        });
+      } catch (err) {
+        console.error('Error during disconnect:', err);
+      }
+    });
+
+    socket.on('joinFacebookConversationRoom', (conversationId) => {
+      socket.join(`conversation_${conversationId}`);
+      console.log(`Socket ${socket.id} joined room conversation_${conversationId}`);
+    });
+  } catch (err) {
+    console.error('Error in connection handler:', err);
   }
 });
 
