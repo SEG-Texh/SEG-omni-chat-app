@@ -45,8 +45,103 @@ router.get('/test-webhook', (req, res) => {
   });
 });
 
+// Main Facebook webhook route
+router.post('/webhook', (req, res) => {
+  try {
+    console.log('Main Webhook Request:', {
+      timestamp: new Date(),
+      method: req.method,
+      path: req.path,
+      query: req.query,
+      headers: req.headers
+    });
+
+    // Handle verification
+    if (req.query['hub.mode'] === 'subscribe') {
+      const verifyToken = req.query['hub.verify_token'];
+      const challenge = req.query['hub.challenge'];
+
+      console.log('Verification Request:', {
+        mode: req.query['hub.mode'],
+        verifyToken,
+        challenge,
+        expectedToken: process.env.FACEBOOK_VERIFY_TOKEN
+      });
+
+      if (verifyToken === process.env.FACEBOOK_VERIFY_TOKEN) {
+        console.log('Verification token matches! Sending challenge:', challenge);
+        return res.status(200).send(challenge);
+      }
+
+      console.error('Verification token mismatch!');
+      return res.status(403).send('Verification token mismatch');
+    }
+
+    // Handle incoming messages
+    const body = req.body;
+    if (body.object === 'page') {
+      console.log('Processing incoming message:', body);
+      
+      // Call the controller to handle the message
+      facebookController.webhook(req, res);
+    } else {
+      console.error('Invalid webhook request object:', body);
+      res.sendStatus(404);
+    }
+  } catch (error) {
+    console.error('Webhook error:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+// Add GET method for webhook verification
+router.get('/webhook', (req, res) => {
+  try {
+    console.log('Webhook GET Request:', {
+      timestamp: new Date(),
+      method: req.method,
+      path: req.path,
+      query: req.query,
+      headers: req.headers
+    });
+
+    // Handle verification
+    if (req.query['hub.mode'] === 'subscribe') {
+      const verifyToken = req.query['hub.verify_token'];
+      const challenge = req.query['hub.challenge'];
+
+      console.log('Verification Request:', {
+        mode: req.query['hub.mode'],
+        verifyToken,
+        challenge,
+        expectedToken: process.env.FACEBOOK_VERIFY_TOKEN
+      });
+
+      if (verifyToken === process.env.FACEBOOK_VERIFY_TOKEN) {
+        console.log('Verification token matches! Sending challenge:', challenge);
+        return res.status(200).send(challenge);
+      }
+
+      console.error('Verification token mismatch!');
+      return res.status(403).send('Verification token mismatch');
+    }
+
+    // For non-verification requests, just return a test response
+    res.json({
+      status: 'success',
+      message: 'Webhook endpoint working',
+      environment: {
+        FACEBOOK_VERIFY_TOKEN: !!process.env.FACEBOOK_VERIFY_TOKEN,
+        NODE_ENV: process.env.NODE_ENV
+      }
+    });
+  } catch (error) {
+    console.error('Webhook GET error:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
 // Webhook route with both GET and POST methods
-router.get('/webhook', facebookController.webhook);
 router.post('/webhook', (req, res, next) => {
   req.io = req.app.get('io');
   next();
