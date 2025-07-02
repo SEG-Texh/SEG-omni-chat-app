@@ -92,8 +92,6 @@ io.use(async (socket, next) => {
   }
 });
 
-const connectedUsers = new Map();
-
 io.on('connection', async (socket) => {
   console.log(`🟢 User connected: ${socket.user.name} (${socket.id})`);
 
