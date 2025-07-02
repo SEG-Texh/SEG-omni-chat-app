@@ -20,7 +20,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Initialize socket with token
-    facebookSocket = io({ auth: { token: currentUser.token } });
+    facebookSocket = io({
+  auth: { token: currentUser.token },
+  transports: ['websocket', 'polling'],
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000
+});
     
     // Wait for socket to connect
     await new Promise((resolve, reject) => {

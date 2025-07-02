@@ -8,7 +8,14 @@ let unreadConversations = new Set();
 
 function connectWhatsAppSocket() {
   if (!whatsappSocket) {
-    whatsappSocket = io({ auth: { token: currentUser?.token } });
+    whatsappSocket = io({
+  auth: { token: currentUser?.token },
+  transports: ['websocket', 'polling'],
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000
+});
   }
 }
 
