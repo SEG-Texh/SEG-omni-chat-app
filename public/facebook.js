@@ -7,54 +7,74 @@ let facebookSocket = null;
 
 // Initialize Facebook after authentication is confirmed
 async function initializeFacebook() {
-  // Ensure we have a valid token
-  if (!currentUser?.token) {
-    window.location.href = 'login.html';
-    return;
-  }
+  try {
+    // Ensure we have a valid token
+    if (!currentUser?.token) {
+      throw new Error('No valid token found');
+    }
 
-  // Initialize socket with token
-  facebookSocket = io({ auth: { token: currentUser.token } });
-  
-  // Set up socket listeners
-  if (facebookSocket) {
-    facebookSocket.on('connect', () => {
-      console.log('Connected to Facebook socket');
-    });
-
-    facebookSocket.on('connect_error', (error) => {
-      console.error('Facebook socket connection error:', error);
-      // Handle connection error - show error message or retry
-    });
-
-    // Set up message event listeners
-    facebookSocket.on('new_message', (message) => {
-      // If message is for the active conversation, update chat instantly
-      if (message.conversation === currentConversationId) {
-        renderMessages([message], true); // true = append single message
-        // Optionally scroll chat to bottom
-        const messagesContainer = document.getElementById('messagesContainer');
-        if (messagesContainer) {
-          messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-      } else {
-        // Mark as unread
-        facebookUnreadConversations.add(message.conversation);
-        updateFacebookConversationBadge(message.conversation);
-        // Show browser notification
-        showFacebookNewMessageNotification(message.content || 'New message');
-        // Try to play sound if available
-        try {
-          if (facebookNotificationSound) facebookNotificationSound.play();
-        } catch (e) {
-          console.error('Failed to play notification sound:', e);
-        }
+    // Initialize socket with token
+    facebookSocket = io({ auth: { token: currentUser.token } });
+    
+    // Wait for socket to connect
+    await new Promise((resolve, reject) => {
+      if (!facebookSocket) {
+        reject(new Error('Socket initialization failed'));
+        return;
       }
-    });
-  }
 
-  // Load conversations after socket is connected
-  await loadConversations();
+      const connectTimeout = setTimeout(() => {
+        reject(new Error('Socket connection timeout'));
+      }, 5000);
+
+      facebookSocket.on('connect', () => {
+        clearTimeout(connectTimeout);
+        resolve();
+      });
+
+      facebookSocket.on('connect_error', (error) => {
+        clearTimeout(connectTimeout);
+        reject(error);
+      });
+    });
+
+    // Set up message event listeners after successful connection
+    if (facebookSocket) {
+      facebookSocket.on('new_message', (message) => {
+        // If message is for the active conversation, update chat instantly
+        if (message.conversation === currentConversationId) {
+          renderMessages([message], true); // true = append single message
+          // Optionally scroll chat to bottom
+          const messagesContainer = document.getElementById('messagesContainer');
+          if (messagesContainer) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+          }
+        } else {
+          // Mark as unread
+          facebookUnreadConversations.add(message.conversation);
+          updateFacebookConversationBadge(message.conversation);
+          // Show browser notification
+          showFacebookNewMessageNotification(message.content || 'New message');
+          // Try to play sound if available
+          try {
+            if (facebookNotificationSound) facebookNotificationSound.play();
+          } catch (e) {
+            console.error('Failed to play notification sound:', e);
+          }
+        }
+      });
+    }
+
+    // Load conversations after successful connection
+    await loadConversations();
+  } catch (error) {
+    console.error('Facebook initialization failed:', error);
+    alert('Failed to initialize Facebook chat. Please try again.');
+    // Optionally redirect to login if auth failed
+    if (error.message === 'No valid token found') {
+      window.location.href = 'login.html';
+    }
+  }
 }
 
 // Check authentication and initialize Facebook
