@@ -54,10 +54,8 @@ window.addEventListener('DOMContentLoaded', async () => {
         console.log('Socket connected successfully');
         resolve();
       });
-    });
 
-    // Set up message event listeners after successful connection
-    if (facebookSocket) {
+      // Set up message event listeners
       facebookSocket.on('new_message', (message) => {
         // If message is for the active conversation, update chat instantly
         if (message.conversation === currentConversationId) {
@@ -75,7 +73,14 @@ window.addEventListener('DOMContentLoaded', async () => {
           showFacebookNewMessageNotification(message.content || 'New message');
         }
       });
-    }
+
+      // Set up disconnection handler
+      facebookSocket.on('disconnect', (reason) => {
+        console.error('Socket disconnected:', reason);
+        // Optionally show a message to the user
+        alert('Connection lost. Please refresh the page.');
+      });
+    });
 
     // Load conversations after successful connection
     await loadConversations();
@@ -92,27 +97,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   }
 });
-
-// Add error handling for socket disconnection
-if (facebookSocket) {
-  facebookSocket.on('disconnect', (reason) => {
-    console.error('Socket disconnected:', reason);
-    // Optionally show a message to the user
-    alert('Connection lost. Please refresh the page.');
-  });
-
-  facebookSocket.on('connect_error', (error) => {
-    console.error('Socket connection error:', error);
-    // Optionally show a message to the user
-    alert('Connection failed. Please check your internet connection.');
-  });
-
-  facebookSocket.on('connect_timeout', () => {
-    console.error('Socket connection timeout');
-    // Optionally show a message to the user
-    alert('Connection timed out. Please check your internet connection.');
-  });
-}
 
 // Initialize UI elements
 function initializeUI() {

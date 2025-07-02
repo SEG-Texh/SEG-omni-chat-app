@@ -5,7 +5,6 @@ let currentWhatsAppNumber = null
 // --- Socket.io setup ---
 let whatsappSocket = null;
 let unreadConversations = new Set();
-let notificationSound = new Audio('/sounds/notification.mp3'); // Place a notification.mp3 in public/sounds/
 
 function connectWhatsAppSocket() {
   if (!whatsappSocket) {
