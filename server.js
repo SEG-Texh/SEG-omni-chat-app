@@ -70,10 +70,16 @@ connectDB().then(async () => {
   await initializeUserStats(); // Initialize UserStats after DB connection
   
   const PORT = process.env.PORT || 3000;
-  server.listen(PORT, async () => {
+  server.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
-    await createDefaultAdmin();
+    console.log(`Environment: ${process.env.NODE_ENV}`);
+    console.log(`MongoDB URI: ${process.env.MONGODB_URI}`);
+    console.log(`JWT Secret: ${process.env.JWT_SECRET ? '✅ Set' : '❌ Not set'}`);
+    createDefaultAdmin();
   });
+}).catch(err => {
+  console.error('❌ Failed to connect to database:', err.message);
+  process.exit(1);
 });
 
 // Socket.io connection handling
