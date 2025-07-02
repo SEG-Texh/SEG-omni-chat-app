@@ -9,7 +9,15 @@ const http = require('http');
 const app = express();
 
 // Load environment variables
-require('dotenv').config();
+require('dotenv').config({
+  path: path.join(__dirname, '.env')
+});
+
+// Log environment variables for debugging
+console.log('Environment variables loaded:');
+console.log('MONGODB_URI:', process.env.MONGODB_URI);
+console.log('JWT_SECRET:', process.env.JWT_SECRET);
+console.log('FACEBOOK_VERIFY_TOKEN:', process.env.FACEBOOK_VERIFY_TOKEN);
 
 // Middleware
 app.use(cors({
