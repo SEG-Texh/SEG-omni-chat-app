@@ -17,14 +17,41 @@ async function initializeFacebook() {
   facebookSocket = io({ auth: { token: currentUser.token } });
   
   // Set up socket listeners
-  facebookSocket.on('connect', () => {
-    console.log('Connected to Facebook socket');
-  });
+  if (facebookSocket) {
+    facebookSocket.on('connect', () => {
+      console.log('Connected to Facebook socket');
+    });
 
-  facebookSocket.on('connect_error', (error) => {
-    console.error('Facebook socket connection error:', error);
-    // Handle connection error - show error message or retry
-  });
+    facebookSocket.on('connect_error', (error) => {
+      console.error('Facebook socket connection error:', error);
+      // Handle connection error - show error message or retry
+    });
+
+    // Set up message event listeners
+    facebookSocket.on('new_message', (message) => {
+      // If message is for the active conversation, update chat instantly
+      if (message.conversation === currentConversationId) {
+        renderMessages([message], true); // true = append single message
+        // Optionally scroll chat to bottom
+        const messagesContainer = document.getElementById('messagesContainer');
+        if (messagesContainer) {
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+      } else {
+        // Mark as unread
+        facebookUnreadConversations.add(message.conversation);
+        updateFacebookConversationBadge(message.conversation);
+        // Show browser notification
+        showFacebookNewMessageNotification(message.content || 'New message');
+        // Try to play sound if available
+        try {
+          if (facebookNotificationSound) facebookNotificationSound.play();
+        } catch (e) {
+          console.error('Failed to play notification sound:', e);
+        }
+      }
+    });
+  }
 
   // Load conversations after socket is connected
   await loadConversations();
