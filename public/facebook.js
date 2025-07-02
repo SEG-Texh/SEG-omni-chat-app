@@ -21,14 +21,14 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     // Initialize socket with token
     facebookSocket = io({
-  auth: { token: currentUser.token },
-  transports: ['websocket', 'polling'],
-  reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000,
-  reconnectionDelayMax: 5000
-});
-    
+      auth: { token: currentUser.token },
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000
+    });
+
     // Wait for socket to connect
     await new Promise((resolve, reject) => {
       if (!facebookSocket) {
@@ -50,6 +50,16 @@ window.addEventListener('DOMContentLoaded', async () => {
       facebookSocket.on('error', (error) => {
         console.error('Socket error:', error);
         reject(error);
+      });
+
+      // Set up reconnection handlers
+      facebookSocket.on('reconnect_attempt', (attemptNumber) => {
+        console.log(`Reconnection attempt ${attemptNumber}`);
+      });
+
+      facebookSocket.on('reconnect_failed', () => {
+        console.error('Reconnection failed');
+        alert('Connection lost. Please refresh the page.');
       });
 
       const connectTimeout = setTimeout(() => {
@@ -84,10 +94,17 @@ window.addEventListener('DOMContentLoaded', async () => {
       // Set up disconnection handler
       facebookSocket.on('disconnect', (reason) => {
         console.error('Socket disconnected:', reason);
-        // Optionally show a message to the user
-        alert('Connection lost. Please refresh the page.');
+        if (reason === 'io server disconnect') {
+          // The server closed the connection
+          alert('Connection lost. Please refresh the page.');
+        }
       });
     });
+
+    // Only proceed if socket is connected
+    if (!facebookSocket || !facebookSocket.connected) {
+      throw new Error('Socket connection failed');
+    }
 
     // Load conversations after successful connection
     await loadConversations();
@@ -102,6 +119,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (error.message === 'No valid token found') {
       window.location.href = 'login.html';
     }
+    // Clear socket if initialization failed
+    facebookSocket = null;
   }
 });
 
