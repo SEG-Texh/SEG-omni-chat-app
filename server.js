@@ -75,11 +75,38 @@ connectDB().then(async () => {
     console.log(`Environment: ${process.env.NODE_ENV}`);
     console.log(`MongoDB URI: ${process.env.MONGODB_URI}`);
     console.log(`JWT Secret: ${process.env.JWT_SECRET ? '✅ Set' : '❌ Not set'}`);
+    console.log(`WebSocket URL: wss://omni-chat-app.onrender.com/socket.io`);
     createDefaultAdmin();
   });
 }).catch(err => {
   console.error('❌ Failed to connect to database:', err.message);
   process.exit(1);
+});
+
+// Set up WebSocket CORS
+io.origins((origin, callback) => {
+  callback(null, true);
+});
+
+// Add error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something went wrong!' });
+});
+
+// Set up health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+// Add error handling for socket.io
+io.on('error', (error) => {
+  console.error('Socket.io error:', error);
+});
+
+// Add error handling for server
+server.on('error', (error) => {
+  console.error('Server error:', error);
 });
 
 // Socket.io connection handling
@@ -193,32 +220,6 @@ async function initializeUserStats() {
     }
   } catch (error) {
     console.error('❌ Error initializing UserStats:', error.message);
-  }
-}
-
-async function createDefaultAdmin() {
-  try {
-    const admin = await User.findOne({ role: 'admin' });
-    if (!admin) {
-      const user = new User({
-        name: 'Admin',
-        email: 'admin@example.com',
-        password: await bcrypt.hash('admin123', 10),
-        role: 'admin'
-      });
-      await user.save();
-      console.log('✅ Default admin created');
-    }
-  } catch (error) {
-    console.error('❌ Error creating default admin:', error.message);
-  }
-}
-
-// Authentication Middleware BEFORE connection
-io.use(async (socket, next) => {
-  try {
-    const token = socket.handshake.auth.token;
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
     const user = await User.findById(decoded.userId).select('-password');
     if (!user) return next(new Error('Authentication error'));
 
