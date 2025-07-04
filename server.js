@@ -13,14 +13,7 @@ const UserStats = require('./models/userStats');
 const Conversation = require('./models/conversation');
 const Message = require('./models/message');
 
-// Port configuration
-const PORT = process.env.PORT || 3000;
-
-// Initialize Express app and server
-const app = express();
-const server = http.createServer(app);
-
-// Load environment variables
+// Load environment variables first
 require('dotenv').config({
   path: path.join(__dirname, '.env')
 });
@@ -30,6 +23,13 @@ console.log('Environment variables loaded:');
 console.log('MONGODB_URI:', process.env.MONGODB_URI);
 console.log('JWT_SECRET:', process.env.JWT_SECRET);
 console.log('FACEBOOK_VERIFY_TOKEN:', process.env.FACEBOOK_VERIFY_TOKEN);
+
+// Port configuration
+const PORT = process.env.PORT || 3000;
+
+// Initialize Express app and server
+const app = express();
+const server = http.createServer(app);
 
 // Initialize socket.io
 const io = socketIo(server, {
@@ -270,10 +270,27 @@ server.on('error', (error) => {
 
 // Start the server
 const hostname = process.env.NODE_ENV === 'production' ? 
-  'chat-app-omni-33e1e5eaa993-e4c6c1d133e6.herokuapp.com' : 
-  'localhost';
+'chat-app-omni-33e1e5eaa993-e4c6c1d133e6.herokuapp.com' : 
+'localhost';
 
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`WebSocket URL: wss://${hostname}/socket.io`);
+console.log(`Server running on port ${PORT}`);
+console.log(`WebSocket URL: wss://${hostname}/socket.io`);
+});
+
+// Handle process termination gracefully
+process.on('SIGTERM', () => {
+console.log('SIGTERM signal received: closing HTTP server');
+server.close(() => {
+console.log('HTTP server closed');
+process.exit(0);
+});
+});
+
+process.on('SIGINT', () => {
+console.log('SIGINT signal received: closing HTTP server');
+server.close(() => {
+console.log('HTTP server closed');
+process.exit(0);
+});
 });
