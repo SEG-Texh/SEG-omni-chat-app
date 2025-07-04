@@ -1,4 +1,5 @@
 const express = require('express');
+const { Router } = express;
 const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
@@ -29,6 +30,8 @@ const PORT = process.env.PORT || 3000;
 
 // Initialize Express app and server
 const app = express();
+const router = Router();
+app.use(router);
 const server = http.createServer(app);
 
 // Initialize socket.io
