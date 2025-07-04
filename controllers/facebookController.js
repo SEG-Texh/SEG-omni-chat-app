@@ -75,9 +75,19 @@ exports.webhook = async (req, res) => {
     // Check if this is a webhook verification request
     if (req.query['hub.mode'] === 'subscribe') {
       console.log('Webhook verification request received');
-      console.log('Mode:', req.query['hub.mode']);
-      console.log('Verify Token:', req.query['hub.verify_token']);
-      console.log('Challenge:', req.query['hub.challenge']);
+      console.log('Request Headers:', {
+        'Content-Type': req.headers['content-type'],
+        'User-Agent': req.headers['user-agent']
+      });
+      console.log('Request Query:', {
+        mode: req.query['hub.mode'],
+        verify_token: req.query['hub.verify_token'],
+        challenge: req.query['hub.challenge']
+      });
+      console.log('Environment Variables:', {
+        FACEBOOK_VERIFY_TOKEN: process.env.FACEBOOK_VERIFY_TOKEN,
+        NODE_ENV: process.env.NODE_ENV
+      });
       
       const verifyToken = req.query['hub.verify_token'];
       const challenge = req.query['hub.challenge'];
@@ -100,7 +110,9 @@ exports.webhook = async (req, res) => {
 
       if (verifyToken === process.env.FACEBOOK_VERIFY_TOKEN) {
         console.log('Verification token matches! Sending challenge:', challenge);
-        return res.status(200).send(challenge);
+        console.log('Sending response with status 200 and challenge:', challenge);
+        res.status(200).send(challenge);
+        return;
       }
 
       console.error('Verification token mismatch!');
