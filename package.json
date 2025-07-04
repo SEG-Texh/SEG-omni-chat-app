@@ -8,9 +8,6 @@
     "localtunnel": "node run-localtunnel.js",
     "build:css": "npx tailwindcss -i ./public/styles/tailwind.css -o ./public/styles/styles.css --minify"
   },
-  "overrides": {
-    "utf7>semver": "^5.7.2"
-  },
   "keywords": [],
   "author": "",
   "license": "ISC",
