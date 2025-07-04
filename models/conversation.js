@@ -3,9 +3,11 @@ const Schema = mongoose.Schema;
 
 const ConversationSchema = new Schema({
   platform: { type: String, default: 'facebook' },
-  participants: [String], // Facebook user IDs or your user IDs
+  platformConversationId: { type: String, unique: true }, // Unique identifier for the conversation on the platform
+  participants: [{ type: Schema.Types.ObjectId, ref: 'User' }], // Facebook user IDs or your user IDs
   lastMessage: { type: Schema.Types.ObjectId, ref: 'Message' },
   unreadCount: { type: Number, default: 0 }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Conversation', ConversationSchema);
+const Conversation = mongoose.models.Conversation || mongoose.model('Conversation', ConversationSchema);
+module.exports = Conversation;

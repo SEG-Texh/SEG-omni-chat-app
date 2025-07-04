@@ -4,6 +4,41 @@ let conversations = [];
 let facebookUnreadConversations = new Set();
 let facebookSocket = null;
 
+// API request function
+async function apiRequest(endpoint, options = {}) {
+  const defaultOptions = {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${currentUser.token}`
+    }
+  };
+  const config = { ...defaultOptions, ...options };
+  
+  try {
+    // Ensure we have a full URL
+    const fullUrl = window.location.origin + endpoint;
+    console.log('Making API request to:', fullUrl);
+    const response = await fetch(fullUrl, config);
+    console.log('API response status:', response.status);
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`API request failed: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
+    }
+    
+    const data = await response.json();
+    console.log('API response data:', data);
+    return data;
+  } catch (error) {
+    console.error('API request error:', error);
+    throw error;
+  }
+}
+
+// Initialize Facebook page ID
+window.facebookPageId = '666543219865098'; // Your Facebook page ID
+
 // Initialize Facebook after DOM is loaded
 window.addEventListener('DOMContentLoaded', async () => {
   try {
@@ -20,26 +55,100 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Initialize socket with token
-    facebookSocket = io({
+    facebookSocket = io('http://localhost:3000', {
       auth: { token: currentUser.token },
-      // Force polling as the transport method
-      transports: ['polling'],
-      // Disable WebSocket to avoid Heroku issues
-      upgrade: false,
-      // Enable reconnection
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      // Add timeout for initial connection
-      timeout: 5000,
-      // Add query parameters
+      autoConnect: true,
+      allowEIO3: true,
       query: {
         token: currentUser.token
       }
     });
 
-    // Wait for socket to connect
+    // Add error handling
+    facebookSocket.on('error', (error) => {
+      console.error('Socket error:', error);
+    });
+
+    facebookSocket.on('connect_error', (error) => {
+      console.error('Connection error:', error);
+    });
+
+    facebookSocket.on('connect_timeout', (timeout) => {
+      console.error('Connection timeout:', timeout);
+    });
+
+    facebookSocket.on('reconnect_failed', () => {
+      console.error('Reconnect failed');
+    });
+
+    facebookSocket.on('disconnect', (reason) => {
+      console.log('Disconnected:', reason);
+    });
+
+    // Add connection listener
+    facebookSocket.on('connect', () => {
+      console.log('Facebook socket connected successfully');
+      // Join the Facebook room
+      facebookSocket.emit('joinFacebookRoom');
+    });
+
+    // Add error listener
+    facebookSocket.on('connect_error', (err) => {
+      console.error('Facebook socket connection error:', err);
+    });
+
+    // Listen for real-time new messages
+    if (facebookSocket) {
+      facebookSocket.on('newMessage', (message) => {
+        console.log('Received new Facebook message:', message);
+        
+        // If message is for the active conversation, update chat instantly
+        if (message.conversationId === currentConversationId) {
+          renderMessages([message], true); // true = append single message
+          const messagesContainer = document.getElementById('messagesContainer');
+          if (messagesContainer) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+          }
+        } else {
+          // Mark as unread
+          facebookUnreadConversations.add(message.conversationId);
+          updateFacebookConversationBadge(message.conversationId);
+          // Show browser notification
+          showFacebookNewMessageNotification(message.text || 'New message');
+        }
+      });
+    }
+
+    // Add disconnect listener
+    facebookSocket.on('disconnect', () => {
+      console.log('Facebook socket disconnected');
+    });
+
+    // Add message listener
+    facebookSocket.on('newMessage', (data) => {
+      const { message, conversationId } = data;
+      
+      // If message is for the active conversation, update chat instantly
+      if (conversationId === currentConversationId) {
+        renderMessages([message], true); // true = append single message
+        const messagesContainer = document.getElementById('messagesContainer');
+        if (messagesContainer) {
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+      } else {
+        // Mark as unread
+        facebookUnreadConversations.add(conversationId);
+        updateFacebookConversationBadge(conversationId);
+        // Show browser notification
+        showFacebookNewMessageNotification(message.text || 'New message');
+      }
+    });
+
+    // Wait for socket to connect before proceeding
     await new Promise((resolve, reject) => {
       if (!facebookSocket) {
         reject(new Error('Socket initialization failed'));
@@ -50,54 +159,6 @@ window.addEventListener('DOMContentLoaded', async () => {
       facebookSocket.on('connect_error', (error) => {
         console.error('Socket connection error:', error);
         reject(error);
-      });
-
-      facebookSocket.on('connect_timeout', () => {
-        console.error('Socket connection timeout');
-        reject(new Error('Socket connection timeout'));
-      });
-
-      facebookSocket.on('error', (error) => {
-        console.error('Socket error:', error);
-        reject(error);
-      });
-
-      // Set up reconnection handlers
-      facebookSocket.on('reconnect_attempt', (attemptNumber) => {
-        console.log(`Reconnection attempt ${attemptNumber}`);
-      });
-
-      facebookSocket.on('reconnect_failed', () => {
-        console.error('Reconnection failed');
-        alert('Connection lost. Please refresh the page.');
-      });
-
-      // Set up disconnection handler
-      facebookSocket.on('disconnect', (reason) => {
-        console.error('Socket disconnected:', reason);
-        // Don't show alert for transport errors
-        if (reason !== 'transport error') {
-          alert('Connection lost. Please refresh the page.');
-        }
-      });
-
-      // Set up message event listeners
-      facebookSocket.on('new_message', (message) => {
-        // If message is for the active conversation, update chat instantly
-        if (message.conversation === currentConversationId) {
-          renderMessages([message], true); // true = append single message
-          // Optionally scroll chat to bottom
-          const messagesContainer = document.getElementById('messagesContainer');
-          if (messagesContainer) {
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-          }
-        } else {
-          // Mark as unread
-          facebookUnreadConversations.add(message.conversation);
-          updateFacebookConversationBadge(message.conversation);
-          // Show browser notification
-          showFacebookNewMessageNotification(message.content || 'New message');
-        }
       });
 
       // Wait for successful connection
@@ -111,11 +172,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         reject(new Error('Socket connection timeout'));
       }, 5000);
     });
-
-    // Only proceed if socket is connected
-    if (!facebookSocket || !facebookSocket.connected) {
-      throw new Error('Socket connection failed');
-    }
 
     // Load conversations after successful connection
     await loadConversations();
@@ -188,13 +244,14 @@ function showFacebookNewMessageNotification(text) {
 
 // Load and render conversations
 async function loadConversations() {
-  const res = await apiRequest('/api/facebook/conversations');
-  if (!res.ok) {
-    alert('Failed to load conversations.');
-    return;
+  try {
+    conversations = await apiRequest('/api/facebook/conversations');
+    console.log('Loaded conversations:', conversations);
+    renderConversations();
+  } catch (error) {
+    console.error('Failed to load conversations:', error);
+    alert('Failed to load conversations. Please try again.');
   }
-  conversations = await res.json();
-  renderConversations();
 }
 
 function renderConversations() {
@@ -205,11 +262,19 @@ function renderConversations() {
   }
   conversations.forEach(conv => {
     const lastMsg = conv.lastMessage ? conv.lastMessage.content : '';
+    
+    // Find the participant that's not the Facebook page
+    const otherParticipant = conv.participants.find(id => {
+      // Convert to string and compare
+      const idStr = typeof id === 'object' ? id.toString() : id;
+      return idStr !== window.facebookPageId;
+    });
+    
     const el = document.createElement('div');
     el.className = 'p-4 border-b cursor-pointer hover:bg-slate-100';
     el.setAttribute('data-facebook-conversation-id', conv._id);
     el.innerHTML = `
-      <div class="font-semibold">${conv.participants.find(id => id !== window.facebookPageId)}</div>
+      <div class="font-semibold">${otherParticipant}</div>
       <div class="text-sm text-slate-500 truncate">${lastMsg}</div>
       <span class="unread-badge" style="display:${facebookUnreadConversations.has(conv._id) ? 'inline-block' : 'none'};background:red;color:white;border-radius:50%;padding:2px 6px;font-size:10px;margin-left:5px;">●</span>
     `;
@@ -267,41 +332,6 @@ function selectConversation(conversationId) {
   loadMessages(conversationId);
 }
 
-// Real-time new message
-facebookSocket.on('new_message', (message) => {
-  // If message is for the active conversation, update chat instantly
-  if (message.conversation === currentConversationId) {
-    renderMessages([message], true); // true = append single message
-    const messagesContainer = document.getElementById('messagesContainer');
-    if (messagesContainer) {
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-  } else {
-    // Mark as unread
-    facebookUnreadConversations.add(message.conversation);
-    updateFacebookConversationBadge(message.conversation);
-    // Show browser notification
-    showFacebookNewMessageNotification(message.content || 'New message');
-    // Play sound
-    if (facebookNotificationSound) facebookNotificationSound.play().catch(()=>{});
-  }
-  if (message.conversation === currentConversationId) {
-    const messagesContainer = document.getElementById('messagesContainer');
-    if (messagesContainer) {
-      const isMine = message.sender === window.facebookPageId;
-      const msgDiv = document.createElement('div');
-      msgDiv.className = `mb-2 flex ${isMine ? 'justify-end' : 'justify-start'}`;
-      msgDiv.innerHTML = `
-        <div class="px-3 py-2 rounded-lg ${isMine ? 'bg-blue-500 text-white' : 'bg-slate-200'} max-w-xs">
-          ${message.content}
-        </div>
-      `;
-      messagesContainer.appendChild(msgDiv);
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-  }
-});
-
 // Send message handler
 async function sendMessageHandler() {
   const input = document.getElementById('messageInput');
@@ -321,16 +351,91 @@ async function sendMessageHandler() {
   input.value = '';
 }
 
-// Initialize Facebook page
-async function initializeFacebookPage() {
+// Initialize Facebook page after authentication
+window.addEventListener('DOMContentLoaded', async () => {
   // Set Facebook page ID (you'll need to replace this with your actual page ID)
   window.facebookPageId = 'YOUR_PAGE_ID'; // <-- Replace with your actual Facebook page ID
-  
-  // Initialize the page
-  await initializeFacebook();
-}
+});
 
-// Initialize page after authentication
-window.addEventListener('DOMContentLoaded', () => {
-  initializeFacebookPage();
+// Initialize Facebook after DOM is loaded
+window.addEventListener('DOMContentLoaded', async () => {
+  try {
+    // Ensure we have a valid token
+    if (!currentUser?.token) {
+      throw new Error('No valid token found');
+    }
+    
+    // DOM Elements
+    const conversationsList = document.getElementById('facebookConversationsList');
+    const chatArea = document.getElementById('facebookChatArea');
+    if (!conversationsList || !chatArea) {
+      throw new Error('Required DOM elements not found');
+    }
+    
+    // Initialize socket with token
+    facebookSocket = io(window.location.origin.replace(/^http/, 'ws'), {
+      auth: { token: currentUser.token },
+      transports: ['websocket'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      autoConnect: true,
+      query: {
+        token: currentUser.token
+      }
+    });
+
+    // Add connection listener
+    facebookSocket.on('connect', () => {
+      console.log('Facebook socket connected successfully');
+      // Join the Facebook room
+      facebookSocket.emit('joinFacebookRoom');
+    });
+
+    // Add error listener
+    facebookSocket.on('connect_error', (err) => {
+      console.error('Facebook socket connection error:', err);
+    });
+
+    // Add disconnect listener
+    facebookSocket.on('disconnect', () => {
+      console.log('Facebook socket disconnected');
+    });
+
+    // Add message listener
+    facebookSocket.on('newMessage', (data) => {
+      const { message, conversationId } = data;
+      
+      // If message is for the active conversation, update chat instantly
+      if (conversationId === currentConversationId) {
+        renderMessages([message], true); // true = append single message
+        const messagesContainer = document.getElementById('messagesContainer');
+        if (messagesContainer) {
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+      } else {
+        // Mark as unread
+        facebookUnreadConversations.add(conversationId);
+        updateFacebookConversationBadge(conversationId);
+        // Show browser notification
+        showFacebookNewMessageNotification(message.text || 'New message');
+      }
+    });
+
+    // Load conversations after successful connection
+    await loadConversations();
+
+    // Initialize UI elements
+    initializeUI();
+
+  } catch (error) {
+    console.error('Facebook initialization failed:', error);
+    alert('Failed to initialize Facebook chat. Please try again.');
+    // Optionally redirect to login if auth failed
+    if (error.message === 'No valid token found') {
+      window.location.href = 'login.html';
+    }
+    // Clear socket if initialization failed
+    facebookSocket = null;
+  }
 });

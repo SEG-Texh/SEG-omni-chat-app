@@ -171,10 +171,9 @@ function switchTab(tabName, event) {
 
 // Initialize socket connection
 function initializeSocket(token) {
-  // Use localtunnel for development
-  const socketUrl = process.env.NODE_ENV === 'production' 
-    ? 'https://chat-app-omni-33e1e5eaa993.herokuapp.com'
-    : 'https://polite-dingos-judge.loca.lt';
+  // Use the current host for socket connection
+  const socketUrl = window.location.origin.replace(/^http/, 'ws');
+  console.log('Connecting to socket:', socketUrl);
   
   socket = io(socketUrl, {
     auth: { token: token },

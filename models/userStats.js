@@ -5,4 +5,5 @@ const userStatsSchema = new mongoose.Schema({
   lastUpdated: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('UserStats', userStatsSchema);
+const UserStats = mongoose.models.UserStats || mongoose.model('UserStats', userStatsSchema);
+module.exports = UserStats;

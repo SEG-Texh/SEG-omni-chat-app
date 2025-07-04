@@ -32,9 +32,18 @@ const connectDB = async () => {
       w: 'majority'
     };
 
+    // Add more detailed logging after options are defined
+    console.log('MongoDB Atlas connection options:');
+    console.log('  Using IPv4:', options.family === 4);
+    console.log('  Server selection timeout:', options.serverSelectionTimeoutMS);
+    console.log('  Socket timeout:', options.socketTimeoutMS);
+    console.log('  Retry writes:', options.retryWrites);
+    console.log('  Write concern:', options.w);
+
     mongoose.connection.on('connected', () => {
       console.log('MongoDB Atlas connection established successfully');
       console.log('Database:', mongoose.connection.name);
+      console.log('Connection state:', mongoose.connection.readyState);
     });
 
     mongoose.connection.on('error', (err) => {
@@ -45,26 +54,32 @@ const connectDB = async () => {
         message: err.message,
         stack: err.stack
       });
+      console.error('Current connection state:', mongoose.connection.readyState);
     });
 
     mongoose.connection.on('disconnected', () => {
       console.log('MongoDB Atlas connection disconnected');
+      console.log('Connection state:', mongoose.connection.readyState);
     });
 
     mongoose.connection.on('reconnectFailed', () => {
       console.error('MongoDB Atlas reconnect failed');
+      console.log('Connection state:', mongoose.connection.readyState);
     });
 
     mongoose.connection.on('reconnected', () => {
       console.log('MongoDB Atlas reconnected successfully');
+      console.log('Connection state:', mongoose.connection.readyState);
     });
 
     // Connect with retry logic
     const connectWithRetry = async () => {
       try {
         console.log('Attempting MongoDB Atlas connection...');
+        console.log('Connection state before connect:', mongoose.connection.readyState);
         await mongoose.connect(process.env.MONGODB_URI, options);
         console.log('MongoDB Atlas connected successfully');
+        console.log('Connection state after connect:', mongoose.connection.readyState);
       } catch (error) {
         console.error('MongoDB Atlas connection error:', error);
         console.error('Retrying connection in 5 seconds...');

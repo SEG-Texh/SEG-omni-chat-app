@@ -93,8 +93,14 @@ router.route('/webhook')
   }, facebookController.webhook);
 
 // Authenticated endpoints
-router.get('/conversations', auth, facebookController.listConversations);
+router.get('/conversations', auth, (req, res) => {
+  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.header('Pragma', 'no-cache');
+  res.header('Expires', '0');
+  facebookController.listConversations(req, res);
+});
 router.get('/messages/:conversationId', auth, facebookController.listMessages);
 router.post('/send', auth, facebookController.sendMessage);
+router.post('/create-test-conversation', auth, facebookController.createTestConversation);
 
 module.exports = router;

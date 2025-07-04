@@ -4,114 +4,86 @@ const cors = require('cors');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 const http = require('http');
+const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
 
-// Initialize Express app
+// Models
+const User = require('./models/User');
+const UserStats = require('./models/userStats');
+const Conversation = require('./models/conversation');
+const Message = require('./models/message');
+
+// Port configuration
+const PORT = process.env.PORT || 3000;
+
+// Initialize Express app and server
 const app = express();
+const server = http.createServer(app);
 
 // Load environment variables
 require('dotenv').config({
   path: path.join(__dirname, '.env')
 });
 
-// Log environment variables for debugging
+// Log environment variables
 console.log('Environment variables loaded:');
 console.log('MONGODB_URI:', process.env.MONGODB_URI);
 console.log('JWT_SECRET:', process.env.JWT_SECRET);
 console.log('FACEBOOK_VERIFY_TOKEN:', process.env.FACEBOOK_VERIFY_TOKEN);
 
-// Middleware
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Auth-Token'],
-  exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar']
-}));
-app.use(express.json());
-app.use(express.static(path.join(__dirname, './public')));
-app.use('/css', express.static(path.join(__dirname, '../css')));
-app.use('/js', express.static(path.join(__dirname, '../js')));
-
-// Routes
-const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/users');
-const facebookRoutes = require('./routes/facebook');
-const conversationRoutes = require('./routes/conversation');
-const messageRoutes = require('./routes/messages');
-const dashboardRoutes = require('./routes/dashboard');
-const User = require('./models/User');
-
-// Mount routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/facebook', facebookRoutes);
-app.use('/api/conversation', conversationRoutes);
-app.use('/api/messages', messageRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-
 // Initialize socket.io
-const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
-  }
+    origin: "*",
+    methods: ["GET", "POST"]
+  },
+  transports: ['polling', 'websocket'],
+  allowEIO3: true,
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
-// Socket.io connection handling
-io.use(async (socket, next) => {
-  try {
-    const token = socket.handshake.auth.token;
-    if (!token) {
-      return next(new Error('Authentication error'));
-    }
+// Store connected users
+const connectedUsers = new Map();
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
-    const user = await User.findById(decoded.userId).select('-password');
-    if (!user) {
-      return next(new Error('Authentication error'));
-    }
+// Export io for use in other files
+app.set('io', io);
 
-    socket.userId = user._id.toString();
-    socket.user = user;
-    next();
-  } catch (err) {
-    console.error('Error in connection handler:', err);
-  }
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Mount routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/facebook', require('./routes/facebook'));
+app.use('/api/conversation', require('./routes/conversation'));
+app.use('/api/messages', require('./routes/messages'));
+app.use('/api/dashboard', require('./routes/dashboard'));
+
+// Set up health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
 });
 
-// Models
-const Message = require('./models/message');
-const Conversation = require('./models/conversation');
-const UserStats = require('./models/userStats');
-
-// Initialize database connection
-const connectDB = require('./config/database');
-
-// Try connecting with a timeout
-console.log('Attempting database connection...');
-const connectionPromise = connectDB();
-
-connectionPromise.then(() => {
-  console.log('✅ Database connected successfully');
-  // Start server after successful database connection
-  const PORT = process.env.PORT || 3000;
-  server.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`WebSocket URL: wss://omni-chat-app.onrender.com/socket.io`);
+// Database connection
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => {
+    console.log('✅ Connected to database');
+    initializeUserStats();
     createDefaultAdmin();
+  })
+  .catch(err => {
+    console.error('❌ Failed to connect to database:', err);
+    console.error('Error details:', {
+      name: err.name,
+      message: err.message,
+      stack: err.stack
+    });
+    process.exit(1);
   });
-}).catch(err => {
-  console.error('❌ Failed to connect to database:', err);
-  console.error('Error details:', {
-    name: err.name,
-    message: err.message,
-    stack: err.stack
-  });
-  process.exit(1);
-});
-
-// Models and utilities
-const socket = require('./config/socket');
 
 // Initialize UserStats
 async function initializeUserStats() {
@@ -148,65 +120,52 @@ async function createDefaultAdmin() {
   }
 }
 
-// Use imported functions instead of defining them here
-
-// Add error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
-});
-
-// Set up health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
-
-// Add error handling for socket.io
-io.on('error', (error) => {
-  console.error('Socket.io error:', error);
-});
-
-// Add error handling for server
-server.on('error', (error) => {
-  console.error('Server error:', error);
-});
-
-// Add error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
-});
-
-// Set up health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
-
-// Add error handling for socket.io
-io.on('error', (error) => {
-  console.error('Socket.io error:', error);
-});
-
-// Add error handling for server
-server.on('error', (error) => {
-  console.error('Server error:', error);
-});
-
 // Socket.io connection handling
-const connectedUsers = new Map();
-
 io.on('connection', async (socket) => {
   try {
-    console.log(`🟢 User connected: ${socket.user.name} (${socket.id})`);
+    // Get user info from socket auth
+    const { userId, token } = socket.handshake.auth;
     
+    // Verify token
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      socket.userId = decoded.id;
+      socket.user = await User.findById(decoded.id);
+    } catch (err) {
+      console.error('Invalid token:', err);
+      socket.disconnect(true);
+      return;
+    }
+
+    // Add user to connected users map
     connectedUsers.set(socket.userId, { socketId: socket.id, user: socket.user });
     await User.findByIdAndUpdate(socket.userId, { isOnline: true });
     socket.join(socket.userId);
+
+    console.log(`🟢 User connected: ${socket.user.name}`);
 
     socket.broadcast.emit('userOnline', {
       userId: socket.userId,
       name: socket.user.name,
       role: socket.user.role
+    });
+
+    // Handle Facebook room
+    socket.on('joinFacebookRoom', async () => {
+      console.log(`User ${socket.user.name} joining Facebook room`);
+      socket.join('facebook');
+      
+      try {
+        const conversations = await Conversation.find({ platform: 'facebook' })
+          .populate('lastMessage')
+          .populate('participants', 'name');
+        
+        socket.emit('facebookConversations', conversations);
+        console.log(`Sent Facebook conversations to user: ${socket.user.name}`);
+      } catch (error) {
+        console.error('Error fetching conversations:', error);
+        socket.emit('error', { message: 'Failed to load conversations' });
+      }
     });
 
     socket.on('joinConversations', async () => {
@@ -252,6 +211,11 @@ io.on('connection', async (socket) => {
       });
     });
 
+    socket.on('joinFacebookConversationRoom', (conversationId) => {
+      socket.join(`conversation_${conversationId}`);
+      console.log(`Socket ${socket.id} joined room conversation_${conversationId}`);
+    });
+
     socket.on('disconnect', async () => {
       try {
         console.log(`🔴 User disconnected: ${socket.user.name}`);
@@ -270,34 +234,42 @@ io.on('connection', async (socket) => {
       }
     });
 
-    socket.on('joinFacebookConversationRoom', (conversationId) => {
-      socket.join(`conversation_${conversationId}`);
-      console.log(`Socket ${socket.id} joined room conversation_${conversationId}`);
-    });
   } catch (err) {
     console.error('Error in connection handler:', err);
   }
 });
 
-// Use imported functions instead of defining them here
-
-// Add error handling middleware
+// Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
+  console.error('HTTP error:', {
+    message: err.message,
+    stack: err.stack,
+    user: req.user ? req.user._id : 'anonymous'
+  });
+  res.status(500).json({ 
+    error: 'Something went wrong!',
+    details: err.message
+  });
 });
 
-// Set up health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
-
-// Add error handling for socket.io
+// Error handling for socket.io
 io.on('error', (error) => {
-  console.error('Socket.io error:', error);
+  console.error('Socket.io error:', {
+    message: error.message,
+    stack: error.stack
+  });
 });
 
-// Add error handling for server
+// Error handling for server
 server.on('error', (error) => {
-  console.error('Server error:', error);
+  console.error('Server error:', {
+    message: error.message,
+    stack: error.stack
+  });
+});
+
+// Start the server
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`WebSocket URL: wss://omni-chat-app.onrender.com/socket.io`);
 });

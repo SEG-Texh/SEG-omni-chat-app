@@ -11,4 +11,5 @@ const MessageSchema = new Schema({
 
 MessageSchema.index({ platform: 1, platformMessageId: 1 }, { unique: true, sparse: true });
 
-module.exports = mongoose.model('Message', MessageSchema);
+const Message = mongoose.models.Message || mongoose.model('Message', MessageSchema);
+module.exports = Message;
