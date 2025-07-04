@@ -3,6 +3,26 @@ const router = express.Router();
 const facebookController = require('../controllers/facebookController');
 const { auth } = require('../middleware/auth');
 
+// Test endpoint to verify webhook configuration
+router.get('/test', (req, res) => {
+  console.log('Test endpoint hit');
+  console.log('Environment Variables:', {
+    FACEBOOK_VERIFY_TOKEN: process.env.FACEBOOK_VERIFY_TOKEN,
+    NODE_ENV: process.env.NODE_ENV,
+    PORT: process.env.PORT
+  });
+  
+  res.json({
+    status: 'success',
+    message: 'Facebook webhook test endpoint',
+    environment: {
+      FACEBOOK_VERIFY_TOKEN: process.env.FACEBOOK_VERIFY_TOKEN,
+      NODE_ENV: process.env.NODE_ENV,
+      PORT: process.env.PORT
+    }
+  });
+});
+
 // Test webhook endpoint
 router.get('/test-webhook', (req, res) => {
   console.log('Test Webhook Request:', {
