@@ -68,22 +68,28 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Database connection
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
-    console.log('✅ Connected to database');
-    initializeUserStats();
-    createDefaultAdmin();
-  })
-  .catch(err => {
-    console.error('❌ Failed to connect to database:', err);
-    console.error('Error details:', {
-      name: err.name,
-      message: err.message,
-      stack: err.stack
+// Database connection with retry logic
+const connectWithRetry = () => {
+  mongoose.connect(process.env.MONGODB_URI)
+    .then(() => {
+      console.log('✅ Connected to database');
+      initializeUserStats();
+      createDefaultAdmin();
+    })
+    .catch(err => {
+      console.error('❌ Failed to connect to database:', err);
+      console.error('Error details:', {
+        name: err.name,
+        message: err.message,
+        stack: err.stack
+      });
+      console.log('Retrying database connection in 5 seconds...');
+      setTimeout(connectWithRetry, 5000);
     });
-    process.exit(1);
-  });
+};
+
+// Start connection with retry
+connectWithRetry();
 
 // Initialize UserStats
 async function initializeUserStats() {
