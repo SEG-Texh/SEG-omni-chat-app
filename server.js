@@ -269,7 +269,11 @@ server.on('error', (error) => {
 });
 
 // Start the server
+const hostname = process.env.NODE_ENV === 'production' ? 
+  'chat-app-omni-33e1e5eaa993-e4c6c1d133e6.herokuapp.com' : 
+  'localhost';
+
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`WebSocket URL: wss://omni-chat-app.onrender.com/socket.io`);
+  console.log(`WebSocket URL: wss://${hostname}/socket.io`);
 });
