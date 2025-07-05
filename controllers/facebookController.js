@@ -134,10 +134,9 @@ exports.webhook = async (req, res) => {
           console.log('Found messaging event:', entry.messaging);
           
           for (const event of entry.messaging) {
-            console.log('Processing messaging event:', event);
-            
             const senderId = event.sender.id;
             const recipientId = event.recipient.id;
+            console.log('Processing messaging event:', event);
             
             if (event.message) {
               console.log('Processing message:', event.message);
@@ -153,9 +152,6 @@ exports.webhook = async (req, res) => {
               });
 
               // 1. Create or find conversation
-              const senderId = event.sender.id;
-              const recipientId = event.recipient.id;
-              
               // First try to find conversation by platformConversationId
               let conversation = await Conversation.findOne({
                 platform: 'facebook',
