@@ -37,24 +37,58 @@ async function loadDashboardData() {
 }
 
 // Render charts with Chart.js
-function renderCharts() {
-  // Bar Chart
+async function renderCharts() {
+  // --- BAR CHART (Message Volume) ---
+  let barLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  let barData = [0, 0, 0, 0, 0, 0, 0];
+  try {
+    const resp = await fetch('/api/dashboard/message-volume?days=7');
+    if (resp.ok) {
+      const results = await resp.json();
+      // Map results to days of week
+      const dayIdx = {};
+      // Get today (0 = Sun, 6 = Sat)
+      const today = new Date();
+      for (let i = 6; i >= 0; --i) {
+        const d = new Date();
+        d.setDate(today.getDate() - (6 - i));
+        const key = d.toISOString().split('T')[0];
+        dayIdx[key] = i;
+        barLabels[i] = d.toLocaleDateString(undefined, { weekday: 'short' });
+      }
+      results.forEach(({ date, count }) => {
+        if (dayIdx[date] !== undefined) barData[dayIdx[date]] = count;
+      });
+    }
+  } catch (e) {
+    // fallback to all zeroes
+  }
   const barCtx = document.getElementById('barChart').getContext('2d');
   if (window.barChartInstance) window.barChartInstance.destroy();
   window.barChartInstance = new Chart(barCtx, {
     type: 'bar',
     data: {
-      labels: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      labels: barLabels,
       datasets: [{
         label: 'Messages',
-        data: [40, 65, 30, 80, 45, 70, 55], // Replace with real data
+        data: barData,
         backgroundColor: 'rgba(99,102,241,0.8)',
         borderRadius: 10,
         barThickness: 32
       }]
     },
     options: {
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: true, position: 'right' },
+        tooltip: {
+          enabled: true,
+          callbacks: {
+            label: function(context) {
+              return `${context.dataset.label || ''}: ${context.parsed.y}`;
+            }
+          }
+        }
+      },
       scales: {
         x: { grid: { display: false } },
         y: { beginAtZero: true, grid: { color: '#eee' } }
@@ -62,15 +96,27 @@ function renderCharts() {
     }
   });
 
-  // Pie/Doughnut Chart
+  // --- PIE/DOUGHNUT CHART (Platform Distribution) ---
+  let pieLabels = ['Facebook', 'WhatsApp', 'Other'];
+  let pieData = [0, 0, 0];
+  try {
+    const resp = await fetch('/api/dashboard/platform-distribution');
+    if (resp.ok) {
+      const results = await resp.json();
+      pieLabels = Object.keys(results);
+      pieData = Object.values(results);
+    }
+  } catch (e) {
+    // fallback to default
+  }
   const pieCtx = document.getElementById('pieChart').getContext('2d');
   if (window.pieChartInstance) window.pieChartInstance.destroy();
   window.pieChartInstance = new Chart(pieCtx, {
     type: 'doughnut',
     data: {
-      labels: ['Facebook', 'WhatsApp', 'Other'],
+      labels: pieLabels,
       datasets: [{
-        data: [45, 35, 20], // Replace with real data
+        data: pieData,
         backgroundColor: [
           'rgba(59,130,246,0.85)', // blue
           'rgba(16,185,129,0.85)', // green
@@ -83,12 +129,22 @@ function renderCharts() {
     options: {
       cutout: '70%', // thick ring
       plugins: {
-        legend: { display: false },
-        tooltip: { enabled: true }
+        legend: { display: true, position: 'bottom' },
+        tooltip: {
+          enabled: true,
+          callbacks: {
+            label: function(context) {
+              const label = context.label || '';
+              const value = context.parsed;
+              return `${label}: ${value}`;
+            }
+          }
+        }
       }
     }
   });
 }
+
 
 
 // Initialize dashboard animations
