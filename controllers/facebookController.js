@@ -416,6 +416,22 @@ exports.listConversations = async (req, res) => {
   }
 };
 
+// List messages for a Facebook conversation
+exports.listMessages = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const messages = await Message.find({
+      conversation: conversationId,
+      platform: 'facebook'
+    }).sort({ timestamp: 1 });
+
+    res.json(messages);
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).json({ error: 'Failed to fetch messages', details: error.message });
+  }
+};
+
 // Send message to Facebook user
 exports.sendMessage = async (req, res) => {
   const { conversationId, content } = req.body;
