@@ -159,20 +159,32 @@ async function renderCharts() {
     plugins: window.ChartDataLabels ? [ChartDataLabels] : []
   });
 
-  // Update platform spans with real percentages
+  // Render total messages above the chart
   const total = pieData.reduce((a, b) => a + b, 0);
-  const percent = v => total ? Math.round((v / total) * 100) : 0;
-  const updateSpan = (id, label, value) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = `${label} (${percent(value)}%)`;
-  };
-  // Map by label (case-insensitive)
-  pieLabels.forEach((label, i) => {
-    const lower = label.toLowerCase();
-    if (lower.includes('facebook')) updateSpan('platform-facebook', 'Facebook', pieData[i]);
-    else if (lower.includes('whatsapp')) updateSpan('platform-whatsapp', 'WhatsApp', pieData[i]);
-    else if (lower.includes('other')) updateSpan('platform-other', 'Other', pieData[i]);
-  });
+  const totalMsgEl = document.getElementById('platform-total-messages');
+  if (totalMsgEl) totalMsgEl.textContent = `Total Messages: ${total.toLocaleString()}`;
+
+  // Render dynamic platform list below the chart
+  const platformList = document.getElementById('platform-list');
+  if (platformList) {
+    platformList.innerHTML = '';
+    pieLabels.forEach((label, i) => {
+      const color = pieColors[i] || '#ccc';
+      const count = pieData[i] || 0;
+      const percent = total ? Math.round((count / total) * 100) : 0;
+      const item = document.createElement('div');
+      item.className = 'flex items-center justify-between bg-white/90 rounded-xl shadow p-3 gap-3';
+      item.innerHTML = `
+        <div class="flex items-center gap-3">
+          <div class="w-4 h-4 rounded-full" style="background:${color}"></div>
+          <span class="font-medium text-slate-700">${label}</span>
+          <span class="text-xs text-slate-400">${count.toLocaleString()} messages</span>
+        </div>
+        <span class="font-semibold text-slate-600">${percent}%</span>
+      `;
+      platformList.appendChild(item);
+    });
+  }
 
 }
 
