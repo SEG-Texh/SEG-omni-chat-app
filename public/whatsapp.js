@@ -211,53 +211,53 @@ function showWhatsAppChatInterface(conversation) {
 }
 
 // Display WhatsApp messages
-function displayWhatsAppMessages(messages, append = false) {
+function displayWhatsAppMessages(messages = []) {
   const chatArea = document.getElementById("whatsappChatArea");
   if (!chatArea) return;
-  if (!append) {
-    // Render full chat UI structure
-    chatArea.innerHTML = `
-      <!-- Chat Header -->
-      <div class="p-4 border-b border-slate-200 bg-slate-50">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 bg-green-500 text-white rounded-full flex items-center justify-center font-semibold">📱</div>
-          <div>
-            <div class="font-medium">${messages.length && messages[0].sender?.name ? messages[0].sender.name : "Unknown User"}</div>
+
+  // Sort messages by createdAt ascending (oldest first)
+  const filteredMessages = messages
+    .filter(msg =>
+      (typeof msg.content?.text === 'string' && msg.content.text.trim() !== '') ||
+      (msg.text && msg.text.trim() !== '')
+    )
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+  chatArea.innerHTML = `
+    <div class="messages-container" id="messagesContainer">
+      ${filteredMessages.map(msg => {
+        const isMine = msg.direction === "outbound" || msg.sender?._id === currentUser._id || msg.sender?._id === currentUser.id;
+        const date = msg.createdAt ? new Date(msg.createdAt).toLocaleString('en-GB', {
+          day: 'numeric', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', hour12: false
+        }) : '';
+        return `
+          <div class="chat-bubble ${isMine ? 'sent' : 'received'}">
+            <div class="bubble-content">${
+              typeof msg.content?.text === 'string'
+                ? msg.content.text
+                : msg.text || 'No content'
+            }</div>
+            <div class="bubble-meta">${date}</div>
           </div>
-        </div>
-      </div>
-      <!-- Messages Container -->
-      <div id="whatsappMessagesContainer" class="flex-1 overflow-y-auto p-4" style="height:300px;"></div>
-      <!-- Message Input -->
-      <div class="border-t p-4 flex gap-2">
-        <input id="whatsappMessageInput" class="flex-1 border rounded px-3 py-2" placeholder="Type a message...">
-        <button id="sendWhatsAppButton" class="bg-green-600 text-white px-4 py-2 rounded">Send</button>
-      </div>
-    `;
-  }
-  const messagesContainer = document.getElementById("whatsappMessagesContainer");
-  if (!messagesContainer) return;
-  if (!append) messagesContainer.innerHTML = '';
-  (Array.isArray(messages) ? messages : [messages]).forEach((msg) => {
-    const isMine = msg.direction === "outbound";
-    const msgDiv = document.createElement("div");
-    msgDiv.className = `mb-2 flex ${isMine ? "justify-end" : "justify-start"}`;
-    msgDiv.innerHTML = `
-      <div class="px-3 py-2 rounded-lg ${isMine ? "bg-green-500 text-white" : "bg-slate-200"} max-w-xs">
-        ${msg.content?.text || ""}
-      </div>
-    `;
-    messagesContainer.appendChild(msgDiv);
+        `;
+      }).join('')}
+    </div>
+    <div class="message-input">
+      <input type="text" id="messageInput" placeholder="Type a message...">
+      <button id="sendButton">Send</button>
+    </div>
+  `;
+
+  // Attach send handlers
+  document.getElementById('sendButton').addEventListener('click', sendWhatsAppMessage);
+  document.getElementById('messageInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendWhatsAppMessage();
   });
+
   // Scroll to bottom
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
-  // Attach send handler (only if not append)
-  if (!append) {
-    const sendBtn = document.getElementById("sendWhatsAppButton");
-    const input = document.getElementById("whatsappMessageInput");
-    if (sendBtn) sendBtn.onclick = sendWhatsAppMessage;
-    if (input) input.onkeydown = (e) => { if (e.key === "Enter") sendWhatsAppMessage(); };
-  }
+  const container = document.getElementById('messagesContainer');
+  if (container) container.scrollTop = container.scrollHeight;
 }
 
 // Send WhatsApp message
