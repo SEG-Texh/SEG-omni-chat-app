@@ -3,7 +3,7 @@ let currentConversationId = null;
 let conversations = [];
 let facebookUnreadConversations = new Set();
 let facebookSocket = null;
-console.log('RENDERING CONVERSATIONS:', conversations);
+
 // API request function
 async function apiRequest(endpoint, options = {}) {
   const defaultOptions = {
