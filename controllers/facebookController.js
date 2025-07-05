@@ -388,7 +388,7 @@ exports.webhook = async (req, res) => {
     console.error('Webhook error:', {
       message: error.message,
       stack: error.stack,
-      body: body
+      body: req.body
     });
     res.status(500).json({ error: 'Something went wrong' });
   }
