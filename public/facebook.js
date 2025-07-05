@@ -122,32 +122,31 @@ const FacebookChat = (() => {
   };
 
   const renderMessages = (messages = []) => {
-  const { chatArea } = getElements();
-  if (!chatArea) return;
+    const { chatArea } = getElements();
+    if (!chatArea) return;
 
-  // Debug: log messages received
-  console.log('Messages received:', messages);
+    // Sort messages by createdAt ascending (oldest first)
+    const filteredMessages = messages
+      .filter(msg =>
+        (typeof msg.content === 'string' && msg.content.trim() !== '') ||
+        (msg.text && msg.text.trim() !== '')
+      )
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
-  // Filter out messages with no content/text
-  const filteredMessages = messages.filter(msg =>
-    (typeof msg.content === 'string' && msg.content.trim() !== '') ||
-    (msg.text && msg.text.trim() !== '')
-  );
-
-  chatArea.innerHTML = `
-    <div class="messages-container" id="messagesContainer">
-      ${filteredMessages.map(msg => {
+    chatArea.innerHTML = `
+      <div class="messages-container" id="messagesContainer">
+        ${filteredMessages.map(msg => {
           const isMine = msg.sender === window.facebookPageId;
           const date = msg.createdAt ? formatDate(msg.createdAt) : '';
           return `
             <div class="chat-bubble ${isMine ? 'sent' : 'received'}">
               <div class="bubble-content">${
-  typeof msg.content === 'string'
-    ? msg.content
-    : (msg.content && typeof msg.content === 'object' && msg.content.text)
-      ? msg.content.text
-      : msg.text || 'No content'
-}</div>
+                typeof msg.content === 'string'
+                  ? msg.content
+                  : (msg.content && typeof msg.content === 'object' && msg.content.text)
+                    ? msg.content.text
+                    : msg.text || 'No content'
+              }</div>
               <div class="bubble-meta">${date}</div>
             </div>
           `;
