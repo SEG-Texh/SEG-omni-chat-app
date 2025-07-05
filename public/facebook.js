@@ -264,17 +264,18 @@ function renderConversations() {
     const lastMsg = conv.lastMessage ? conv.lastMessage.content : '';
     
     // Find the participant that's not the Facebook page
-    const otherParticipant = conv.participants.find(id => {
-      // Convert to string and compare
-      const idStr = typeof id === 'object' ? id.toString() : id;
-      return idStr !== window.facebookPageId;
-    });
+    const otherParticipant = Array.isArray(conv.participants)
+      ? conv.participants.find(id => {
+          const idStr = typeof id === 'object' ? id.toString() : id;
+          return idStr !== window.facebookPageId;
+        })
+      : undefined;
     
     const el = document.createElement('div');
     el.className = 'p-4 border-b cursor-pointer hover:bg-slate-100';
     el.setAttribute('data-facebook-conversation-id', conv._id);
     el.innerHTML = `
-      <div class="font-semibold">${otherParticipant}</div>
+      <div class="font-semibold">${otherParticipant || "Unknown"}</div>
       <div class="text-sm text-slate-500 truncate">${lastMsg}</div>
       <span class="unread-badge" style="display:${facebookUnreadConversations.has(conv._id) ? 'inline-block' : 'none'};background:red;color:white;border-radius:50%;padding:2px 6px;font-size:10px;margin-left:5px;">●</span>
     `;
