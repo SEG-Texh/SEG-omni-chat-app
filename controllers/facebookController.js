@@ -439,6 +439,18 @@ exports.sendMessage = async (req, res) => {
   if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
 
   const senderId = req.user._id || req.user.id;
+
+  if (!conversation.participants || !Array.isArray(conversation.participants)) {
+    console.error('Conversation participants missing or not an array:', conversation);
+    return res.status(500).json({ error: 'Conversation participants missing or invalid', conversation });
+  }
+
+  const recipientId = conversation.participants.find(p => p.toString() !== senderId.toString());
+  if (!recipientId) {
+    console.error('RecipientId could not be determined:', { participants: conversation.participants, senderId });
+    return res.status(500).json({ error: 'RecipientId could not be determined', participants: conversation.participants, senderId });
+  }
+
   const platformMessageId = Date.now().toString();
 
   try {
@@ -474,18 +486,18 @@ exports.sendMessage = async (req, res) => {
       });
     }
 
+    // Send to Facebook
+    await axios.post(
+      `https://graph.facebook.com/v17.0/me/messages?access_token=${process.env.FACEBOOK_PAGE_ACCESS_TOKEN}`,
+      {
+        recipient: { id: recipientId },
+        message: { text: content }
+      }
+    );
+
     res.status(200).json({ status: 'success', message: message._id });
   } catch (error) {
     console.error('Send message error:', error);
     res.status(500).json({ error: 'Failed to send message' });
   }
-
-  // Send to Facebook
-  await axios.post(
-    `https://graph.facebook.com/v17.0/me/messages?access_token=${process.env.FACEBOOK_PAGE_ACCESS_TOKEN}`,
-    {
-      recipient: { id: recipientId },
-      message: { text: content }
-    }
-  );
 };
