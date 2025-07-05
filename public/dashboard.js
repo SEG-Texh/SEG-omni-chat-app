@@ -97,29 +97,33 @@ async function renderCharts() {
   });
 
   // --- PIE/DOUGHNUT CHART (Platform Distribution) ---
-  // --- PIE CHART (Sample: Rey, Dian, Charlo, Alvan) ---
-  let pieLabels = ['Rey', 'Dian', 'Charlo', 'Alvan'];
-  let pieData = [1, 2, 1, 0]; // 25%, 50%, 25%, 0%
+  // --- PIE/DOUGHNUT CHART (Platform Distribution, live data) ---
+  let pieLabels = ['Facebook', 'WhatsApp', 'Other'];
+  let pieData = [0, 0, 0];
   const pieColors = [
-    '#4285F4', // Rey - blue
-    '#EA4335', // Dian - red
-    '#FBBC05', // Charlo - orange
-    '#34A853'  // Alvan - green
+    'rgba(59,130,246,0.85)', // blue
+    'rgba(16,185,129,0.85)', // green
+    'rgba(139,92,246,0.85)'  // purple
   ];
-  // Filter legend to only nonzero values
-  const filteredPieLabels = pieLabels.filter((_, i) => pieData[i] > 0);
-  const filteredPieData = pieData.filter(v => v > 0);
-  const filteredPieColors = pieColors.filter((_, i) => pieData[i] > 0);
-
+  try {
+    const resp = await fetch('/api/dashboard/platform-distribution');
+    if (resp.ok) {
+      const results = await resp.json();
+      pieLabels = Object.keys(results);
+      pieData = Object.values(results);
+    }
+  } catch (e) {
+    // fallback to default
+  }
   const pieCtx = document.getElementById('pieChart').getContext('2d');
   if (window.pieChartInstance) window.pieChartInstance.destroy();
   window.pieChartInstance = new Chart(pieCtx, {
     type: 'doughnut',
     data: {
-      labels: filteredPieLabels,
+      labels: pieLabels,
       datasets: [{
-        data: filteredPieData,
-        backgroundColor: filteredPieColors,
+        data: pieData,
+        backgroundColor: pieColors,
         borderWidth: 0,
         hoverOffset: 8
       }]
