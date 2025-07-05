@@ -277,7 +277,13 @@ function renderConversations() {
         return idStr !== window.facebookPageId;
       });
       if (found) {
-        otherParticipant = typeof found === 'object' && found.name ? found.name : (found._id || found) || "Unknown";
+        if (typeof found === 'object' && found.name) {
+          otherParticipant = found.name;
+        } else if (typeof found === 'string') {
+          otherParticipant = 'Facebook User ' + found;
+        } else if (found._id) {
+          otherParticipant = 'Facebook User ' + found._id;
+        }
       }
     }
 
