@@ -97,8 +97,46 @@
             </div>
         </div>
         <!-- Messages list -->
-        <div id="facebookMessagesList" class="flex-1 overflow-y-auto px-6 py-4 space-y-4 bg-white scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-transparent" style="min-height:0;">
-    <!-- Messages will be rendered here -->
+        <div id="facebookMessagesList" class="flex-1 min-h-0 h-0 overflow-y-auto px-6 py-4 space-y-4 bg-white scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-transparent" style="min-height:0;max-height:100vh;">
+  <div class="messages-container h-full flex flex-col">
+    <!-- Example chat bubbles (replace with dynamic rendering in production) -->
+    <div class="chat-bubble received">
+      <div class="bubble-content">Hi</div>
+      <div class="bubble-meta">1 Jul 2025, 21:42</div>
+    </div>
+    <div class="chat-bubble received">
+      <div class="bubble-content">Hi</div>
+      <div class="bubble-meta">1 Jul 2025, 21:44</div>
+    </div>
+    <div class="chat-bubble received">
+      <div class="bubble-content">Hi</div>
+      <div class="bubble-meta">1 Jul 2025, 21:46</div>
+    </div>
+    <div class="chat-bubble received">
+      <div class="bubble-content">Hi</div>
+      <div class="bubble-meta">2 Jul 2025, 10:32</div>
+    </div>
+    <div class="chat-bubble received">
+      <div class="bubble-content">Hi</div>
+      <div class="bubble-meta">2 Jul 2025, 10:33</div>
+    </div>
+    <div class="chat-bubble received">
+      <div class="bubble-content">Hi</div>
+      <div class="bubble-meta">2 Jul 2025, 18:17</div>
+    </div>
+    <div class="chat-bubble received">
+      <div class="bubble-content">Hi</div>
+      <div class="bubble-meta">2 Jul 2025, 18:29</div>
+    </div>
+    <div class="chat-bubble received">
+      <div class="bubble-content">Hi</div>
+      <div class="bubble-meta">2 Jul 2025, 18:38</div>
+    </div>
+    <div class="chat-bubble received">
+      <div class="bubble-content">undefined</div>
+      <div class="bubble-meta">5 Jul 2025, 12:50</div>
+    </div>
+  </div>
 </div>
 <!-- Message input area -->
 <form id="facebookMessageForm" class="flex items-center gap-2 px-6 py-4 border-t border-slate-200 bg-slate-50">
