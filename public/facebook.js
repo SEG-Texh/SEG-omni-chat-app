@@ -261,15 +261,14 @@ async function loadConversations() {
 }
 
 function renderConversations() {
+  const conversationsList = document.getElementById('facebookConversationsList');
   conversationsList.innerHTML = '';
-  if (conversations.length === 0) {
+  if (!Array.isArray(conversations) || conversations.length === 0) {
     conversationsList.innerHTML = '<div class="p-4 text-center text-slate-500">No conversations.</div>';
     return;
   }
   conversations.forEach(conv => {
     const lastMsg = conv.lastMessage ? conv.lastMessage.content : '';
-    
-    // Find the participant that's not the Facebook page
     let otherParticipant = "Unknown";
     if (Array.isArray(conv.participants) && conv.participants.length > 0) {
       const found = conv.participants.find(p => {
@@ -288,7 +287,6 @@ function renderConversations() {
     } else if (conv._id) {
       otherParticipant = 'Conversation ' + conv._id.slice(-6);
     }
-
     const el = document.createElement('div');
     el.className = 'p-4 border-b cursor-pointer hover:bg-slate-100';
     el.setAttribute('data-facebook-conversation-id', conv._id);
