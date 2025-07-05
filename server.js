@@ -159,17 +159,17 @@ io.on('connection', async (socket) => {
     await User.findByIdAndUpdate(socket.userId, { isOnline: true });
     socket.join(socket.userId);
 
-    console.log(`🟢 User connected: ${socket.user.name}`);
+    console.log(`🟢 User connected: ${socket.user && socket.user.name ? socket.user.name : 'Unknown'}`);
 
     socket.broadcast.emit('userOnline', {
       userId: socket.userId,
-      name: socket.user.name,
-      role: socket.user.role
+      name: socket.user && socket.user.name ? socket.user.name : 'Unknown',
+      role: socket.user && socket.user.role ? socket.user.role : 'Unknown'
     });
 
     // Handle Facebook room
     socket.on('joinFacebookRoom', async () => {
-      console.log(`User ${socket.user.name} joining Facebook room`);
+      console.log(`User ${socket.user && socket.user.name ? socket.user.name : 'Unknown'} joining Facebook room`);
       socket.join('facebook');
       
       try {

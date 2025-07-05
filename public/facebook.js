@@ -122,12 +122,13 @@ const FacebookChat = (() => {
   };
 
   const renderMessages = (messages = []) => {
-    const { chatArea } = getElements();
-    if (!chatArea) return;
+  const { chatArea } = getElements();
+  if (!chatArea) return;
 
-    chatArea.innerHTML = `
-      <div class="messages-container" id="messagesContainer">
-        ${messages.map(msg => {
+  // Filter out messages with no content/text
+  chatArea.innerHTML = `
+    <div class="messages-container" id="messagesContainer">
+      ${filteredMessages.map(msg => {
           const isMine = msg.sender === window.facebookPageId;
           const date = msg.createdAt ? formatDate(msg.createdAt) : '';
           return `
