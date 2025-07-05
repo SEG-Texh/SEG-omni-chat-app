@@ -91,7 +91,7 @@ async function loadWhatsAppConversations() {
       item.innerHTML = `
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-green-500 text-white rounded-full flex items-center justify-center font-semibold">
-                        📱
+                        👤
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="font-medium text-slate-900 truncate">
