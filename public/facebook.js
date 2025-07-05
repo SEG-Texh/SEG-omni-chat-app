@@ -332,6 +332,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+  // Attach global logout handler for consistency
+  const logoutButton = document.getElementById('logoutButton');
+  if (logoutButton) {
+    logoutButton.addEventListener('click', () => {
+      localStorage.removeItem('currentUser');
+      window.location.href = 'login.html';
+    });
+  }
+
   await FacebookChat.init(currentUser);
 
   // Cleanup when leaving

@@ -114,22 +114,15 @@ function showApp() {
 
 // Handle logout
 function logout() {
-  localStorage.removeItem("currentUser")
-  currentUser = null
+  localStorage.removeItem("currentUser");
+  currentUser = null;
 
   if (socket) {
-    socket.disconnect()
-    socket = null
+    socket.disconnect();
+    socket = null;
   }
 
-  const loginContainer = document.getElementById("loginContainer")
-  const appContainer = document.getElementById("appContainer")
-  if (loginContainer) loginContainer.classList.remove("hidden")
-  if (appContainer) appContainer.classList.add("hidden")
-
-  // Reset form
-  if (document.getElementById("loginForm")) document.getElementById("loginForm").reset()
-  if (document.getElementById("loginError")) document.getElementById("loginError").classList.add("hidden")
+  window.location.href = "login.html";
 }
 
 // Switch tabs

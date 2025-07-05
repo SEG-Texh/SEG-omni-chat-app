@@ -54,9 +54,9 @@ function setupSharedEventListeners() {
 
 // Logout function
 function logout() {
-  localStorage.removeItem("currentUser")
-  currentUser = null
-  window.location.href = "login.html"
+  localStorage.removeItem("currentUser");
+  currentUser = null;
+  window.location.href = "login.html";
 }
 
 // API helper function
