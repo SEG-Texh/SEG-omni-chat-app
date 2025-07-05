@@ -125,7 +125,15 @@ const FacebookChat = (() => {
   const { chatArea } = getElements();
   if (!chatArea) return;
 
+  // Debug: log messages received
+  console.log('Messages received:', messages);
+
   // Filter out messages with no content/text
+  const filteredMessages = messages.filter(msg =>
+    (typeof msg.content === 'string' && msg.content.trim() !== '') ||
+    (msg.text && msg.text.trim() !== '')
+  );
+
   chatArea.innerHTML = `
     <div class="messages-container" id="messagesContainer">
       ${filteredMessages.map(msg => {
