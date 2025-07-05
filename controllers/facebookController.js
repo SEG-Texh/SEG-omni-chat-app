@@ -138,7 +138,7 @@ exports.webhook = async (req, res) => {
             const recipientId = event.recipient.id;
             console.log('Processing messaging event:', event);
             
-            if (event.message) {
+            if (event.message && event.message.text) {
               console.log('Processing message:', event.message);
               
               const messageText = event.message.text;
