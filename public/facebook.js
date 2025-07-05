@@ -271,7 +271,7 @@ function renderConversations() {
     
     // Find the participant that's not the Facebook page
     let otherParticipant = "Unknown";
-    if (Array.isArray(conv.participants)) {
+    if (Array.isArray(conv.participants) && conv.participants.length > 0) {
       const found = conv.participants.find(p => {
         const idStr = typeof p === 'object' ? (p._id?.toString?.() || p._id || p) : p;
         return idStr !== window.facebookPageId;
@@ -285,6 +285,8 @@ function renderConversations() {
           otherParticipant = 'Facebook User ' + found._id;
         }
       }
+    } else if (conv._id) {
+      otherParticipant = 'Conversation ' + conv._id.slice(-6);
     }
 
     const el = document.createElement('div');
