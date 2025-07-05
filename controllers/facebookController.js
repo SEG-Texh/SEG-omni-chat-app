@@ -20,7 +20,7 @@ exports.createTestConversation = async (req, res) => {
       platformMessageId: 'test-message-123',
       conversation: conversation._id,
       senderId: 'user123',
-      text: 'Hello, this is a test message!',
+      content: 'Hello, this is a test message!',
       timestamp: new Date()
     });
     
@@ -196,7 +196,7 @@ exports.webhook = async (req, res) => {
                 platformMessageId: event.message.mid,
                 conversation: conversation._id,
                 senderId,
-                text: messageText,
+                content: messageText,
                 timestamp: new Date(timestamp)
               });
               console.log('Created new message:', message._id);
@@ -217,7 +217,7 @@ exports.webhook = async (req, res) => {
                   conversationId: conversation._id,
                   message: {
                     id: message._id,
-                    text: messageText,
+                    content: messageText,
                     senderId,
                     timestamp: message.timestamp
                   }
@@ -296,7 +296,7 @@ exports.webhook = async (req, res) => {
               isPage: recipientId === '456'
             },
             message: {
-              text: messageText,
+              content: messageText,
               id: platformMessageId,
               timestamp: new Date(timestamp)
             },
@@ -345,7 +345,7 @@ exports.webhook = async (req, res) => {
             platformMessageId,
             conversation: conversation._id,
             senderId,
-            text: messageText,
+            content: messageText,
             timestamp: new Date(timestamp)
           });
           console.log('Created new message:', message._id);
@@ -366,7 +366,7 @@ exports.webhook = async (req, res) => {
               conversationId: conversation._id,
               message: {
                 id: message._id,
-                text: messageText,
+                content: messageText,
                 senderId,
                 timestamp: message.timestamp
               }
@@ -456,7 +456,7 @@ exports.sendMessage = async (req, res) => {
       platformMessageId,
       conversation: conversation._id,
       senderId,
-      text: content,
+      content: content,
       timestamp: new Date()
     });
 
@@ -475,7 +475,7 @@ exports.sendMessage = async (req, res) => {
         conversationId: conversation._id,
         message: {
           id: message._id,
-          text: content,
+          content: content,
           senderId,
           timestamp: message.timestamp
         }
