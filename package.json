@@ -6,7 +6,7 @@
     "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "localtunnel": "node run-localtunnel.js",
-    "build:css": "npx tailwindcss -i ./public/styles/tailwind.css -o ./public/styles/styles.css --minify",
+    "build:css": "tailwindcss -i ./public/styles/tailwind.css -o ./public/styles/styles.css --minify",
     "heroku-postbuild": "npm run build:css"
   },
   "keywords": [],
