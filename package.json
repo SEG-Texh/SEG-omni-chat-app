@@ -4,16 +4,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "localtunnel": "node run-localtunnel.js",
-    "build:css": "npx tailwindcss -i ./public/styles/tailwind.css -o ./public/styles/styles.css --minify",
-    "postinstall": "npm install tailwindcss",
-    "heroku-postbuild": "npm run build:css"
+    "dev": "nodemon server.js",
+    "localtunnel": "node run-localtunnel.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "engines": {
     "node": "18.x",
     "npm": "9.x"
@@ -36,7 +29,6 @@
     "utf7": "^1.0.1"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2",
-    "tailwindcss": "^4.1.11"
+    "nodemon": "^3.0.2"
   }
 }
