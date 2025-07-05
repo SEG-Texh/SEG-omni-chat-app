@@ -97,14 +97,17 @@
             </div>
         </div>
         <!-- Messages list -->
-        <div id="facebookMessagesList" class="flex-1 overflow-y-auto px-6 py-4 space-y-4 bg-white">
-            <!-- Messages will be rendered here -->
-        </div>
-        <!-- Message input area -->
-        <form id="facebookMessageForm" class="flex items-center gap-2 px-6 py-4 border-t border-slate-200 bg-slate-50">
-            <input id="facebookMessageInput" type="text" placeholder="Type a message..." class="flex-1 px-4 py-2 rounded-full border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" autocomplete="off" />
-            <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white rounded-full px-5 py-2 font-semibold transition-colors">Send</button>
-        </form>
+        <div id="facebookMessagesList" class="flex-1 overflow-y-auto px-6 py-4 space-y-4 bg-white scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-transparent" style="min-height:0;">
+    <!-- Messages will be rendered here -->
+</div>
+<!-- Message input area -->
+<form id="facebookMessageForm" class="flex items-center gap-2 px-6 py-4 border-t border-slate-200 bg-slate-50">
+    <input id="facebookMessageInput" type="text" placeholder="Type a message..." class="flex-1 px-4 py-2 rounded-full border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" autocomplete="off" />
+    <button type="submit" class="bg-gradient-to-r from-blue-500 to-indigo-500 shadow-md hover:from-blue-600 hover:to-indigo-600 text-white rounded-full px-6 py-2 font-semibold transition-colors flex items-center gap-2">
+        <span>Send</span>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 17l6-6-6-6m6 6h16" /></svg>
+    </button>
+</form>
     </div>
 </div>
 
