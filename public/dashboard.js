@@ -158,6 +158,22 @@ async function renderCharts() {
     },
     plugins: window.ChartDataLabels ? [ChartDataLabels] : []
   });
+
+  // Update platform spans with real percentages
+  const total = pieData.reduce((a, b) => a + b, 0);
+  const percent = v => total ? Math.round((v / total) * 100) : 0;
+  const updateSpan = (id, label, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = `${label} (${percent(value)}%)`;
+  };
+  // Map by label (case-insensitive)
+  pieLabels.forEach((label, i) => {
+    const lower = label.toLowerCase();
+    if (lower.includes('facebook')) updateSpan('platform-facebook', 'Facebook', pieData[i]);
+    else if (lower.includes('whatsapp')) updateSpan('platform-whatsapp', 'WhatsApp', pieData[i]);
+    else if (lower.includes('other')) updateSpan('platform-other', 'Other', pieData[i]);
+  });
+
 }
 
 
