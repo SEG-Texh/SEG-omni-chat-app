@@ -54,8 +54,14 @@ window.addEventListener('DOMContentLoaded', async () => {
       throw new Error('Required DOM elements not found');
     }
 
-    // Initialize socket with token
-    facebookSocket = io('https://omnichatapp-5312a76969fb.herokuapp.com', {
+    // Initialize socket with token and correct protocol for Heroku
+    let socketUrl;
+    if (window.location.protocol === 'https:') {
+      socketUrl = 'wss://omnichatapp-5312a76969fb.herokuapp.com';
+    } else {
+      socketUrl = 'ws://omnichatapp-5312a76969fb.herokuapp.com';
+    }
+    facebookSocket = io(socketUrl, {
       auth: { token: currentUser.token },
       transports: ['websocket', 'polling'],
       reconnection: true,
