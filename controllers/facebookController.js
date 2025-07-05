@@ -110,9 +110,7 @@ exports.webhook = async (req, res) => {
 
       if (verifyToken === process.env.FACEBOOK_VERIFY_TOKEN) {
         console.log('Verification token matches! Sending challenge:', challenge);
-        console.log('Sending response with status 200 and challenge:', challenge);
-        res.status(200).send(challenge);
-        return;
+        return res.status(200).send(challenge);
       }
 
       console.error('Verification token mismatch!');
@@ -230,163 +228,18 @@ exports.webhook = async (req, res) => {
           }
         }
       }
+      return res.status(200).json({ status: 'success' });
     }
 
-    res.status(200).json({ status: 'success' });
-
-    // Check if this is a webhook verification request
-    if (req.query['hub.mode'] === 'subscribe') {
-      console.log('Facebook Webhook Verification Attempt');
-      console.log('Request Headers:', JSON.stringify(req.headers, null, 2));
-      console.log('Request Query:', JSON.stringify(req.query, null, 2));
-      console.log('Environment Variables:', {
-        FACEBOOK_VERIFY_TOKEN: process.env.FACEBOOK_VERIFY_TOKEN,
-        NODE_ENV: process.env.NODE_ENV
-      });
-
-      const mode = req.query['hub.mode'];
-      const verifyToken = req.query['hub.verify_token'];
-      const challenge = req.query['hub.challenge'];
-
-      console.log('Verification Data:', {
-        mode,
-        verifyToken,
-        challenge
-      });
-
-      // Check if this is a verification request
-      if (mode && mode === 'subscribe') {
-        console.log('Mode is subscribe');
-        
-        // Check if verify token matches
-        if (verifyToken === process.env.FACEBOOK_VERIFY_TOKEN) {
-          console.log('Verify token matches!');
-          console.log('Sending challenge:', challenge);
-          return res.status(200).send(challenge);
-        } else {
-          console.error('Verify token mismatch!');
-          console.error('Expected:', process.env.FACEBOOK_VERIFY_TOKEN);
-          console.error('Received:', verifyToken);
-          return res.status(403).send('Verification token mismatch');
-        }
-      } else {
-        console.error('Invalid mode:', mode);
-        return res.status(403).send('Invalid verification mode');
-      }
-    }
-
-    // Handle incoming messages
-    if (req.body.object === 'page') {
-      for (const entry of req.body.entry) {
-        for (const event of entry.messaging) {
-          const senderId = event.sender.id;
-          const recipientId = event.recipient.id;
-          const messageText = event.message && event.message.text;
-          const platformMessageId = event.message && event.message.mid;
-          const timestamp = event.timestamp || Date.now();
-
-          console.log('Processing Facebook message:', {
-            timestamp: new Date(timestamp),
-            sender: {
-              id: senderId,
-              isPage: senderId === recipientId
-            },
-            recipient: {
-              id: recipientId,
-              isPage: recipientId === '456'
-            },
-            message: {
-              content: messageText,
-              id: platformMessageId,
-              timestamp: new Date(timestamp)
-            },
-            rawEvent: event
-          });
-
-          // Check if this is a message from the page
-          const isPageMessage = senderId === '456';
-          const isUserMessage = !isPageMessage;
-
-          console.log(`Message type: ${isUserMessage ? 'User' : 'Page'} message`);
-
-          // Check for duplicate message
-          if (platformMessageId) {
-            const exists = await Message.findOne({ 
-              platform: 'facebook', 
-              platformMessageId 
-            });
-            if (exists) {
-              console.log('Duplicate message detected, skipping:', platformMessageId);
-              continue;
-            }
-          }
-
-          // Generate a unique conversation ID based on sorted participant IDs
-          const conversationId = [senderId, recipientId].sort().join('_');
-          
-          // 1. Find or create conversation
-          let conversation = await Conversation.findOne({
-            platform: 'facebook',
-            platformConversationId: conversationId
-          });
-          
-          if (!conversation) {
-            conversation = await Conversation.create({
-              platform: 'facebook',
-              platformConversationId: conversationId,
-              participants: [senderId, recipientId]
-            });
-            console.log('Created new conversation:', conversation._id);
-          }
-
-          // 2. Create message
-          const message = await Message.create({
-            platform: 'facebook',
-            platformMessageId,
-            conversation: conversation._id,
-            senderId,
-            content: messageText,
-            timestamp: new Date(timestamp)
-          });
-          console.log('Created new message:', message._id);
-
-          // 3. Update conversation
-          await Conversation.findByIdAndUpdate(
-            conversation._id,
-            {
-              lastMessage: message._id,
-              unreadCount: conversation.participants.includes('456') ? conversation.unreadCount + 1 : conversation.unreadCount
-            }
-          );
-          console.log('Updated conversation:', conversation._id);
-
-          // 4. Emit socket event
-          if (req.io) {
-            req.io.emit('newMessage', {
-              conversationId: conversation._id,
-              message: {
-                id: message._id,
-                content: messageText,
-                senderId,
-                timestamp: message.timestamp
-              }
-            });
-            console.log('Emitted socket event for message:', message._id);
-          }
-
-          console.log('Message processed successfully');
-        }
-      }
-    }
-
-    res.status(200).json({ status: 'success' });
+    // If not verification or page object, send a generic response
+    return res.status(200).json({ status: 'ignored' });
   } catch (error) {
     console.error('Webhook error:', {
       message: error.message,
       stack: error.stack,
       body: req.body
     });
-    res.status(500).json({ error: 'Something went wrong' });
+    return res.status(500).json({ error: 'Something went wrong' });
   }
 };
 
