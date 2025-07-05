@@ -102,15 +102,15 @@ const FacebookChat = (() => {
           return `
             <div class="conversation-item flex items-center gap-3" data-id="${conversation._id}">
               <div class="w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-semibold mr-2">👤</div>
-              <div class="flex-1 min-w-0">
+                    <div class="flex-1 min-w-0">
                 <div class="participant font-medium text-slate-900 truncate">${getParticipantName(conversation)}</div>
                 <div class="last-message text-sm text-slate-500 truncate">${lastMsg}</div>
-              </div>
+                        </div>
               <div class="conversation-date text-xs text-slate-400 ml-2">${date}</div>
               ${facebookUnreadConversations.has(conversation._id) 
                 ? '<span class="unread-badge"></span>' 
                 : ''}
-            </div>
+                        </div>
           `;
         }).join('')
       : '<div class="empty-state">No conversations</div>';
@@ -148,14 +148,14 @@ const FacebookChat = (() => {
                     : msg.text || 'No content'
               }</div>
               <div class="bubble-meta">${date}</div>
-            </div>
+                    </div>
           `;
         }).join('')}
-      </div>
+                    </div>
       <div class="message-input">
         <input type="text" id="messageInput" placeholder="Type a message...">
         <button id="sendButton">Send</button>
-      </div>
+                </div>
     `;
 
     // Attach send handlers
@@ -248,7 +248,7 @@ const FacebookChat = (() => {
       currentConversationId = conversationId;
       facebookSocket.emit('joinConversation', conversationId);
       facebookUnreadConversations.delete(conversationId);
-    } catch (error) {
+  } catch (error) {
       console.error('Failed to load messages:', error);
     }
   };

@@ -64,7 +64,13 @@ app.set('io', io);
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Redirect root URL to login.html
+app.get('/', (req, res) => {
+  res.redirect('/login.html');
+});
 
 // Mount routes
 app.use('/api/auth', authRoutes);
@@ -155,14 +161,14 @@ io.on('connection', async (socket) => {
     }
 
     // Add user to connected users map
-    connectedUsers.set(socket.userId, { socketId: socket.id, user: socket.user });
-    await User.findByIdAndUpdate(socket.userId, { isOnline: true });
+  connectedUsers.set(socket.userId, { socketId: socket.id, user: socket.user });
+  await User.findByIdAndUpdate(socket.userId, { isOnline: true });
     socket.join(socket.userId);
 
     console.log(`🟢 User connected: ${socket.user && socket.user.name ? socket.user.name : 'Unknown'}`);
 
-    socket.broadcast.emit('userOnline', {
-      userId: socket.userId,
+  socket.broadcast.emit('userOnline', {
+    userId: socket.userId,
       name: socket.user && socket.user.name ? socket.user.name : 'Unknown',
       role: socket.user && socket.user.role ? socket.user.role : 'Unknown'
     });
@@ -185,67 +191,67 @@ io.on('connection', async (socket) => {
       }
     });
 
-    socket.on('joinConversations', async () => {
-      try {
-        const conversations = await Conversation.find({ participants: socket.user._id });
-        conversations.forEach(conv => {
-          socket.join(`conversation_${conv._id}`);
-        });
-      } catch (err) {
-        console.error('Error joining conversations:', err.message);
-      }
-    });
+  socket.on('joinConversations', async () => {
+    try {
+      const conversations = await Conversation.find({ participants: socket.user._id });
+      conversations.forEach(conv => {
+        socket.join(`conversation_${conv._id}`);
+      });
+    } catch (err) {
+      console.error('Error joining conversations:', err.message);
+    }
+  });
 
-    socket.on('sendMessage', async ({ conversationId, content, platform }) => {
-      try {
-        const message = new Message({
-          conversation: conversationId,
-          sender: socket.user._id,
-          content,
-          platform
-        });
+  socket.on('sendMessage', async ({ conversationId, content, platform }) => {
+    try {
+      const message = new Message({
+        conversation: conversationId,
+        sender: socket.user._id,
+        content,
+        platform
+      });
 
-        const savedMessage = await message.save();
-        await savedMessage.populate('sender', 'name avatar');
+      const savedMessage = await message.save();
+      await savedMessage.populate('sender', 'name avatar');
 
-        await Conversation.findByIdAndUpdate(conversationId, {
-          lastMessage: savedMessage._id,
-          $inc: { unreadCount: 1 }
-        });
+      await Conversation.findByIdAndUpdate(conversationId, {
+        lastMessage: savedMessage._id,
+        $inc: { unreadCount: 1 }
+      });
 
         io.to(`conversation_${conversationId}`).emit('new_message', savedMessage);
-      } catch (err) {
-        socket.emit('error', { message: 'Failed to send message' });
+    } catch (err) {
+      socket.emit('error', { message: 'Failed to send message' });
         console.error('Error sending message:', err);
-      }
-    });
+    }
+  });
 
-    socket.on('typing', ({ conversationId, isTyping }) => {
-      socket.to(`conversation_${conversationId}`).emit('userTyping', {
-        userId: socket.userId,
-        name: socket.user.name,
-        isTyping
-      });
+  socket.on('typing', ({ conversationId, isTyping }) => {
+    socket.to(`conversation_${conversationId}`).emit('userTyping', {
+      userId: socket.userId,
+      name: socket.user.name,
+      isTyping
     });
+  });
 
     socket.on('joinFacebookConversationRoom', (conversationId) => {
       socket.join(`conversation_${conversationId}`);
       console.log(`Socket ${socket.id} joined room conversation_${conversationId}`);
     });
 
-    socket.on('disconnect', async () => {
+  socket.on('disconnect', async () => {
       try {
-        console.log(`🔴 User disconnected: ${socket.user.name}`);
-        connectedUsers.delete(socket.userId);
-        await User.findByIdAndUpdate(socket.userId, {
-          isOnline: false,
-          lastSeen: new Date()
-        });
+    console.log(`🔴 User disconnected: ${socket.user.name}`);
+    connectedUsers.delete(socket.userId);
+    await User.findByIdAndUpdate(socket.userId, {
+      isOnline: false,
+      lastSeen: new Date()
+    });
 
-        socket.broadcast.emit('userOffline', {
-          userId: socket.userId,
-          name: socket.user.name
-        });
+    socket.broadcast.emit('userOffline', {
+      userId: socket.userId,
+      name: socket.user.name
+    });
       } catch (err) {
         console.error('Error during disconnect:', err);
       }

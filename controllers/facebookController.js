@@ -33,7 +33,7 @@ exports.createTestConversation = async (req, res) => {
       message: 'Test conversation created successfully',
       conversation: conversation
     });
-  } catch (error) {
+    } catch (error) {
     console.error('Error creating test conversation:', error);
     res.status(500).json({
       error: 'Failed to create test conversation',
@@ -152,14 +152,14 @@ exports.webhook = async (req, res) => {
               // 1. Create or find conversation
               // First try to find conversation by platformConversationId
               let conversation = await Conversation.findOne({
-                platform: 'facebook',
+          platform: 'facebook',
                 platformConversationId: event.message.mid
-              });
-
-              if (!conversation) {
+        });
+        
+        if (!conversation) {
                 // If not found, try to find by participants
                 conversation = await Conversation.findOne({
-                  platform: 'facebook',
+            platform: 'facebook',
                   participants: { $all: [senderId, recipientId] }
                 });
               }
@@ -192,7 +192,7 @@ exports.webhook = async (req, res) => {
               const message = await Message.create({
                 platform: 'facebook',
                 platformMessageId: event.message.mid,
-                conversation: conversation._id,
+        conversation: conversation._id,
                 senderId,
                 content: messageText,
                 timestamp: new Date(timestamp)
@@ -255,8 +255,8 @@ exports.listConversations = async (req, res) => {
     
     console.log('Found conversations:', conversations.length);
     console.log('Conversations:', conversations);
-    res.json(conversations);
-  } catch (error) {
+      res.json(conversations);
+    } catch (error) {
     console.error('Error fetching conversations:', error);
     res.status(500).json({ 
       error: 'Failed to fetch conversations',
@@ -269,13 +269,13 @@ exports.listConversations = async (req, res) => {
 exports.listMessages = async (req, res) => {
   try {
     const { conversationId } = req.params;
-    const messages = await Message.find({
+      const messages = await Message.find({
       conversation: conversationId,
       platform: 'facebook'
     }).sort({ timestamp: 1 });
 
-    res.json(messages);
-  } catch (error) {
+      res.json(messages);
+    } catch (error) {
     console.error('Error fetching messages:', error);
     res.status(500).json({ error: 'Failed to fetch messages', details: error.message });
   }

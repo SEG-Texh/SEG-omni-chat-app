@@ -148,13 +148,13 @@ function switchTab(tabName, event) {
   // Load tab-specific data
   switch (tabName) {
     case "dashboard":
-      loadDashboardData()
+    loadDashboardData()
       break
     case "facebook":
       loadFacebookConversations()
       break
     case "whatsapp":
-      loadWhatsAppConversations()
+    loadWhatsAppConversations()
       break
     case "accounts":
       loadAccountsData()
@@ -203,7 +203,7 @@ function initializeSocket(token) {
 function joinFacebookRooms() {
   if (socket) {
     socket.emit("joinFacebookRoom")
-    if (currentUser?.facebookId) {
+  if (currentUser?.facebookId) {
       socket.emit("joinUserFacebookRooms", currentUser.facebookId)
     }
   }
@@ -432,7 +432,7 @@ function displayFacebookMessages(messages) {
     messageDiv.innerHTML = `
             <div class="chat-bubble ${isFromCurrentUser ? "sent" : "received"}">
                 ${message.content?.text || message.text || "No content"}
-            </div>
+        </div>
         `
 
     messagesContainer.appendChild(messageDiv)
@@ -454,29 +454,29 @@ async function sendFacebookMessage() {
   try {
     const response = await fetch("/api/facebook/messages", {
       method: "POST",
-      headers: {
+        headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${currentUser.token}`,
-      },
-      body: JSON.stringify({
-        recipientId: currentFacebookRecipientId,
+          Authorization: `Bearer ${currentUser.token}`,
+        },
+        body: JSON.stringify({
+          recipientId: currentFacebookRecipientId,
         text: text,
-        conversationId: currentFacebookConversationId,
-      }),
+          conversationId: currentFacebookConversationId,
+        }),
     })
 
     if (response.ok) {
       messageInput.value = ""
       // Reload messages
       loadFacebookMessages(currentFacebookConversationId)
-    } else {
+      } else {
       const error = await response.json()
       alert("Failed to send message: " + (error.error || response.status))
-    }
+      }
   } catch (error) {
     console.error("Error sending Facebook message:", error)
     alert("Failed to send message: " + error.message)
-  }
+    }
 }
 
 // Load WhatsApp conversations
@@ -507,11 +507,11 @@ async function loadWhatsAppConversations() {
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-green-500 text-white rounded-full flex items-center justify-center font-semibold">
                         📱
-                    </div>
+        </div>
                     <div class="flex-1 min-w-0">
                         <div class="font-medium text-slate-900 truncate">
                             ${participant?.name || "Unknown User"}
-                        </div>
+        </div>
                         <div class="text-sm text-slate-500 truncate">
                             ${conversation.lastMessage?.content?.text || "No messages yet"}
                         </div>
@@ -731,7 +731,7 @@ async function loadUsersTable() {
       headers: { Authorization: `Bearer ${currentUser.token}` },
     })
 
-    if (!response.ok) {
+        if (!response.ok) {
       throw new Error("Failed to load users")
     }
 
@@ -751,7 +751,7 @@ async function loadUsersTable() {
     users.forEach((user) => {
       const row = document.createElement("tr")
       row.className = "hover:bg-slate-50"
-      row.innerHTML = `
+    row.innerHTML = `
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${user.name}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${user.email}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${user.username || "--"}</td>
@@ -762,9 +762,9 @@ async function loadUsersTable() {
                     <span class="status-badge ${user.status || "active"}">${user.status || "active"}</span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                    <button class="btn-edit" onclick="editUser('${user._id}')">Edit</button>
-                    <button class="btn-delete" onclick="deleteUser('${user._id}')">Delete</button>
-                </td>
+            <button class="btn-edit" onclick="editUser('${user._id}')">Edit</button>
+            <button class="btn-delete" onclick="deleteUser('${user._id}')">Delete</button>
+        </td>
             `
       tbody.appendChild(row)
     })
@@ -796,12 +796,12 @@ async function handleAddUser(e) {
   if (!userData.name || !userData.email || !userData.username || !userData.password || !userData.role) {
     showAccountMessage("error", "Please fill in all required fields and select a role.")
     return
-  }
+        }
 
-  try {
+        try {
     const response = await fetch("/api/users", {
       method: "POST",
-      headers: {
+                headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${currentUser.token}`,
       },
@@ -816,7 +816,7 @@ async function handleAddUser(e) {
       const error = await response.json()
       showAccountMessage("error", error.message || "Failed to add user")
     }
-  } catch (error) {
+        } catch (error) {
     showAccountMessage("error", "Failed to add user: " + error.message)
   }
 }
@@ -833,9 +833,9 @@ function showAccountMessage(type, text) {
 
   messageElement.textContent = text
   messageElement.classList.remove("hidden")
-
-  // Auto hide after 3 seconds
-  setTimeout(() => {
+        
+        // Auto hide after 3 seconds
+        setTimeout(() => {
     messageElement.classList.add("hidden")
   }, 3000)
 }
@@ -849,9 +849,9 @@ function editUser(userId) {
 async function deleteUser(userId) {
   if (!confirm("Are you sure you want to delete this user?")) {
     return
-  }
+    }
 
-  try {
+    try {
     const response = await fetch(`/api/users/${userId}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${currentUser.token}` },
@@ -864,7 +864,7 @@ async function deleteUser(userId) {
       const error = await response.json()
       showAccountMessage("error", error.message || "Failed to delete user")
     }
-  } catch (error) {
+    } catch (error) {
     showAccountMessage("error", "Failed to delete user: " + error.message)
   }
 }
