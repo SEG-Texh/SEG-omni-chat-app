@@ -100,10 +100,13 @@ const FacebookChat = (() => {
           const lastMsg = conversation.lastMessage?.content?.substring(0, 30) || '';
           const date = conversation.updatedAt ? formatDate(conversation.updatedAt) : '';
           return `
-            <div class="conversation-item" data-id="${conversation._id}">
-              <div class="participant">${getParticipantName(conversation)}</div>
-              <div class="last-message">${lastMsg}</div>
-              <div class="conversation-date">${date}</div>
+            <div class="conversation-item flex items-center gap-3" data-id="${conversation._id}">
+              <div class="w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-semibold mr-2">👤</div>
+              <div class="flex-1 min-w-0">
+                <div class="participant font-medium text-slate-900 truncate">${getParticipantName(conversation)}</div>
+                <div class="last-message text-sm text-slate-500 truncate">${lastMsg}</div>
+              </div>
+              <div class="conversation-date text-xs text-slate-400 ml-2">${date}</div>
               ${facebookUnreadConversations.has(conversation._id) 
                 ? '<span class="unread-badge"></span>' 
                 : ''}
