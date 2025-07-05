@@ -356,11 +356,6 @@ async function sendMessageHandler() {
   input.value = '';
 }
 
-// Initialize Facebook page after authentication
-window.addEventListener('DOMContentLoaded', async () => {
-  // Set Facebook page ID (you'll need to replace this with your actual page ID)
-  window.facebookPageId = 'YOUR_PAGE_ID'; // <-- Replace with your actual Facebook page ID
-});
 
 // Initialize Facebook after DOM is loaded
 window.addEventListener('DOMContentLoaded', async () => {
