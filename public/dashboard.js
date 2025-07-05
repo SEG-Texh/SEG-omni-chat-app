@@ -97,31 +97,29 @@ async function renderCharts() {
   });
 
   // --- PIE/DOUGHNUT CHART (Platform Distribution) ---
-  let pieLabels = ['Facebook', 'WhatsApp', 'Other'];
-  let pieData = [0, 0, 0];
-  try {
-    const resp = await fetch('/api/dashboard/platform-distribution');
-    if (resp.ok) {
-      const results = await resp.json();
-      pieLabels = Object.keys(results);
-      pieData = Object.values(results);
-    }
-  } catch (e) {
-    // fallback to default
-  }
+  // --- PIE CHART (Sample: Rey, Dian, Charlo, Alvan) ---
+  let pieLabels = ['Rey', 'Dian', 'Charlo', 'Alvan'];
+  let pieData = [1, 2, 1, 0]; // 25%, 50%, 25%, 0%
+  const pieColors = [
+    '#4285F4', // Rey - blue
+    '#EA4335', // Dian - red
+    '#FBBC05', // Charlo - orange
+    '#34A853'  // Alvan - green
+  ];
+  // Filter legend to only nonzero values
+  const filteredPieLabels = pieLabels.filter((_, i) => pieData[i] > 0);
+  const filteredPieData = pieData.filter(v => v > 0);
+  const filteredPieColors = pieColors.filter((_, i) => pieData[i] > 0);
+
   const pieCtx = document.getElementById('pieChart').getContext('2d');
   if (window.pieChartInstance) window.pieChartInstance.destroy();
   window.pieChartInstance = new Chart(pieCtx, {
     type: 'doughnut',
     data: {
-      labels: pieLabels,
+      labels: filteredPieLabels,
       datasets: [{
-        data: pieData,
-        backgroundColor: [
-          'rgba(59,130,246,0.85)', // blue
-          'rgba(16,185,129,0.85)', // green
-          'rgba(139,92,246,0.85)'  // purple
-        ],
+        data: filteredPieData,
+        backgroundColor: filteredPieColors,
         borderWidth: 0,
         hoverOffset: 8
       }]
@@ -136,12 +134,25 @@ async function renderCharts() {
             label: function(context) {
               const label = context.label || '';
               const value = context.parsed;
-              return `${label}: ${value}`;
+              // Show percentage in tooltip
+              const total = context.dataset.data.reduce((a,b) => a+b, 0);
+              const percent = total ? Math.round(value/total*100) : 0;
+              return `${label}: ${value} (${percent}%)`;
             }
+          }
+        },
+        datalabels: {
+          color: '#fff',
+          font: { weight: 'bold', size: 16 },
+          formatter: function(value, context) {
+            const total = context.chart.data.datasets[0].data.reduce((a,b) => a+b, 0);
+            const percent = total ? Math.round(value/total*100) : 0;
+            return percent > 0 ? percent + '%' : '';
           }
         }
       }
-    }
+    },
+    plugins: window.ChartDataLabels ? [ChartDataLabels] : []
   });
 }
 
