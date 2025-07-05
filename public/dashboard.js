@@ -29,29 +29,67 @@ async function loadDashboardData() {
     document.getElementById("responseRate").textContent = (responseRate.responseRate || 0) + "%"
     document.getElementById("activeChats").textContent = activeChats.activeChats || 0
 
-    // Update bar chart
-    updateBarChart()
+    // Render both charts
+    renderCharts()
   } catch (error) {
     console.error("Error loading dashboard data:", error)
   }
 }
 
-// Update bar chart
-function updateBarChart() {
-  const barChart = document.getElementById("barChart")
-  if (!barChart) return
+// Render charts with Chart.js
+function renderCharts() {
+  // Bar Chart
+  const barCtx = document.getElementById('barChart').getContext('2d');
+  if (window.barChartInstance) window.barChartInstance.destroy();
+  window.barChartInstance = new Chart(barCtx, {
+    type: 'bar',
+    data: {
+      labels: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      datasets: [{
+        label: 'Messages',
+        data: [40, 65, 30, 80, 45, 70, 55], // Replace with real data
+        backgroundColor: 'rgba(99,102,241,0.8)',
+        borderRadius: 10,
+        barThickness: 32
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, grid: { color: '#eee' } }
+      }
+    }
+  });
 
-  const heights = [40, 65, 30, 80, 45, 70, 55]
-
-  barChart.innerHTML = ""
-
-  heights.forEach((height, index) => {
-    const bar = document.createElement("div")
-    bar.className = "flex-1 bg-indigo-500 rounded-t-sm opacity-80 hover:opacity-100 transition-opacity cursor-pointer"
-    bar.style.height = `${height}%`
-    barChart.appendChild(bar)
-  })
+  // Pie/Doughnut Chart
+  const pieCtx = document.getElementById('pieChart').getContext('2d');
+  if (window.pieChartInstance) window.pieChartInstance.destroy();
+  window.pieChartInstance = new Chart(pieCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Facebook', 'WhatsApp', 'Other'],
+      datasets: [{
+        data: [45, 35, 20], // Replace with real data
+        backgroundColor: [
+          'rgba(59,130,246,0.85)', // blue
+          'rgba(16,185,129,0.85)', // green
+          'rgba(139,92,246,0.85)'  // purple
+        ],
+        borderWidth: 0,
+        hoverOffset: 8
+      }]
+    },
+    options: {
+      cutout: '70%', // thick ring
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: true }
+      }
+    }
+  });
 }
+
 
 // Initialize dashboard animations
 function initializeDashboard() {
