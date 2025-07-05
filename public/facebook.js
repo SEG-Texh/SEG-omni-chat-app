@@ -55,7 +55,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Initialize socket with token
-    facebookSocket = io('http://localhost:3000', {
+    facebookSocket = io('https://omnichatapp-5312a76969fb.herokuapp.com', {
       auth: { token: currentUser.token },
       transports: ['websocket', 'polling'],
       reconnection: true,
