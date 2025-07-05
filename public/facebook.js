@@ -42,8 +42,16 @@ const FacebookChat = (() => {
       facebookSocket.removeAllListeners();
     }
 
-    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const socketUrl = `${protocol}://${window.location.host}`;
+    // Use Heroku socket URL for production
+    let socketUrl;
+    if (window.location.hostname.includes('herokuapp.com')) {
+      socketUrl = window.location.protocol === 'https:'
+        ? 'wss://omnichatapp-5312a76969fb.herokuapp.com'
+        : 'ws://omnichatapp-5312a76969fb.herokuapp.com';
+    } else {
+      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      socketUrl = `${protocol}://${window.location.host}`;
+    }
     
     facebookSocket = io(socketUrl, {
       auth: { token: currentUser.token },
@@ -162,11 +170,27 @@ const FacebookChat = (() => {
     if (badge) badge.style.display = 'block';
   };
 
+  // Clear unread badge when conversation is read
+  const clearConversationBadge = (conversationId) => {
+    const badge = document.querySelector(`.conversation-item[data-id="${conversationId}"] .unread-badge`);
+    if (badge) badge.style.display = 'none';
+    facebookUnreadConversations.delete(conversationId);
+  };
+
   const showNotification = (message) => {
-    if (Notification.permission === 'granted') {
-      new Notification('New Message', { body: message });
+    if (window.Notification) {
+      if (Notification.permission === 'granted') {
+        new Notification('New Message', { body: message });
+      } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            new Notification('New Message', { body: message });
+          }
+        });
+      }
     }
   };
+
 
   // Core Functions
   const loadConversations = async () => {
@@ -216,7 +240,7 @@ const FacebookChat = (() => {
 
   const selectConversation = (conversationId) => {
     loadMessages(conversationId);
-    facebookUnreadConversations.delete(conversationId);
+    clearConversationBadge(conversationId);
     renderConversations(); // Update badges
   };
 
@@ -245,11 +269,29 @@ const FacebookChat = (() => {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
-  // Set your current user (replace with actual auth logic)
-  const currentUser = { 
-    token: 'YOUR_USER_TOKEN', // Get from your auth system
-    id: 'USER_ID'
-  };
+  // Dynamically load currentUser from localStorage
+  let currentUser = null;
+  try {
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+      currentUser = JSON.parse(savedUser);
+      // Set facebookPageId from user if available
+      if (currentUser.facebookPageId) {
+        window.facebookPageId = currentUser.facebookPageId;
+      } else if (currentUser.pageId) {
+        window.facebookPageId = currentUser.pageId;
+      } else if (currentUser.id) {
+        window.facebookPageId = currentUser.id;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load currentUser from localStorage:', e);
+  }
+  if (!currentUser || !currentUser.token) {
+    alert('Not authenticated. Please log in again.');
+    window.location.href = 'login.html';
+    return;
+  }
 
   await FacebookChat.init(currentUser);
 
