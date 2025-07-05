@@ -126,10 +126,10 @@ exports.webhook = async (req, res) => {
     }
 
     // Process incoming message
-    if (body.object === 'page') {
-      console.log('Processing page object:', body);
+    if (req.body.object === 'page') {
+      console.log('Processing page object:', req.body);
       
-      for (const entry of body.entry) {
+      for (const entry of req.body.entry) {
         if (entry.messaging) {
           console.log('Found messaging event:', entry.messaging);
           
@@ -280,8 +280,8 @@ exports.webhook = async (req, res) => {
     }
 
     // Handle incoming messages
-    if (body.object === 'page') {
-      for (const entry of body.entry) {
+    if (req.body.object === 'page') {
+      for (const entry of req.body.entry) {
         for (const event of entry.messaging) {
           const senderId = event.sender.id;
           const recipientId = event.recipient.id;

@@ -132,7 +132,13 @@ const FacebookChat = (() => {
           const date = msg.createdAt ? formatDate(msg.createdAt) : '';
           return `
             <div class="chat-bubble ${isMine ? 'sent' : 'received'}">
-              <div class="bubble-content">${msg.content}</div>
+              <div class="bubble-content">${
+  typeof msg.content === 'string'
+    ? msg.content
+    : (msg.content && typeof msg.content === 'object' && msg.content.text)
+      ? msg.content.text
+      : msg.text || 'No content'
+}</div>
               <div class="bubble-meta">${date}</div>
             </div>
           `;
