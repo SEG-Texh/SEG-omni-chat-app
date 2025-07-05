@@ -3,7 +3,7 @@ let currentConversationId = null;
 let conversations = [];
 let facebookUnreadConversations = new Set();
 let facebookSocket = null;
-
+console.log('RENDERING CONVERSATIONS:', conversations);
 // API request function
 async function apiRequest(endpoint, options = {}) {
   const defaultOptions = {
@@ -374,82 +374,61 @@ async function sendMessageHandler() {
 // Initialize Facebook after DOM is loaded
 window.addEventListener('DOMContentLoaded', async () => {
   try {
-    // Ensure we have a valid token
     if (!currentUser?.token) {
       throw new Error('No valid token found');
     }
-    
-    // DOM Elements
     const conversationsList = document.getElementById('facebookConversationsList');
     const chatArea = document.getElementById('facebookChatArea');
     if (!conversationsList || !chatArea) {
       throw new Error('Required DOM elements not found');
     }
-    
-    // Initialize socket with token
-    facebookSocket = io(window.location.origin.replace(/^http/, 'ws'), {
+    // Use correct protocol for Heroku
+    let socketUrl;
+    if (window.location.protocol === 'https:') {
+      socketUrl = 'wss://omnichatapp-5312a76969fb.herokuapp.com';
+    } else {
+      socketUrl = 'ws://omnichatapp-5312a76969fb.herokuapp.com';
+    }
+    facebookSocket = io(socketUrl, {
       auth: { token: currentUser.token },
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       autoConnect: true,
-      query: {
-        token: currentUser.token
-      }
+      allowEIO3: true,
+      query: { token: currentUser.token }
     });
-
-    // Add connection listener
     facebookSocket.on('connect', () => {
       console.log('Facebook socket connected successfully');
-      // Join the Facebook room
       facebookSocket.emit('joinFacebookRoom');
     });
-
-    // Add error listener
-    facebookSocket.on('connect_error', (err) => {
-      console.error('Facebook socket connection error:', err);
-    });
-
-    // Add disconnect listener
-    facebookSocket.on('disconnect', () => {
-      console.log('Facebook socket disconnected');
-    });
-
-    // Add message listener
-    facebookSocket.on('newMessage', (data) => {
+    facebookSocket.on('connect_error', err => console.error('Facebook socket connection error:', err));
+    facebookSocket.on('disconnect', () => console.log('Facebook socket disconnected'));
+    facebookSocket.on('newMessage', data => {
       const { message, conversationId } = data;
-      
-      // If message is for the active conversation, update chat instantly
       if (conversationId === currentConversationId) {
-        renderMessages([message], true); // true = append single message
+        renderMessages([message], true);
         const messagesContainer = document.getElementById('messagesContainer');
-        if (messagesContainer) {
-          messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
+        if (messagesContainer) messagesContainer.scrollTop = messagesContainer.scrollHeight;
       } else {
-        // Mark as unread
         facebookUnreadConversations.add(conversationId);
         updateFacebookConversationBadge(conversationId);
-        // Show browser notification
         showFacebookNewMessageNotification(message.text || 'New message');
       }
     });
-
-    // Load conversations after successful connection
+    await new Promise((resolve, reject) => {
+      if (!facebookSocket) return reject(new Error('Socket initialization failed'));
+      facebookSocket.on('connect', resolve);
+      facebookSocket.on('connect_error', reject);
+      setTimeout(() => reject(new Error('Socket connection timeout')), 5000);
+    });
     await loadConversations();
-
-    // Initialize UI elements
     initializeUI();
-
   } catch (error) {
     console.error('Facebook initialization failed:', error);
     alert('Failed to initialize Facebook chat. Please try again.');
-    // Optionally redirect to login if auth failed
-    if (error.message === 'No valid token found') {
-      window.location.href = 'login.html';
-    }
-    // Clear socket if initialization failed
+    if (error.message === 'No valid token found') window.location.href = 'login.html';
     facebookSocket = null;
   }
 });
