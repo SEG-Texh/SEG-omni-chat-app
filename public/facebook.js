@@ -96,15 +96,20 @@ const FacebookChat = (() => {
     if (!conversationsList) return;
 
     conversationsList.innerHTML = conversations.length 
-      ? conversations.map(conversation => `
-          <div class="conversation-item" data-id="${conversation._id}">
-            <div class="participant">${getParticipantName(conversation)}</div>
-            <div class="last-message">${conversation.lastMessage?.content?.substring(0, 30) || ''}</div>
-            ${facebookUnreadConversations.has(conversation._id) 
-              ? '<span class="unread-badge"></span>' 
-              : ''}
-          </div>
-        `).join('')
+      ? conversations.map(conversation => {
+          const lastMsg = conversation.lastMessage?.content?.substring(0, 30) || '';
+          const date = conversation.updatedAt ? formatDate(conversation.updatedAt) : '';
+          return `
+            <div class="conversation-item" data-id="${conversation._id}">
+              <div class="participant">${getParticipantName(conversation)}</div>
+              <div class="last-message">${lastMsg}</div>
+              <div class="conversation-date">${date}</div>
+              ${facebookUnreadConversations.has(conversation._id) 
+                ? '<span class="unread-badge"></span>' 
+                : ''}
+            </div>
+          `;
+        }).join('')
       : '<div class="empty-state">No conversations</div>';
 
     // Add event listeners
@@ -119,12 +124,16 @@ const FacebookChat = (() => {
 
     chatArea.innerHTML = `
       <div class="messages-container" id="messagesContainer">
-        ${messages.map(msg => `
-          <div class="message ${msg.sender === window.facebookPageId ? 'outgoing' : 'incoming'}">
-            <div class="content">${msg.content}</div>
-            <div class="timestamp">${new Date(msg.timestamp).toLocaleTimeString()}</div>
-          </div>
-        `).join('')}
+        ${messages.map(msg => {
+          const isMine = msg.sender === window.facebookPageId;
+          const date = msg.createdAt ? formatDate(msg.createdAt) : '';
+          return `
+            <div class="chat-bubble ${isMine ? 'sent' : 'received'}">
+              <div class="bubble-content">${msg.content}</div>
+              <div class="bubble-meta">${date}</div>
+            </div>
+          `;
+        }).join('')}
       </div>
       <div class="message-input">
         <input type="text" id="messageInput" placeholder="Type a message...">
@@ -142,6 +151,17 @@ const FacebookChat = (() => {
   };
 
   // Helper Functions
+  // Date formatting: "5 Jul 2025, 11:17"
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d)) return '';
+    return d.toLocaleString('en-GB', {
+      day: 'numeric', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    });
+  };
+
   const getParticipantName = (conversation) => {
     const participant = conversation.participants?.find(p => p._id !== window.facebookPageId);
     return participant?.name || `User ${conversation._id.slice(-6)}`;
@@ -151,11 +171,13 @@ const FacebookChat = (() => {
     const container = document.getElementById('messagesContainer');
     if (!container) return;
 
+    const isMine = message.sender === window.facebookPageId;
+    const date = message.createdAt ? formatDate(message.createdAt) : formatDate(new Date());
     const msgElement = document.createElement('div');
-    msgElement.className = `message ${message.sender === window.facebookPageId ? 'outgoing' : 'incoming'}`;
+    msgElement.className = `chat-bubble ${isMine ? 'sent' : 'received'}`;
     msgElement.innerHTML = `
-      <div class="content">${message.content}</div>
-      <div class="timestamp">${new Date().toLocaleTimeString()}</div>
+      <div class="bubble-content">${message.content}</div>
+      <div class="bubble-meta">${date}</div>
     `;
     container.appendChild(msgElement);
   };
