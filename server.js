@@ -14,6 +14,14 @@ const UserStats = require('./models/userStats');
 const Conversation = require('./models/conversation');
 const Message = require('./models/message');
 
+// Routes
+const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/users');
+const facebookRoutes = require('./routes/facebook');
+const conversationRoutes = require('./routes/conversation');
+const messageRoutes = require('./routes/messages');
+const dashboardRoutes = require('./routes/dashboard');
+
 // Load environment variables first
 require('dotenv').config({
   path: path.join(__dirname, '.env')
@@ -59,12 +67,12 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Mount routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/users', require('./routes/users'));
-app.use('/api/facebook', require('./routes/facebook'));
-app.use('/api/conversation', require('./routes/conversation'));
-app.use('/api/messages', require('./routes/messages'));
-app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/facebook', facebookRoutes);
+app.use('/api/conversation', conversationRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Set up health check endpoint
 app.get('/health', (req, res) => {
