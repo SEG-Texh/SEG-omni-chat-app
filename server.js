@@ -79,6 +79,8 @@ app.use('/api/facebook', facebookRoutes);
 app.use('/api/conversation', conversationRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+const whatsappRoutes = require('./routes/whatsapp');
+app.use('/api/whatsapp', whatsappRoutes);
 
 // Set up health check endpoint
 app.get('/health', (req, res) => {
