@@ -4,7 +4,7 @@ const Schema = mongoose.Schema;
 const MessageSchema = new Schema({
   conversation: { type: Schema.Types.ObjectId, ref: 'Conversation' },
   sender: String, // Facebook user ID or your user ID
-  content: String,
+  content: Schema.Types.Mixed,
   platform: { type: String, default: 'facebook' },
   platformMessageId: { type: String, default: null }
 }, { timestamps: true });
