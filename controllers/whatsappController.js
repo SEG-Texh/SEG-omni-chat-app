@@ -22,6 +22,7 @@ class WhatsAppController {
   async handleMessage(req, res) {
     try {
       const body = req.body;
+      console.log('[WA][Webhook] Received webhook:', JSON.stringify(body));
       
       if (body.object && body.entry) {
         for (const entry of body.entry) {
@@ -29,16 +30,18 @@ class WhatsAppController {
             if (change.field === 'messages' && change.value.messages) {
               const message = change.value.messages[0];
               const phoneNumber = change.value.contacts[0].wa_id;
-              
+              console.log('[WA][Webhook] Processing message:', { phoneNumber, message });
               await this.processMessage(phoneNumber, message);
             }
           }
         }
+      } else {
+        console.warn('[WA][Webhook] Unexpected webhook shape:', JSON.stringify(body));
       }
       
       res.sendStatus(200);
     } catch (error) {
-      console.error('Error handling WhatsApp message:', error);
+      console.error('[WA][Webhook] Error handling WhatsApp message:', error);
       res.sendStatus(500);
     }
   }
@@ -49,6 +52,7 @@ class WhatsAppController {
       let text = '';
       let responseTo = null;
       let responseTime = null;
+      console.log('[WA][Process] Incoming message object:', message);
   
       if (message.type === 'text') {
         text = message.text.body;
@@ -57,6 +61,7 @@ class WhatsAppController {
                message.interactive.list_reply?.title || 
                'Interactive message received';
       }
+      console.log('[WA][Process] Parsed text:', text);
   
       // If this message is a reply, calculate response time
       if (message.context && message.context.id) {
@@ -83,6 +88,9 @@ class WhatsAppController {
           platformIds: { whatsapp: phoneNumber },
           roles: ['customer']
         });
+        console.log('[WA][Process] Created new user:', user);
+      } else {
+        console.log('[WA][Process] Found user:', user);
       }
   
       // Find or create Conversation
@@ -98,12 +106,16 @@ class WhatsAppController {
           platformConversationId: phoneNumber,
           status: 'active'
         });
+        console.log('[WA][Process] Created new conversation:', conversation);
+      } else {
+        console.log('[WA][Process] Found conversation:', conversation);
       }
   
       // Always set a unique platformMessageId
       const platformMessageId =
         (message.id) ||
         `wa_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      console.log('[WA][Process] platformMessageId:', platformMessageId);
   
       // Save to database
       const chat = new Chat({
@@ -117,20 +129,22 @@ class WhatsAppController {
         platformMessageId
       });
       await chat.save();
-
+      console.log('[WA][Process] Saved chat message:', chat);
+  
       // Emit real-time event after saving
       const io = require('../config/socket').getIO();
+      console.log('[WA][Process] Emitting new_message to room:', `conversation_${conversation._id}`);
       io.to(`conversation_${conversation._id}`).emit('new_message', {
         ...chat.toObject(),
         platform: 'whatsapp',
       });
-
+  
       // Auto reply example
       if (text.toLowerCase().includes('hello')) {
         await this.sendMessage(phoneNumber, 'Hello! Thanks for reaching out. How can I assist you?');
       }
     } catch (error) {
-      console.error('Error processing WhatsApp message:', error);
+      console.error('[WA][Process] Error processing WhatsApp message:', error);
     }
   }
 
