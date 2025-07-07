@@ -218,6 +218,7 @@ function displayWhatsAppMessages(messages = []) {
   // Sort messages by createdAt ascending (oldest first)
   const filteredMessages = messages
     .filter(msg =>
+      (typeof msg.content === 'string' && msg.content.trim() !== '') ||
       (typeof msg.content?.text === 'string' && msg.content.text.trim() !== '') ||
       (msg.text && msg.text.trim() !== '')
     )
@@ -234,9 +235,11 @@ function displayWhatsAppMessages(messages = []) {
         return `
           <div class="chat-bubble ${isMine ? 'sent' : 'received'}">
             <div class="bubble-content">${
-              typeof msg.content?.text === 'string'
-                ? msg.content.text
-                : msg.text || 'No content'
+              typeof msg.content === 'string'
+                ? msg.content
+                : (typeof msg.content?.text === 'string'
+                    ? msg.content.text
+                    : msg.text || 'No content')
             }</div>
             <div class="bubble-meta">${date}</div>
           </div>
