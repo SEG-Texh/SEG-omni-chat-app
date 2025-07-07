@@ -178,10 +178,15 @@ io.on('connection', async (socket) => {
         
         socket.emit('facebookConversations', conversations);
         console.log(`Sent Facebook conversations to user: ${socket.user.name}`);
-      } catch (error) {
-        console.error('Error fetching conversations:', error);
-        socket.emit('error', { message: 'Failed to load conversations' });
+      } catch (err) {
+        console.error('Error sending Facebook conversations:', err);
       }
+    });
+
+    // Handle WhatsApp conversation room join
+    socket.on('joinWhatsAppConversationRoom', (conversationId) => {
+      socket.join(`conversation_${conversationId}`);
+      console.log(`[WA][Socket] User joined WhatsApp room: conversation_${conversationId}`);
     });
 
   socket.on('joinConversations', async () => {
