@@ -228,48 +228,52 @@ function displayWhatsAppMessages(messages = []) {
     )
     .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
-  chatArea.innerHTML = `
-    <div class="messages-container" id="messagesContainer">
-      ${filteredMessages.map(msg => {
-        const isMine = msg.direction === "outbound" || msg.sender?._id === currentUser._id || msg.sender?._id === currentUser.id;
-        const date = msg.createdAt ? new Date(msg.createdAt).toLocaleString('en-GB', {
-          day: 'numeric', month: 'short', year: 'numeric',
-          hour: '2-digit', minute: '2-digit', hour12: false
-        }) : '';
-        return `
-          <div class="chat-bubble ${isMine ? 'sent' : 'received'}">
-            <div class="bubble-content">${
-              typeof msg.content === 'string'
-                ? msg.content
-                : (typeof msg.content?.text === 'string'
-                    ? msg.content.text
-                    : msg.text || 'No content')
-            }</div>
-            <div class="bubble-meta">${date}</div>
-          </div>
-        `;
-      }).join('')}
-    </div>
-    <div class="message-input">
-      <input type="text" id="messageInput" placeholder="Type a message...">
-      <button id="sendButton">Send</button>
-    </div>
-  `;
+  // Render only the messages container (no input here)
+  chatArea.querySelector('.messages-container')?.remove();
+  const messagesContainer = document.createElement('div');
+  messagesContainer.className = 'messages-container';
+  messagesContainer.id = 'messagesContainer';
+  messagesContainer.style.flex = '1 1 auto';
+  messagesContainer.style.overflowY = 'auto';
+  messagesContainer.style.background = '#e8f5e9';
+  messagesContainer.style.padding = '16px';
+  messagesContainer.style.minHeight = '0';
 
-  // Attach send handlers
-  document.getElementById('sendButton').addEventListener('click', sendWhatsAppMessage);
-  document.getElementById('messageInput').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendWhatsAppMessage();
-  });
+  messagesContainer.innerHTML = filteredMessages.map(msg => {
+    const isMine = msg.direction === "outbound" || msg.sender?._id === currentUser._id || msg.sender?._id === currentUser.id;
+    const date = msg.createdAt ? new Date(msg.createdAt).toLocaleString('en-GB', {
+      day: 'numeric', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    }) : '';
+    return `
+      <div class="chat-bubble whatsapp ${isMine ? 'sent' : 'received'}">
+        <div class="bubble-content">${
+          typeof msg.content === 'string'
+            ? msg.content
+            : (typeof msg.content?.text === 'string'
+                ? msg.content.text
+                : msg.text || 'No content')
+        }</div>
+        <div class="bubble-meta">${date}</div>
+      </div>
+    `;
+  }).join('');
+
+  // Insert the messages container before the message input
+  const inputArea = chatArea.querySelector('.message-input');
+  if (inputArea) {
+    chatArea.insertBefore(messagesContainer, inputArea);
+  } else {
+    chatArea.appendChild(messagesContainer);
+  }
 
   // Scroll to bottom
-  const container = document.getElementById('messagesContainer');
-  if (container) container.scrollTop = container.scrollHeight;
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
 // Send WhatsApp message
 async function sendWhatsAppMessage() {
-  const messageInput = document.getElementById("messageInput")
+  const messageInput = document.getElementById("whatsappMessageInput")
   if (!messageInput) return;
   const text = messageInput.value.trim()
 
