@@ -282,7 +282,7 @@ async function sendWhatsAppMessage() {
       method: "POST",
       body: JSON.stringify({
         conversationId: currentWhatsAppConversationId,
-        content: { text: text },
+        content: text, // send as string
         platform: "whatsapp",
         to: currentWhatsAppNumber,
       }),
