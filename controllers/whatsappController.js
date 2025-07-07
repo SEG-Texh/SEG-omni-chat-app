@@ -26,6 +26,7 @@ class WhatsAppController {
 
       // Twilio WhatsApp Sandbox payload support
       if (body && body.WaId && body.Body) {
+        const { sendCustomTwilioReply } = require('./twilioXml');
         const phoneNumber = body.WaId;
         const message = {
           type: 'text',
@@ -34,7 +35,8 @@ class WhatsAppController {
         };
         console.log('[WA][Webhook][Twilio] Processing Twilio WhatsApp message:', { phoneNumber, message });
         await this.processMessage(phoneNumber, message);
-        return res.sendStatus(200);
+        // Respond with empty TwiML to suppress Twilio's default 'OK' reply
+        return sendCustomTwilioReply(res, '');
       }
       
       if (body.object && body.entry) {
