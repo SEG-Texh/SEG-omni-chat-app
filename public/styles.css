@@ -1302,9 +1302,10 @@ tbody tr:hover {
 
 /* WhatsApp Chat Area Layout */
 main.fullscreen-chat {
-  height: calc(100vh - 200px);
+  height: 100vh;
   min-height: 100vh;
   padding: 2rem;
+  padding-bottom: 2rem;
 }
 
 .fullscreen-chat > div {
