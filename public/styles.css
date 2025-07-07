@@ -1319,7 +1319,6 @@ main.fullscreen-chat {
 }
 
 #whatsappChatArea {
-  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -1330,20 +1329,17 @@ main.fullscreen-chat {
   overflow: hidden;
 }
 
+#messagesList,
 #whatsappChatArea .messages-container,
-#whatsappChatArea #messagesContainer,
-#messagesList {
+#whatsappChatArea #messagesContainer {
   flex: 1 1 auto;
   overflow-y: auto;
   min-height: 0;
 }
 
+#messageForm,
 #whatsappChatArea .message-input {
-  display: flex;
-  align-items: center;
-  padding: 12px;
-  border-top: 1px solid #e5e7eb;
-  background: #fff;
+  flex: none;
 }
 
 #whatsappChatArea #messageInput {
