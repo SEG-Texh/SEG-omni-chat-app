@@ -227,17 +227,15 @@ function displayWhatsAppMessages(messages = []) {
       hour: '2-digit', minute: '2-digit', hour12: false
     }) : '';
     return `
-      <div class="flex ${isMine ? 'justify-end' : 'justify-start'}">
-        <div class="chat-bubble whatsapp ${isMine ? 'sent' : 'received'}">
-          <div class="bubble-content">${
-            typeof msg.content === 'string'
-              ? msg.content
-              : (typeof msg.content?.text === 'string'
-                  ? msg.content.text
-                  : msg.text || 'No content')
-          }</div>
-          <div class="bubble-meta">${date}</div>
-        </div>
+      <div class="chat-bubble whatsapp ${isMine ? 'sent' : 'received'}">
+        <div class="bubble-content">${
+          typeof msg.content === 'string'
+            ? msg.content
+            : (typeof msg.content?.text === 'string'
+                ? msg.content.text
+                : msg.text || 'No content')
+        }</div>
+        <div class="bubble-meta">${date}</div>
       </div>
     `;
   }).join('');
