@@ -221,10 +221,11 @@ function displayWhatsAppMessages(messages = []) {
     .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
   messagesContainer.innerHTML = filteredMessages.map(msg => {
-    // Fix: check both _id and id for sender and currentUser
-    const senderId = msg.sender?._id || msg.sender?.id;
-    const currentId = currentUser._id || currentUser.id;
-    const isMine = senderId && currentId && senderId === currentId;
+    // Robust sent/received detection
+    const isMine =
+      msg.direction === "outbound" ||
+      msg.fromMe === true ||
+      (msg.sender && (msg.sender._id === currentUser._id || msg.sender.id === currentUser.id));
     const date = msg.createdAt ? new Date(msg.createdAt).toLocaleString('en-GB', {
       day: 'numeric', month: 'short', year: 'numeric',
       hour: '2-digit', minute: '2-digit', hour12: false
