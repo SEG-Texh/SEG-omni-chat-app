@@ -888,12 +888,13 @@ body {
 }
 
 .chat-bubble.whatsapp.sent {
-  background: #dcf8c6;
+  background: white;
   color: var(--text-primary);
+  border: 1px solid #e0e0e0;
 }
 
 .chat-bubble.whatsapp.received {
-  background: white;
+  background: #dcf8c6;
   color: var(--text-primary);
 }
 
