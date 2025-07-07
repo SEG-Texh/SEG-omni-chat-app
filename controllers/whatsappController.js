@@ -131,10 +131,12 @@ class WhatsAppController {
       console.log('[WA][Process] platformMessageId:', platformMessageId);
   
       // Save to database
+      // Save content as { text } object for consistency with outbound messages
+      let chatContent = typeof text === 'string' ? { text } : text;
       const chat = new Chat({
         conversation: conversation._id,
         sender: user._id,
-        content: text, // Save as string only
+        content: chatContent,
         platform: 'whatsapp',
         direction: 'inbound',
         responseTo: responseTo,
