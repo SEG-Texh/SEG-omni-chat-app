@@ -27,9 +27,13 @@ document.addEventListener("DOMContentLoaded", () => {
     whatsappSocket.on('new_message', (message) => {
       // If message is for the active conversation, update chat instantly
       if (message.conversation === currentWhatsAppConversationId) {
-        displayWhatsAppMessages([message], true); // true = append single message
+        // Append the new message to the existing list in the UI
+        let allMessages = window.currentWhatsAppMessages || [];
+        allMessages = [...allMessages, message];
+        window.currentWhatsAppMessages = allMessages;
+        displayWhatsAppMessages(allMessages);
         // Optionally scroll chat to bottom
-        const messagesContainer = document.getElementById('whatsappMessagesContainer');
+        const messagesContainer = document.getElementById('messagesContainer');
         if (messagesContainer) {
           messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
