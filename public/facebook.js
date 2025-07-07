@@ -133,7 +133,18 @@ const FacebookChat = (() => {
       )
       .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
+    // Find the selected conversation for header display
+    const selectedConversation = conversations.find(c => c._id === currentConversationId);
+    const participantName = selectedConversation ? getParticipantName(selectedConversation) : "Unknown User";
     chatArea.innerHTML = `
+      <div class="p-4 border-b border-slate-200 bg-slate-50">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-semibold">👤</div>
+          <div>
+            <div class="font-medium">${participantName}</div>
+          </div>
+        </div>
+      </div>
       <div class="messages-container" id="messagesContainer">
         ${filteredMessages.map(msg => {
           const isMine = msg.sender === window.facebookPageId;
