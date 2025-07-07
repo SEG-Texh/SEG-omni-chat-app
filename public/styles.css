@@ -1304,7 +1304,7 @@ tbody tr:hover {
 main.fullscreen-chat {
   height: 100vh;
   min-height: 100vh;
-  padding: 0;
+  padding: 2rem;
 }
 
 .fullscreen-chat > div {
