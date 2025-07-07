@@ -1,6 +1,6 @@
 const express = require('express');
 const { Router } = express;
-const socketIo = require('socket.io');
+// Use socket.io from config/socket.js
 const cors = require('cors');
 const path = require('path');
 const jwt = require('jsonwebtoken');
@@ -42,17 +42,8 @@ const router = Router();
 app.use(router);
 const server = http.createServer(app);
 
-// Initialize socket.io
-const io = socketIo(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  },
-  transports: ['polling', 'websocket'],
-  allowEIO3: true,
-  pingTimeout: 60000,
-  pingInterval: 25000
-});
+// Initialize socket.io using config/socket.js
+const io = require('./config/socket').init(server);
 
 // Store connected users
 const connectedUsers = new Map();
