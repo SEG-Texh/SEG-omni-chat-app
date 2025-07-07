@@ -185,16 +185,8 @@ function showWhatsAppChatInterface(conversation) {
         <!-- Message Input -->
         <div class="p-4 border-t border-slate-200 bg-white">
             <div class="flex gap-3">
-                <input
-                    type="text"
-                    id="whatsappMessageInput"
-                    placeholder="Type a message..."
-                    class="flex-1 px-4 py-2 border border-slate-300 rounded-full focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                />
-                <button
-                    id="whatsappSendButton"
-                    class="px-6 py-2 bg-green-500 text-white rounded-full hover:bg-green-600 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
-                >
+                <input type="text" id="whatsappMessageInput" placeholder="Type a message..." class="flex-1 px-4 py-2 border border-slate-300 rounded-full focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                <button id="whatsappSendButton" class="px-6 py-2 bg-green-500 text-white rounded-full hover:bg-green-600 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors">
                     Send
                 </button>
             </div>
