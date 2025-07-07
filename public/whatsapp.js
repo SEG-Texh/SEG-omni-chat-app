@@ -169,7 +169,7 @@ function showWhatsAppChatInterface(conversation) {
       <div class="p-4 border-b border-slate-200 bg-slate-50">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 bg-green-500 text-white rounded-full flex items-center justify-center font-semibold">
-            📱
+            👤
           </div>
           <div>
             <div class="font-medium">${participant?.name || "Unknown User"}</div>
