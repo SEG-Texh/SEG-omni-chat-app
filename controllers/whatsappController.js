@@ -163,52 +163,27 @@ class WhatsAppController {
     }
   }
 
-  // Send text message
+  // Send text message via Twilio WhatsApp API
   async sendMessage(phoneNumber, text) {
     try {
-      console.log('SENDING TO WHATSAPP:', phoneNumber, text);
-      const response = await axios.post(
-        `https://graph.facebook.com/v13.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
-        {
-          messaging_product: "whatsapp",
-          recipient_type: "individual",
-          to: phoneNumber,
-          type: "text",
-          text: { body: text }
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-      console.log('WHATSAPP API RESPONSE:', response.data);
-      
-      // Save outgoing message to database
-      const platformMessageId = `wa_out_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const chat = new Chat({
-        conversation: conversationId,
-        sender: userId,
-        content: { text },
-        platform: 'whatsapp',
-        direction: 'outbound',
-        responseTo: null,
-        responseTime: null,
-        platformMessageId
-      });
-      await chat.save();
+      console.log('SENDING TO WHATSAPP (TWILIO):', phoneNumber, text);
+      const accountSid = process.env.TWILIO_ACCOUNT_SID;
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
+      const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER.startsWith('whatsapp:')
+        ? process.env.TWILIO_WHATSAPP_NUMBER
+        : `whatsapp:+${process.env.TWILIO_WHATSAPP_NUMBER.replace(/[^\d]/g, '')}`;
+      const toNumber = phoneNumber.startsWith('whatsapp:') ? phoneNumber : `whatsapp:${phoneNumber}`;
 
-      // Emit real-time event after saving
-      const io = require('../config/socket').getIO();
-      io.to(`conversation_${conversationId}`).emit('new_message', {
-        ...chat.toObject(),
-        platform: 'whatsapp',
+      const client = require('twilio')(accountSid, authToken);
+      const response = await client.messages.create({
+        from: fromNumber,
+        to: toNumber,
+        body: text
       });
-
-      return response.data;
+      console.log('Twilio API RESPONSE:', response.sid);
+      return response;
     } catch (error) {
-      console.error('WHATSAPP API ERROR:', error.response?.data || error.message);
+      console.error('TWILIO WHATSAPP API ERROR:', error.message || error);
       throw error;
     }
   }
