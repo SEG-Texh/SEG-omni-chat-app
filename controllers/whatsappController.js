@@ -134,7 +134,7 @@ class WhatsAppController {
       const chat = new Chat({
         conversation: conversation._id,
         sender: user._id,
-        content: { text },
+        content: text, // Save as string only
         platform: 'whatsapp',
         direction: 'inbound',
         responseTo: responseTo,
