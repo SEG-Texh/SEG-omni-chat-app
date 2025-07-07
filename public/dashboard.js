@@ -100,11 +100,13 @@ async function renderCharts() {
   // --- PIE/DOUGHNUT CHART (Platform Distribution, live data) ---
   let pieLabels = ['Facebook', 'WhatsApp', 'Other'];
   let pieData = [0, 0, 0];
-  const pieColors = [
-    'rgba(59,130,246,0.85)', // blue
-    'rgba(16,185,129,0.85)', // green
-    'rgba(139,92,246,0.85)'  // purple
-  ];
+  // Always map Facebook to blue and WhatsApp to green
+  const colorMap = {
+    Facebook: 'rgba(59,130,246,0.85)', // blue
+    WhatsApp: 'rgba(16,185,129,0.85)', // green
+    Other: 'rgba(139,92,246,0.85)',   // purple
+  };
+  let pieColors = pieLabels.map(label => colorMap[label] || 'rgba(139,92,246,0.85)');
   try {
     const resp = await fetch('/api/dashboard/platform-distribution');
     if (resp.ok) {
