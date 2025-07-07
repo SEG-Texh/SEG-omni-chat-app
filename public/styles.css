@@ -1338,16 +1338,43 @@ main.fullscreen-chat {
 
 #messageForm,
 #whatsappChatArea .message-input {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  background: #f7fafc;
   flex: none;
 }
 
-#whatsappChatArea #messageInput {
+#messageInput {
   flex: 1 1 auto;
-  padding: 8px 12px;
-  border: 1px solid #a7f3d0;
-  border-radius: 6px;
-  margin-right: 8px;
+  padding: 0.5rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 9999px;
   font-size: 1rem;
+  margin-right: 0.5rem;
+}
+
+#messageForm button,
+#whatsappChatArea .message-input button {
+  background: linear-gradient(to right, #22c55e, #16a34a);
+  color: #fff;
+  border: none;
+  border-radius: 9999px;
+  padding: 0.5rem 1.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#messageForm button:hover,
+#whatsappChatArea .message-input button:hover {
+  background: linear-gradient(to right, #16a34a, #22c55e);
 }
 
 #whatsappChatArea #sendButton {
