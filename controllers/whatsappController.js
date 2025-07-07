@@ -23,6 +23,19 @@ class WhatsAppController {
     try {
       const body = req.body;
       console.log('[WA][Webhook] Received webhook:', JSON.stringify(body));
+
+      // Twilio WhatsApp Sandbox payload support
+      if (body && body.WaId && body.Body) {
+        const phoneNumber = body.WaId;
+        const message = {
+          type: 'text',
+          text: { body: body.Body },
+          id: body.MessageSid
+        };
+        console.log('[WA][Webhook][Twilio] Processing Twilio WhatsApp message:', { phoneNumber, message });
+        await this.processMessage(phoneNumber, message);
+        return res.sendStatus(200);
+      }
       
       if (body.object && body.entry) {
         for (const entry of body.entry) {
