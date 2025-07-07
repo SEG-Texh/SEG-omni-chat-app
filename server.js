@@ -243,7 +243,8 @@ io.on('connection', async (socket) => {
 
   socket.on('disconnect', async () => {
       try {
-    console.log(`🔴 User disconnected: ${socket.user.name}`);
+    const userName = socket.user && socket.user.name ? socket.user.name : 'Unknown';
+    console.log(`🔴 User disconnected: ${userName}`);
     connectedUsers.delete(socket.userId);
     await User.findByIdAndUpdate(socket.userId, {
       isOnline: false,
@@ -252,7 +253,7 @@ io.on('connection', async (socket) => {
 
     socket.broadcast.emit('userOffline', {
       userId: socket.userId,
-      name: socket.user.name
+      name: userName
     });
       } catch (err) {
         console.error('Error during disconnect:', err);
