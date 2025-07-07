@@ -208,8 +208,8 @@ function showWhatsAppChatInterface(conversation) {
 
 // Display WhatsApp messages
 function displayWhatsAppMessages(messages = []) {
-  const chatArea = document.getElementById("whatsappChatArea");
-  if (!chatArea) return;
+  const messagesContainer = document.getElementById("whatsappMessagesContainer");
+  if (!messagesContainer) return;
 
   // Sort messages by createdAt ascending (oldest first)
   const filteredMessages = messages
@@ -219,17 +219,6 @@ function displayWhatsAppMessages(messages = []) {
       (msg.text && msg.text.trim() !== '')
     )
     .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-
-  // Render only the messages container (no input here)
-  chatArea.querySelector('.messages-container')?.remove();
-  const messagesContainer = document.createElement('div');
-  messagesContainer.className = 'messages-container';
-  messagesContainer.id = 'messagesContainer';
-  messagesContainer.style.flex = '1 1 auto';
-  messagesContainer.style.overflowY = 'auto';
-  messagesContainer.style.background = '#e8f5e9';
-  messagesContainer.style.padding = '16px';
-  messagesContainer.style.minHeight = '0';
 
   messagesContainer.innerHTML = filteredMessages.map(msg => {
     const isMine = msg.direction === "outbound" || msg.sender?._id === currentUser._id || msg.sender?._id === currentUser.id;
@@ -250,14 +239,6 @@ function displayWhatsAppMessages(messages = []) {
       </div>
     `;
   }).join('');
-
-  // Insert the messages container before the message input
-  const inputArea = chatArea.querySelector('.message-input');
-  if (inputArea) {
-    chatArea.insertBefore(messagesContainer, inputArea);
-  } else {
-    chatArea.appendChild(messagesContainer);
-  }
 
   // Scroll to bottom
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
