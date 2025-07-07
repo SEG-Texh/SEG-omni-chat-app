@@ -146,7 +146,7 @@ async function loadWhatsAppMessages(conversationId) {
   if (!currentUser?.token) return
 
   try {
-    const response = await apiRequest(`/api/conversation/${conversationId}/messages`)
+    const response = await apiRequest(`/api/conversation/${conversationId}/messages?platform=whatsapp`)
     const messages = await response.json()
     displayWhatsAppMessages(messages)
   } catch (error) {

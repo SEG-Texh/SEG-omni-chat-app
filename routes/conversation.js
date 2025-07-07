@@ -30,11 +30,12 @@ router.get('/', auth, async (req, res) => {
 // Get messages in a conversation
 router.get('/:id/messages', auth, async (req, res) => {
   try {
-    const messages = await Message.find({
-      conversation: req.params.id
-    })
-    .populate('sender', 'name avatar')
-    .sort({ createdAt: 1 });
+    const platform = req.query.platform;
+    const filter = { conversation: req.params.id };
+    if (platform) filter.platform = platform;
+    const messages = await Message.find(filter)
+      .populate('sender', 'name avatar')
+      .sort({ createdAt: 1 });
 
     res.json(messages);
   } catch (error) {
