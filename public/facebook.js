@@ -134,9 +134,6 @@ const FacebookChat = (() => {
       .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
     chatArea.innerHTML = `
-      <div class="p-3 border-b border-slate-200 bg-slate-50 font-medium text-base">
-        ${getParticipantName(conversations.find(c => c._id === currentConversationId)) || "Unknown User"}
-      </div>
       <div class="messages-container" id="messagesContainer">
         ${filteredMessages.map(msg => {
           const isMine = msg.sender === window.facebookPageId;
