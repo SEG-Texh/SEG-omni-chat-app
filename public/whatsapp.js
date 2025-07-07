@@ -265,7 +265,8 @@ function displayWhatsAppMessages(messages = []) {
 
 // Send WhatsApp message
 async function sendWhatsAppMessage() {
-  const messageInput = document.getElementById("whatsappMessageInput")
+  const messageInput = document.getElementById("messageInput")
+  if (!messageInput) return;
   const text = messageInput.value.trim()
 
   if (!text || !currentWhatsAppConversationId) {
