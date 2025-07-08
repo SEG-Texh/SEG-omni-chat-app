@@ -903,11 +903,13 @@ body {
   background: white;
   color: var(--text-primary);
   border: 1px solid #e0e0e0;
+  max-width: 18rem;
 }
 
 .chat-bubble.whatsapp.received {
   background: #dcf8c6;
   color: var(--text-primary);
+  max-width: 18rem;
 }
 
 /* ROLE BADGES */
