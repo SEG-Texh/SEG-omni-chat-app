@@ -1070,7 +1070,7 @@ body {
   }
 
   .chat-bubble {
-    max-width: 16rem;
+    max-width: 10rem;
     font-size: 0.8rem;
   }
 
@@ -1103,7 +1103,7 @@ body {
   }
 
   .chat-bubble {
-    max-width: 14rem;
+    max-width: 10rem;
     padding: 0.5rem 0.75rem;
   }
 }
