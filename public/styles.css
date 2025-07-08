@@ -895,7 +895,10 @@ body {
   border: 1px solid var(--border-color);
   border-bottom-left-radius: 0.25rem;
 }
-
+/* For all WhatsApp bubbles (sent and received) */
+.chat-bubble.whatsapp {
+  max-width: 18rem; /* or whatever width you want */
+}
 .chat-bubble.whatsapp.sent {
   background: white;
   color: var(--text-primary);
