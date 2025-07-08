@@ -108,7 +108,7 @@ async function loadWhatsAppConversations() {
                     <div class="text-xs text-slate-400">
                         ${new Date(conversation.updatedAt).toLocaleDateString()}
                     </div>
-                    <span class="unread-badge" style="display:${unreadConversations.has(conversation._id) ? 'inline-block' : 'none'};background:red;color:white;border-radius:50%;padding:2px 6px;font-size:10px;margin-left:5px;">●</span>
+                    <span class="unread-badge" style="display:${unreadConversations.has(conversation._id) ? 'inline-block' : 'none'};background:#ef4444;color:white;border-radius:50%;padding:2px 6px;font-size:10px;margin-left:5px;vertical-align:middle;">●</span>
                 </div>
             `
 

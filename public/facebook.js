@@ -108,7 +108,7 @@ const FacebookChat = (() => {
                         </div>
               <div class="conversation-date text-xs text-slate-400 ml-2">${date}</div>
               ${facebookUnreadConversations.has(conversation._id) 
-                ? '<span class="unread-badge"></span>' 
+                ? '<span class="unread-badge" style="display:inline-block;background:#ef4444;color:white;border-radius:50%;padding:2px 6px;font-size:10px;margin-left:5px;vertical-align:middle;">●</span>' 
                 : ''}
                         </div>
           `;
