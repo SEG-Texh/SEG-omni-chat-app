@@ -62,14 +62,15 @@ router.post('/', async (req, res) => {
 // @route   DELETE api/users/:id
 // @desc    Delete A User
 // @access  Public
-router.delete('/:id', async (req, res) => {
+const mongoose = require('mongoose');
+router.delete('/:id', auth, authorize('admin', 'supervisor'), async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ msg: 'Invalid user ID' });
+    }
     let user = await User.findById(req.params.id);
-
     if (!user) return res.status(404).json({ msg: 'User not found' });
-
     await User.findByIdAndRemove(req.params.id);
-
     res.json({ msg: 'User removed' });
   } catch (err) {
     console.error(err.message);
