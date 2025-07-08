@@ -7,18 +7,13 @@ const Message = require('../models/message'); // Add this line
 const Conversation = require('../models/conversation');
 
 // Users count endpoint (already present)
+const User = require('../models/User');
 router.get('/users/count', async (req, res) => {
   try {
-    const stats = await UserStats.findOne({});
-    res.json({
-      success: true,
-      count: stats ? stats.totalUsers : 0
-    });
+    const count = await User.countDocuments({ type: 'internal' });
+    res.json({ success: true, count });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
