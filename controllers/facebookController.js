@@ -3,62 +3,6 @@ const Message = require('../models/message');
 const User = require('../models/User');
 const axios = require('axios');
 
-// Test route to create a sample conversation
-exports.createTestConversation = async (req, res) => {
-  try {
-    // Create conversation
-    const conversation = new Conversation({
-      platform: 'facebook',
-      platformConversationId: 'test-conversation-123',
-      participants: ['user123', 'user456'],
-      unreadCount: 0
-    });
-    await conversation.save();
-    
-    // Create a test message
-    const message = await Message.create({
-      platform: 'facebook',
-      platformMessageId: 'test-message-123',
-      conversation: conversation._id,
-      senderId: 'user123',
-      content: 'Hello, this is a test message!',
-      timestamp: new Date()
-    });
-    
-    // Update conversation with last message
-    conversation.lastMessage = message._id;
-    await conversation.save();
-    
-    res.json({
-      success: true,
-      message: 'Test conversation created successfully',
-      conversation: conversation
-    });
-    } catch (error) {
-    console.error('Error creating test conversation:', error);
-    res.status(500).json({
-      error: 'Failed to create test conversation',
-      details: error.message
-    });
-  }
-};
-
-// Test endpoint to verify webhook
-exports.testWebhook = async (req, res) => {
-  console.log('Test Webhook Request:', {
-    method: req.method,
-    url: req.url,
-    headers: req.headers,
-    query: req.query,
-    body: req.body
-  });
-  
-  res.json({
-    status: 'success',
-    message: 'Test webhook endpoint working'
-  });
-};
-
 
 
 // Facebook Webhook Handler
@@ -185,12 +129,14 @@ if (!conversation) {
                   if (!lockedAgent || !lockedAgent.isOnline) {
                     // Escalate: broadcast to all agents for claim
                     console.log('[FB][Process] Locked agent offline, broadcasting escalation');
-                    io.emit('new_live_chat_request', {
-                      conversationId: conversation._id,
-                      customerId: conversation.participants.find(p => p.toString() !== conversation.agentId.toString()),
-                      platform: 'facebook',
-                      message: messageText,
-                    });
+                    if (req.io) {
+                      req.io.emit('new_live_chat_request', {
+                        conversationId: conversation._id,
+                        customerId: conversation.participants.find(p => p.toString() !== conversation.agentId.toString()),
+                        platform: 'facebook',
+                        message: messageText,
+                      });
+                    }
                     // Do NOT unlock or reassign yet; wait for claim
                     return;
                   } else if (conversation.agentId.toString() !== senderUser._id.toString()) {
@@ -201,6 +147,12 @@ if (!conversation) {
                   // If the same agent returns, allow them to continue (unlocks automatically)
                   console.log('[FB][Process] Agent is the same as locked agent, proceeding');
                 } else if (!conversation.agentId) {
+                  // Look up the senderUser as the agent by senderId
+                  let senderUser = await User.findOne({ _id: senderId });
+                  if (!senderUser) {
+                    console.error('senderUser not found for senderId:', senderId);
+                    return res.status(404).json({ error: 'senderUser not found' });
+                  }
                   // No agent assigned, claim it
                   conversation.agentId = senderUser._id;
                   conversation.locked = true;
