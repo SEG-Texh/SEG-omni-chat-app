@@ -148,24 +148,13 @@ if (!conversation) {
                   // If the same agent returns, allow them to continue (unlocks automatically)
                   console.log('[FB][Process] Agent is the same as locked agent, proceeding');
                 } else if (!conversation.agentId) {
-                  // Look up the senderUser as the agent by senderId
-                  let senderUser = await User.findOne({ _id: senderId });
-                  if (!senderUser) {
-                    console.error('senderUser not found for senderId:', senderId);
-                    return res.status(404).json({ error: 'senderUser not found' });
-                  }
-                  // No agent assigned, claim it
-                  conversation.agentId = senderUser._id;
-                  conversation.locked = true;
-                  if (!conversation.participants.includes(senderUser._id)) {
-                    conversation.participants.push(senderUser._id);
-                  }
-                  await conversation.save();
-                  console.log('Conversation claimed by user:', senderUser._id);
+                  // No agent assigned. For Facebook senders, do not look up User. Only agents (internal users) are assigned as agentId when claimed from the UI.
+                  // If you want to auto-assign an agent, implement that logic here, otherwise leave agentId null until claimed.
+                  console.log('No agent assigned; waiting for claim by internal agent.');
                 } else {
                   // Update participants if they're missing
-                  if (!conversation.participants.includes(senderUser._id)) {
-                    conversation.participants.push(senderUser._id);
+                  if (!conversation.participants.includes(senderId)) {
+                    conversation.participants.push(senderId);
                     await conversation.save();
                     console.log('Added sender to conversation participants');
                   }

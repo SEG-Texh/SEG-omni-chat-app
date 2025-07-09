@@ -1313,7 +1313,6 @@ main.fullscreen-chat {
 }
 
 .fullscreen-chat .flex {
-  height: 100%;
   min-height: 0;
 }
 
