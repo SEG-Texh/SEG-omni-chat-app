@@ -1,5 +1,6 @@
 const Conversation = require('../models/conversation');
 const Message = require('../models/message');
+const User = require('../models/User');
 const axios = require('axios');
 
 // Test route to create a sample conversation
