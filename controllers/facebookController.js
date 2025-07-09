@@ -169,22 +169,50 @@ exports.webhook = async (req, res) => {
                 conversation = new Conversation({
                   platform: 'facebook',
                   participants: [senderId, recipientId],
-                  platformConversationId: event.message.mid
+                  platformConversationId: event.message.mid,
+                  agentId: senderId,
+                  locked: true,
+                  status: 'active'
                 });
                 await conversation.save();
                 console.log('Created new conversation:', conversation._id);
               } else {
-                console.log('Found existing conversation:', conversation._id);
-                // Update participants if they're missing
-                if (!conversation.participants.includes(senderId)) {
-                  conversation.participants.push(senderId);
+                // Conversation lock/claim logic
+                if (conversation.status === 'ended') {
+                  conversation.agentId = senderId;
+                  conversation.locked = true;
+                  conversation.status = 'active';
+                  if (!conversation.participants.includes(senderId)) {
+                    conversation.participants.push(senderId);
+                  }
                   await conversation.save();
-                  console.log('Added sender to conversation participants');
-                }
-                if (!conversation.participants.includes(recipientId)) {
-                  conversation.participants.push(recipientId);
+                  console.log('Conversation re-claimed by user:', senderId);
+                } else if (conversation.locked && conversation.agentId && conversation.agentId.toString() !== senderId.toString()) {
+                  // If locked by another user, block
+                  console.log('Conversation locked by another user:', conversation.agentId);
+                  return res.status(403).json({ error: 'Conversation locked by another user.' });
+                } else if (!conversation.agentId) {
+                  // No agent assigned, claim it
+                  conversation.agentId = senderId;
+                  conversation.locked = true;
+                  if (!conversation.participants.includes(senderId)) {
+                    conversation.participants.push(senderId);
+                  }
                   await conversation.save();
-                  console.log('Added recipient to conversation participants');
+                  console.log('Conversation claimed by user:', senderId);
+                } else {
+                  // Update participants if they're missing
+                  if (!conversation.participants.includes(senderId)) {
+                    conversation.participants.push(senderId);
+                    await conversation.save();
+                    console.log('Added sender to conversation participants');
+                  }
+                  if (!conversation.participants.includes(recipientId)) {
+                    conversation.participants.push(recipientId);
+                    await conversation.save();
+                    console.log('Added recipient to conversation participants');
+                  }
+                  console.log('Found existing conversation:', conversation._id);
                 }
               }
 
@@ -299,6 +327,27 @@ exports.listConversations = async (req, res) => {
 };
 
 // List messages for a Facebook conversation
+// End Facebook conversation session
+// POST /api/facebook/conversation/:id/end
+exports.endSession = async (req, res) => {
+  try {
+    const Conversation = require('../models/conversation');
+    const conversationId = req.params.id;
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+    conversation.status = 'ended';
+    conversation.locked = false;
+    conversation.agentId = null;
+    await conversation.save();
+    return res.json({ success: true, message: 'Conversation session ended', conversation });
+  } catch (error) {
+    console.error('[FB][EndSession] Error:', error);
+    return res.status(500).json({ error: 'Failed to end session' });
+  }
+};
+
 exports.listMessages = async (req, res) => {
   try {
     const { conversationId } = req.params;

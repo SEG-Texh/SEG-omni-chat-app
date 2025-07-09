@@ -34,4 +34,7 @@ router.post('/send-template', async (req, res) => {
   }
 });
 
+// End WhatsApp conversation session
+router.post('/conversation/:id/end', whatsappController.endSession.bind(whatsappController));
+
 module.exports = router;

@@ -184,53 +184,6 @@ async function loadWhatsAppMessages(conversationId) {
   }
 }
 
-// Show WhatsApp chat interface
-function showWhatsAppChatInterface(conversation) {
-  const chatArea = document.getElementById("whatsappChatArea")
-  const participant = conversation.participants[0]
-
-  chatArea.innerHTML = `
-    <div class="flex flex-col h-full" style="height:100%; min-height:0;">
-      <!-- Chat Header -->
-      <div class="p-4 border-b border-slate-200 bg-slate-50">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 bg-green-500 text-white rounded-full flex items-center justify-center font-semibold">
-            👤
-          </div>
-          <div>
-            <div class="font-medium">${participant?.name || "Unknown User"}</div>
-            <div class="text-sm text-green-500">Online</div>
-          </div>
-        </div>
-      </div>
-      <!-- Messages List -->
-      <div id="whatsappMessagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4 bg-green-50">
-        <!-- Messages will be loaded here -->
-      </div>
-      <!-- Message Input -->
-      <div class="p-4 border-t border-slate-200 bg-white">
-        <div class="flex gap-3">
-          <input type="text" id="whatsappMessageInput" placeholder="Type a message..." class="flex-1 px-4 py-2 border border-slate-300 rounded-full focus:ring-2 focus:ring-green-500 focus:border-green-500">
-          <button id="whatsappSendButton" class="px-6 py-2 bg-green-500 text-white rounded-full hover:bg-green-600 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors">
-            Send
-          </button>
-        </div>
-      </div>
-    </div>
-  `
-
-  // Add event listeners for message input
-  const messageInput = document.getElementById("whatsappMessageInput")
-  const sendButton = document.getElementById("whatsappSendButton")
-
-  messageInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") {
-      sendWhatsAppMessage()
-    }
-  })
-
-  sendButton.addEventListener("click", sendWhatsAppMessage)
-}
 
 // Display WhatsApp messages
 function displayWhatsAppMessages(messages = []) {

@@ -165,13 +165,14 @@ const FacebookChat = (() => {
     const selectedConversation = conversations.find(c => c._id === currentConversationId);
     const participantName = selectedConversation ? getParticipantName(selectedConversation) : "Unknown User";
     chatArea.innerHTML = `
-      <div class="p-4 border-b border-slate-200 bg-slate-50">
+      <div class="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-semibold">👤</div>
           <div>
             <div class="font-medium">${participantName}</div>
           </div>
         </div>
+        <button id="endFacebookSessionButton" class="px-4 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors">End Session</button>
       </div>
       <div class="messages-container" id="messagesContainer">
         ${filteredMessages.map(msg => {
@@ -194,8 +195,33 @@ const FacebookChat = (() => {
       <div class="message-input">
         <input type="text" id="messageInput" placeholder="Type a message...">
         <button id="sendButton">Send</button>
-                </div>
+      </div>
     `;
+
+    // End Session logic
+    const endBtn = document.getElementById("endFacebookSessionButton");
+    endBtn.addEventListener("click", async () => {
+      if (!currentConversationId) return;
+      endBtn.disabled = true;
+      endBtn.textContent = "Ending...";
+      try {
+        const response = await fetch(`/api/facebook/conversation/${currentConversationId}/end`, { method: 'POST' });
+        if (response.ok) {
+          // Disable input and send button
+          document.getElementById("messageInput").disabled = true;
+          document.getElementById("sendButton").disabled = true;
+          endBtn.textContent = "Session Ended";
+        } else {
+          endBtn.disabled = false;
+          endBtn.textContent = "End Session";
+          alert("Failed to end session");
+        }
+      } catch (err) {
+        endBtn.disabled = false;
+        endBtn.textContent = "End Session";
+        alert("Error ending session");
+      }
+    });
 
     // Attach send handlers
     document.getElementById('sendButton').addEventListener('click', sendMessage);

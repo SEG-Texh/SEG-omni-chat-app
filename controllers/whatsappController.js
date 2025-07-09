@@ -122,11 +122,38 @@ class WhatsAppController {
           platform: 'whatsapp',
           platformConversationId: phoneNumber,
           customerId: phoneNumber,
-          status: 'active'
+          status: 'active',
+          agentId: user._id,
+          locked: true
         });
         console.log('[WA][Process] Created new conversation:', conversation);
       } else {
-        console.log('[WA][Process] Found conversation:', conversation);
+        // If conversation is ended, unlock and re-claim for new user
+        if (conversation.status === 'ended') {
+          conversation.agentId = user._id;
+          conversation.locked = true;
+          conversation.status = 'active';
+          if (!conversation.participants.includes(user._id.toString())) {
+            conversation.participants.push(user._id);
+          }
+          await conversation.save();
+          console.log('[WA][Process] Conversation re-claimed by user:', user._id);
+        } else if (conversation.locked && conversation.agentId && conversation.agentId.toString() !== user._id.toString()) {
+          // If locked by another user, block
+          console.log('[WA][Process] Conversation locked by another user:', conversation.agentId);
+          return; // Optionally send an error or notification
+        } else if (!conversation.agentId) {
+          // No agent assigned, claim it
+          conversation.agentId = user._id;
+          conversation.locked = true;
+          if (!conversation.participants.includes(user._id.toString())) {
+            conversation.participants.push(user._id);
+          }
+          await conversation.save();
+          console.log('[WA][Process] Conversation claimed by user:', user._id);
+        } else {
+          console.log('[WA][Process] Found conversation:', conversation);
+        }
       }
   
       // Always set a unique platformMessageId
@@ -257,5 +284,26 @@ class WhatsAppController {
     }
   }
 }
+
+// End WhatsApp conversation session
+// POST /api/whatsapp/conversation/:id/end
+WhatsAppController.prototype.endSession = async function(req, res) {
+  try {
+    const Conversation = require('../models/conversation');
+    const conversationId = req.params.id;
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+    conversation.status = 'ended';
+    conversation.locked = false;
+    conversation.agentId = null;
+    await conversation.save();
+    return res.json({ success: true, message: 'Conversation session ended', conversation });
+  } catch (error) {
+    console.error('[WA][EndSession] Error:', error);
+    return res.status(500).json({ error: 'Failed to end session' });
+  }
+};
 
 module.exports = new WhatsAppController();
