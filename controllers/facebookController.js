@@ -121,20 +121,9 @@ if (!conversation) {
     customerId: senderId
   });
   await conversation.save();
-
-  // Create a new conversation for this Facebook customer
-  conversation = new Conversation({
-    platform: 'facebook',
-    platformConversationId: event.message.mid,
-    participants: [senderId], // Only customerId for now, agentId added when assigned
-    agentId: null, // Not assigned yet
-    locked: false,
-    status: 'pending',
-    customerId: senderId
-  });
-  await conversation.save();
   console.log('Created new conversation:', conversation._id);
 }
+
 // No user creation/upsert. All logic is based on senderId (customerId) and agentId (when assigned).
 
                   const lockedAgent = await User.findById(conversation.agentId);
