@@ -7,7 +7,7 @@ const ConversationSchema = new Schema({
   participants: [{ type: String }], // Facebook user IDs or your user IDs
   customerId: { type: String, required: true }, // Facebook user/customer ID
   agentId: { type: Schema.Types.ObjectId, ref: 'User', default: null }, // Assigned agent (null until paired)
-  status: { type: String, enum: ['pending', 'active', 'ended'], default: 'pending' },
+  status: { type: String, enum: ['pending', 'awaiting_agent', 'active', 'ended'], default: 'pending' },
   startTime: { type: Date },
   expiresAt: { type: Date },
   endTime: { type: Date },
