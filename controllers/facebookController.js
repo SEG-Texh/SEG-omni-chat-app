@@ -144,7 +144,8 @@ exports.webhook = async (req, res) => {
               conversation: conversation._id,
               sender: senderId,
               content: messageText,
-              timestamp: new Date(timestamp)
+              timestamp: new Date(timestamp),
+              direction: 'inbound' // Added direction field
             });
 
             // Update conversation lastMessage
