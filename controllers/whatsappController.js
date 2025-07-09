@@ -114,13 +114,14 @@ class WhatsAppController {
       // Find only active session for this customer (expiresAt > now, status: 'active')
       const Conversation = require('../models/conversation');
       const now = new Date();
+      // Find the most recent open session for this customer
       let conversation = await Conversation.findOne({
         platform: 'whatsapp',
         customerId: phoneNumber,
-        status: 'active'
-      });
-      // If session expired, end it and start a new one
-      if (conversation && conversation.expiresAt && conversation.expiresAt <= now) {
+        status: { $in: ['pending', 'awaiting_agent', 'active'] }
+      }).sort({ createdAt: -1 });
+      // If found and status is 'active', check expiry
+      if (conversation && conversation.status === 'active' && conversation.expiresAt && conversation.expiresAt <= now) {
         conversation.status = 'ended';
         conversation.locked = false;
         conversation.agentId = null;
@@ -128,7 +129,7 @@ class WhatsAppController {
         await conversation.save();
         conversation = null;
       }
-      // If no active session, create a new pending session
+      // If no open session, create a new pending session
       if (!conversation) {
         conversation = await Conversation.create({
           participants: [user._id],
