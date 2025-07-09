@@ -143,17 +143,21 @@ if (!conversation) {
 // No user creation/upsert. All logic is based on senderId (customerId) and agentId (when assigned).
 
               // Bot message logic
+              // Only count inbound messages from the customer (Facebook PSID, not agentId)
               const inboundCount = await Message.countDocuments({ conversation: conversation._id, sender: senderId });
-              if (inboundCount === 1) {
+              if (inboundCount === 0) {
+                // First message from customer
                 await sendFacebookMessage(senderId, "Hi, welcome. How may I help you?");
-              } else if (inboundCount === 2) {
+              } else if (inboundCount === 1) {
+                // Second message from customer
                 await sendFacebookMessage(senderId, "Would you like to chat with a live user? Yes / No");
               } else if (messageText.trim().toLowerCase() === 'yes') {
+                // Customer wants escalation
                 await sendFacebookMessage(senderId, "Okay, connecting you to a live agent now...");
                 conversation.status = 'awaiting_agent';
                 await conversation.save();
                 if (req.io) {
-                  req.io.emit('escalation_request', {
+                  req.io.emit('new_live_chat_request', {
                     conversationId: conversation._id,
                     customerId: senderId,
                     platform: 'facebook',
