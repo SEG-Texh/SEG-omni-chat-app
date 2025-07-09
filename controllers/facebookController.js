@@ -133,7 +133,7 @@ if (!conversation) {
                     if (req.io) {
                       req.io.emit('new_live_chat_request', {
                         conversationId: conversation._id,
-                        customerId: conversation.participants.find(p => p.toString() !== conversation.agentId.toString()),
+                        customerId: conversation.participants.find(p => !conversation.agentId || (p && p.toString() !== conversation.agentId?.toString())), // Guard for null agentId
                         platform: 'facebook',
                         message: messageText,
                       });

@@ -257,7 +257,7 @@ io.on('connection', async (socket) => {
           .populate('participants', 'name');
         
         socket.emit('facebookConversations', conversations);
-        console.log(`Sent Facebook conversations to user: ${socket.user.name}`);
+        console.log(`Sent Facebook conversations to user: ${socket.user && socket.user.name ? socket.user.name : 'Unknown'}`);
       } catch (err) {
         console.error('Error sending Facebook conversations:', err);
       }
