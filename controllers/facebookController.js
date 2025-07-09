@@ -314,7 +314,7 @@ if (!conversation) {
     });
     return res.status(500).json({ error: 'Something went wrong' });
   }
-}
+
 
 // List all Facebook conversations (for now)
 exports.listConversations = async (req, res) => {
