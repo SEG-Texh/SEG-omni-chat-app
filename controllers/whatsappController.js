@@ -148,7 +148,7 @@ class WhatsAppController {
       });
       await chat.save();
       console.log('[WA][Process] Saved chat message:', chat);
-  
+
       // Emit real-time event after saving
       const io = require('../config/socket').getIO();
       console.log('[WA][Process] Emitting new_message to room:', `conversation_${conversation._id}`);
@@ -156,10 +156,12 @@ class WhatsAppController {
         ...chat.toObject(),
         platform: 'whatsapp',
       });
-       // --- BOT/SESSION FLOW LOGIC ---
-      // Count number of inbound messages in this conversation
+
+      // --- BOT/SESSION FLOW LOGIC ---
+      // Move logic AFTER saving so count includes this message
       const inboundCount = await Chat.countDocuments({ conversation: conversation._id, direction: 'inbound' });
       console.log('[WA][Process] inboundCount:', inboundCount);
+
       // Step 1: Welcome after first message
       if (inboundCount === 1) {
         await this.sendMessage(phoneNumber, 'Hi, welcome. How may I help you?');
