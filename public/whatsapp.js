@@ -51,7 +51,7 @@ function showWhatsAppPlaceholder() {
     chatStructured.classList.add('hidden');
     chatStructured.style.display = 'none';
   }
-}  if (chatTitle) chatTitle.textContent = conversation.participants?.[0]?.name || 'Contact';
+}
 
   // Add End Session button if not present
   let chatHeader = chatStructured?.querySelector('.px-6.py-4.border-b');
