@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 
 const Message = require('../models/message');
 
-
+const io = require('../config/socket').getIO();
 
 class WhatsAppController {
   // Verify webhook
