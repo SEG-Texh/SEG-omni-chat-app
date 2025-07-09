@@ -19,6 +19,11 @@ function connectWhatsAppSocket() {
   }
 }
 
+function showWhatsAppChatInterface(conversation) {
+  // Example implementation: show the chat UI for the selected conversation
+  document.getElementById('whatsappChatContainer').style.display = 'block';
+  // You might want to update UI elements with conversation details here
+}
 document.addEventListener("DOMContentLoaded", () => {
   connectWhatsAppSocket();
   loadWhatsAppConversations();
