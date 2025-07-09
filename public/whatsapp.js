@@ -304,7 +304,7 @@ async function loadWhatsAppMessages(conversationId) {
 
 // Display WhatsApp messages
 function displayWhatsAppMessages(messages = []) {
-  const messagesContainer = document.getElementById("whatsappMessagesContainer");
+  const messagesContainer = document.getElementById("messagesList");
   if (!messagesContainer) return;
 
   // Sort messages by createdAt ascending (oldest first)
@@ -346,7 +346,7 @@ function displayWhatsAppMessages(messages = []) {
 
 // Send WhatsApp message
 async function sendWhatsAppMessage() {
-  const messageInput = document.getElementById("whatsappMessageInput")
+  const messageInput = document.getElementById("messageInput")
   if (!messageInput) return;
   const text = messageInput.value.trim()
 
