@@ -294,19 +294,23 @@ if (!conversation) {
                     content: messageText,
                     senderId: senderUser._id,
                     timestamp: message.timestamp
-                  }
-                });
-                console.log('Emitted socket event for message:', message._id);
-              }
-
-              console.log('Message processed successfully');
+                }
+              });
+              await sendFacebookMessage(event.sender.id, 'Connecting you to a live agent...');
+              return;
+            } else if (messageText.trim().toLowerCase() === 'no') {
+              await sendFacebookMessage(event.sender.id, 'Okay! Let me know if you need anything else.');
+              return;
+            } else {
+              await sendFacebookMessage(event.sender.id, 'Please reply Yes or No if you want to chat with a live user.');
+              return;
             }
           }
+          // Only update conversation and emit event if not handled by Yes/No escalation above
         }
       }
     }
-    return res.status(200).json({ status: 'success' });
-  } catch (error) {
+   } catch (error) {
     console.error('Webhook error:', {
       message: error.message,
       stack: error.stack,
@@ -314,7 +318,7 @@ if (!conversation) {
     });
     return res.status(500).json({ error: 'Something went wrong' });
   }
-
+}
 
 // List all Facebook conversations (for now)
 exports.listConversations = async (req, res) => {
@@ -489,3 +493,5 @@ exports.sendMessage = async (req, res) => {
     res.status(500).json({ error: 'Failed to send message' });
   }
 };
+
+// Final closing brace for the module
