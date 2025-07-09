@@ -71,8 +71,22 @@ function showWhatsAppChatInterface(conversation) {
 document.addEventListener("DOMContentLoaded", () => {
   connectWhatsAppSocket();
   loadWhatsAppConversations();
-  // Listen for real-time new messages
+
+  // Listen for escalation requests (show escalation notification for WhatsApp agents)
   if (whatsappSocket) {
+    whatsappSocket.on('escalation_request', (data) => {
+      if (window.showEscalationNotification) {
+        window.showEscalationNotification({
+          ...data,
+          onAccept: () => whatsappSocket.emit('accept_escalation', { conversationId: data.conversationId }),
+          onDecline: () => whatsappSocket.emit('decline_escalation', { conversationId: data.conversationId })
+        });
+      } else {
+        alert('New escalation request! Conversation ID: ' + data.conversationId);
+      }
+    });
+
+    // Listen for real-time new messages
     whatsappSocket.on('new_message', (message) => {
 
     // --- AGENT: Live chat events ---
