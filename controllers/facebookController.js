@@ -169,10 +169,12 @@ exports.webhook = async (req, res) => {
                 const User = require('../models/User');
                 let senderUser = await User.findOne({ facebookId: senderId });
                 if (!senderUser) {
+                  // Do NOT include email field here; Facebook users may not have email, and email:null causes duplicate key error
                   senderUser = await User.create({ facebookId: senderId, name: `FB User ${senderId}` });
                 }
                 let recipientUser = await User.findOne({ facebookId: recipientId });
                 if (!recipientUser) {
+                  // Do NOT include email field here; Facebook users may not have email, and email:null causes duplicate key error
                   recipientUser = await User.create({ facebookId: recipientId, name: `FB Page ${recipientId}` });
                 }
                 conversation = new Conversation({
