@@ -247,3 +247,18 @@ exports.claimConversation = async (req, res) => {
     return res.status(500).json({ error: 'Failed to claim conversation' });
   }
 };
+
+// Placeholder: List Facebook conversations
+exports.listConversations = async (req, res) => {
+  res.status(200).json({ status: 'success', message: 'listConversations not implemented yet' });
+};
+
+// Placeholder: Send a Facebook message
+exports.sendMessage = async (req, res) => {
+  res.status(200).json({ status: 'success', message: 'sendMessage not implemented yet' });
+};
+
+// Placeholder: End a Facebook conversation session
+exports.endSession = async (req, res) => {
+  res.status(200).json({ status: 'success', message: 'endSession not implemented yet' });
+};
