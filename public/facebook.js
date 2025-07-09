@@ -1,5 +1,60 @@
 // Facebook Chat Module
 const FacebookChat = (() => {
+  // === Agent Live Chat Request Notification ===
+  window.showAgentLiveChatRequest = function(data) {
+    let notif = document.getElementById('agentLiveChatRequestNotification');
+    if (!notif) {
+      notif = document.createElement('div');
+      notif.id = 'agentLiveChatRequestNotification';
+      notif.style.position = 'fixed';
+      notif.style.bottom = '30px';
+      notif.style.right = '30px';
+      notif.style.zIndex = '9999';
+      notif.style.background = '#fff';
+      notif.style.border = '1px solid #3b82f6';
+      notif.style.borderRadius = '8px';
+      notif.style.boxShadow = '0 8px 24px rgba(0,0,0,0.2)';
+      notif.style.padding = '20px 24px 18px 24px';
+      notif.style.minWidth = '340px';
+      notif.style.maxWidth = '90vw';
+      notif.style.fontFamily = 'inherit';
+      notif.style.display = 'flex';
+      notif.style.flexDirection = 'column';
+      notif.style.alignItems = 'flex-start';
+      notif.style.gap = '12px';
+      document.body.appendChild(notif);
+    }
+    notif.innerHTML = `
+      <div style="font-size: 1.1rem; font-weight: 600; color: #1e293b; margin-bottom: 2px;">New Facebook Live Chat Request</div>
+      <div style="font-size: 1rem; color: #334155; margin-bottom: 10px;">${data.message || 'A user is requesting to chat with a live agent.'}</div>
+      <div style="font-size: 0.97rem; color: #64748b; margin-bottom: 10px;">Conversation ID: <b>${data.conversationId}</b></div>
+      <div style="display: flex; gap: 12px;">
+        <button id="acceptLiveChatBtn" style="background:#3b82f6;color:#fff;padding:6px 18px;border:none;border-radius:5px;font-weight:500;cursor:pointer;">Accept</button>
+        <button id="declineLiveChatBtn" style="background:#e5e7eb;color:#334155;padding:6px 18px;border:none;border-radius:5px;font-weight:500;cursor:pointer;">Decline</button>
+      </div>
+    `;
+    notif.classList.remove('hidden');
+    // Remove any previous event listeners
+    const newNotif = notif.cloneNode(true);
+    notif.parentNode.replaceChild(newNotif, notif);
+    // Add listeners
+    document.getElementById('acceptLiveChatBtn').onclick = function() {
+      if (window.FacebookChat && window.FacebookChat._socket) {
+        window.FacebookChat._socket.emit('claimConversation', { conversationId: data.conversationId });
+      } else if (window.facebookSocket) {
+        window.facebookSocket.emit('claimConversation', { conversationId: data.conversationId });
+      }
+      newNotif.classList.add('hidden');
+    };
+    document.getElementById('declineLiveChatBtn').onclick = function() {
+      newNotif.classList.add('hidden');
+    };
+  };
+  window.removeAgentLiveChatRequest = function(conversationId) {
+    const notif = document.getElementById('agentLiveChatRequestNotification');
+    if (notif) notif.classList.add('hidden');
+  };
+
   // Escalation Notification helpers
   window.showFacebookEscalationNotification = function(message) {
     const notif = document.getElementById('facebookEscalationNotification');
@@ -73,6 +128,9 @@ const FacebookChat = (() => {
       reconnectionAttempts: 5,
       reconnectionDelay: 1000
     });
+    // Expose socket for global access (for Accept button logic)
+    window.facebookSocket = facebookSocket;
+    if (window.FacebookChat) window.FacebookChat._socket = facebookSocket;
 
     // Socket Event Handlers
     facebookSocket.on('connect', () => {
