@@ -136,30 +136,30 @@ class WhatsAppController {
       // Save to database
       // Save content as { text } object for consistency with outbound messages
       let chatContent = typeof text === 'string' ? { text } : text;
-      const chat = new Chat({
+      const messageDoc = new Message({
         conversation: conversation._id,
         sender: user._id,
         content: chatContent,
         platform: 'whatsapp',
+        platformMessageId,
         direction: 'inbound',
         responseTo: responseTo,
-        responseTime: responseTime,
-        platformMessageId
+        responseTime: responseTime
       });
-      await chat.save();
-      console.log('[WA][Process] Saved chat message:', chat);
+      await messageDoc.save();
+      console.log('[WA][Process] Saved chat message:', messageDoc);
 
       // Emit real-time event after saving
       const io = require('../config/socket').getIO();
       console.log('[WA][Process] Emitting new_message to room:', `conversation_${conversation._id}`);
       io.to(`conversation_${conversation._id}`).emit('new_message', {
-        ...chat.toObject(),
+        ...messageDoc.toObject(),
         platform: 'whatsapp',
       });
 
       // --- BOT/SESSION FLOW LOGIC ---
       // Move logic AFTER saving so count includes this message
-      const inboundCount = await Chat.countDocuments({ conversation: conversation._id, direction: 'inbound' });
+      const inboundCount = await Message.countDocuments({ conversation: conversation._id, direction: 'inbound' });
       console.log('[WA][Process] inboundCount:', inboundCount);
 
       // Step 1: Welcome after first message
