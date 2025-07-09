@@ -109,45 +109,19 @@ conversation = await Conversation.findOne({
   status: { $in: ['pending', 'awaiting_agent', 'active'] }
 });
 
-if (!conversation)// Test route to create a sample conversation
-exports.createTestConversation = async (req, res) => {
-  try {
-    // Create conversation
-    const conversation = new Conversation({
-      platform: 'facebook',
-      platformConversationId: 'test-conversation-123',
-      participants: ['user123', 'user456'],
-      unreadCount: 0
-    });
-    await conversation.save();
-    
-    // Create a test message
-    const message = await Message.create({
-      platform: 'facebook',
-      platformMessageId: 'test-message-123',
-      conversation: conversation._id,
-      senderId: 'user123',
-      content: 'Hello, this is a test message!',
-      timestamp: new Date()
-    });
-    
-    // Update conversation with last message
-    conversation.lastMessage = message._id;
-    await conversation.save();
-    
-    res.json({
-      success: true,
-      message: 'Test conversation created successfully',
-      conversation: conversation
-    });
-  } catch (error) {
-    console.error('Error creating test conversation:', error);
-    res.status(500).json({
-      error: 'Failed to create test conversation',
-      details: error.message
-    });
-  }
-}; 
+if (!conversation) {
+  // Create conversation
+  conversation = new Conversation({
+    platform: 'facebook',
+    platformConversationId: event.message.mid,
+    participants: [senderId], // Only customerId for now, agentId added when assigned
+    agentId: null, // Not assigned yet
+    locked: false,
+    status: 'pending',
+    customerId: senderId
+  });
+  await conversation.save();
+
   // Create a new conversation for this Facebook customer
   conversation = new Conversation({
     platform: 'facebook',
