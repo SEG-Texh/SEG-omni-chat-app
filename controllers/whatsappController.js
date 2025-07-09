@@ -119,6 +119,7 @@ class WhatsAppController {
           participants: [user._id],
           platform: 'whatsapp',
           platformConversationId: phoneNumber,
+          customerId: phoneNumber,
           status: 'active'
         });
         console.log('[WA][Process] Created new conversation:', conversation);
