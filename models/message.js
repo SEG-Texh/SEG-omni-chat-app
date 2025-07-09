@@ -3,7 +3,8 @@ const Schema = mongoose.Schema;
 
 const MessageSchema = new Schema({
   conversation: { type: Schema.Types.ObjectId, ref: 'Conversation' },
-  sender: { type: Schema.Types.ObjectId, ref: 'User' },
+  // Sender can be a MongoDB ObjectId (internal user/agent) or a string (Facebook PSID)
+  sender: { type: Schema.Types.Mixed },
   content: Schema.Types.Mixed,
   platform: { type: String, default: 'facebook' },
   platformMessageId: { type: String, default: null },
