@@ -304,6 +304,7 @@ async function loadWhatsAppMessages(conversationId) {
 
 // Display WhatsApp messages
 function displayWhatsAppMessages(messages = []) {
+  console.log('Loaded messages:', messages);
   const messagesContainer = document.getElementById("whatsappMessagesContainer");
   if (!messagesContainer) return;
 
