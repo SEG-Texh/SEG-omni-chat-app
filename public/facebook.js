@@ -1,5 +1,18 @@
 // Facebook Chat Module
 const FacebookChat = (() => {
+  // Escalation Notification helpers
+  window.showFacebookEscalationNotification = function(message) {
+    const notif = document.getElementById('facebookEscalationNotification');
+    if (notif) {
+      notif.textContent = message || 'This conversation has been escalated to a human agent. Please wait for further assistance.';
+      notif.classList.remove('hidden');
+    }
+  }
+  window.hideFacebookEscalationNotification = function() {
+    const notif = document.getElementById('facebookEscalationNotification');
+    if (notif) notif.classList.add('hidden');
+  }
+
   // State variables
   let currentConversationId = null;
   let conversations = [];
@@ -76,6 +89,29 @@ const FacebookChat = (() => {
     });
 
     facebookSocket.on('newMessage', handleNewMessage);
+
+    // Facebook escalation notification event
+    facebookSocket.on('facebook_escalation', (data) => {
+      if (!data) return;
+      const { conversationId, message } = data;
+      if (conversationId === currentConversationId) {
+        showFacebookEscalationNotification(message);
+      }
+    });
+
+    // Facebook escalation notification event
+    facebookSocket.on('facebook_escalation', (data) => {
+      if (!data) return;
+      const { conversationId, message } = data;
+      if (conversationId === currentConversationId) {
+        showFacebookEscalationNotification(message);
+      }
+    });
+
+    // Hide escalation notification when switching conversations
+    window.addEventListener('facebook_switch_conversation', () => {
+      hideFacebookEscalationNotification();
+    });
 
     // --- AGENT: Live chat events ---
     // Handle new live chat request
@@ -343,10 +379,18 @@ const FacebookChat = (() => {
   };
 
   const selectConversation = (conversationId) => {
+    // Hide escalation notification when switching conversations
+    hideFacebookEscalationNotification();
     loadMessages(conversationId);
     clearConversationBadge(conversationId);
     renderConversations(); // Update badges
   };
+
+  facebookSocket.on('facebook_escalation', (data) => {
+    if (data.conversationId === currentConversationId) {
+      showFacebookEscalationNotification(data.message);
+    }
+  });
 
   // Public Interface
   return {

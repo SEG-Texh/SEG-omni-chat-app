@@ -167,18 +167,16 @@ exports.webhook = async (req, res) => {
               if (!conversation) {
                 // Look up or create Users for sender and recipient
                 const User = require('../models/User');
-                let senderUser = await User.findOne({ facebookId: senderId });
-                if (!senderUser) {
-                  const userData = { facebookId: senderId, name: `FB User ${senderId}` };
-                  if (userData.email == null) delete userData.email;
-                  senderUser = await User.create(userData);
-                }
-                let recipientUser = await User.findOne({ facebookId: recipientId });
-                if (!recipientUser) {
-                  const userData = { facebookId: recipientId, name: `FB Page ${recipientId}` };
-                  if (userData.email == null) delete userData.email;
-                  recipientUser = await User.create(userData);
-                }
+                let senderUser = await User.findOneAndUpdate(
+                  { facebookId: senderId },
+                  { $setOnInsert: { name: `FB User ${senderId}` } },
+                  { upsert: true, new: true }
+                );
+                let recipientUser = await User.findOneAndUpdate(
+                  { facebookId: recipientId },
+                  { $setOnInsert: { name: `FB Page ${recipientId}` } },
+                  { upsert: true, new: true }
+                );
                 conversation = new Conversation({
                   platform: 'facebook',
                   participants: [senderUser._id, recipientUser._id],
@@ -287,6 +285,13 @@ exports.webhook = async (req, res) => {
                   // Broadcast to all online agents
                   const { broadcastToOnlineAgents } = require('../server');
                   broadcastToOnlineAgents(conversation);
+                  // Emit escalation event for frontend notification
+                  if (req.io) {
+                    req.io.to(`conversation_${conversation._id}`).emit('facebook_escalation', {
+                      conversationId: conversation._id,
+                      message: 'This conversation has been escalated to a human agent. Please wait for further assistance.'
+                    });
+                  }
                   await sendFacebookMessage(event.sender.id, 'Connecting you to a live agent...');
                   return;
                 } else if (messageText.trim().toLowerCase() === 'no') {
