@@ -178,6 +178,8 @@ exports.webhook = async (req, res) => {
                 console.log('Created new conversation:', conversation._id);
               } else {
                 // Conversation lock/claim logic
+                const io = require('../config/socket').getIO();
+                const User = require('../models/User');
                 if (conversation.status === 'ended') {
                   conversation.agentId = senderId;
                   conversation.locked = true;
@@ -187,10 +189,27 @@ exports.webhook = async (req, res) => {
                   }
                   await conversation.save();
                   console.log('Conversation re-claimed by user:', senderId);
-                } else if (conversation.locked && conversation.agentId && conversation.agentId.toString() !== senderId.toString()) {
-                  // If locked by another user, block
-                  console.log('Conversation locked by another user:', conversation.agentId);
-                  return res.status(403).json({ error: 'Conversation locked by another user.' });
+                } else if (conversation.locked && conversation.agentId) {
+                  // Check if the locked agent is online
+                  const lockedAgent = await User.findById(conversation.agentId);
+                  if (!lockedAgent || !lockedAgent.isOnline) {
+                    // Escalate: broadcast to all agents for claim
+                    console.log('[FB][Process] Locked agent offline, broadcasting escalation');
+                    io.emit('new_live_chat_request', {
+                      conversationId: conversation._id,
+                      customerId: conversation.participants.find(p => p !== conversation.agentId),
+                      platform: 'facebook',
+                      message: messageText,
+                    });
+                    // Do NOT unlock or reassign yet; wait for claim
+                    return;
+                  } else if (conversation.agentId.toString() !== senderId.toString()) {
+                    // If locked by another online agent, block
+                    console.log('Conversation locked by another agent:', conversation.agentId);
+                    return res.status(403).json({ error: 'Conversation locked by another agent.' });
+                  }
+                  // If the same agent returns, allow them to continue (unlocks automatically)
+                  console.log('[FB][Process] Agent is the same as locked agent, proceeding');
                 } else if (!conversation.agentId) {
                   // No agent assigned, claim it
                   conversation.agentId = senderId;

@@ -112,6 +112,7 @@ class WhatsAppController {
   
       // Find or create Conversation
       const Conversation = require('../models/conversation');
+      const io = require('../config/socket').getIO();
       let conversation = await Conversation.findOne({
         platform: 'whatsapp',
         platformConversationId: phoneNumber
@@ -138,10 +139,27 @@ class WhatsAppController {
           }
           await conversation.save();
           console.log('[WA][Process] Conversation re-claimed by user:', user._id);
-        } else if (conversation.locked && conversation.agentId && conversation.agentId.toString() !== user._id.toString()) {
-          // If locked by another user, block
-          console.log('[WA][Process] Conversation locked by another user:', conversation.agentId);
-          return; // Optionally send an error or notification
+        } else if (conversation.locked && conversation.agentId) {
+          // Check if the locked agent is online
+          const lockedAgent = await User.findById(conversation.agentId);
+          if (!lockedAgent || !lockedAgent.isOnline) {
+            // Escalate: broadcast to all agents for claim
+            console.log('[WA][Process] Locked agent offline, broadcasting escalation');
+            io.emit('new_live_chat_request', {
+              conversationId: conversation._id,
+              customerId: conversation.customerId,
+              platform: 'whatsapp',
+              message: text,
+            });
+            // Do NOT unlock or reassign yet; wait for claim
+            return;
+          } else if (conversation.agentId.toString() !== user._id.toString()) {
+            // If locked by another online agent, block
+            console.log('[WA][Process] Conversation locked by another agent:', conversation.agentId);
+            return;
+          }
+          // If the same agent returns, allow them to continue (unlocks automatically)
+          console.log('[WA][Process] Agent is the same as locked agent, proceeding');
         } else if (!conversation.agentId) {
           // No agent assigned, claim it
           conversation.agentId = user._id;
