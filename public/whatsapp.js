@@ -102,8 +102,7 @@ document.addEventListener("DOMContentLoaded", () => {
     whatsappSocket.on('claim_result', (data) => {
       if (data.success) {
         alert('You have claimed the WhatsApp session!');
-        loadWhatsAppConversations(); // Refresh list to show new active conversation
-        if (data.conversation) selectWhatsAppConversation(data.conversation);
+        loadWhatsAppConversations(data.conversation?._id); // Refresh list and auto-select the claimed conversation
       } else {
         alert(data.message || 'Failed to claim WhatsApp session.');
       }
@@ -161,7 +160,7 @@ function showNewMessageNotification(platform, text) {
 
 
 // Load WhatsApp conversations
-async function loadWhatsAppConversations() {
+async function loadWhatsAppConversations(selectedConversationId = null) {
   if (!currentUser?.token) return
 
   const conversationsList = document.getElementById("whatsappConversationsList")
@@ -204,6 +203,10 @@ async function loadWhatsAppConversations() {
 
       item.addEventListener("click", () => selectWhatsAppConversation(conversation, item))
       conversationsList.appendChild(item)
+      // If this conversation should be auto-selected
+      if (selectedConversationId && conversation._id === selectedConversationId) {
+        setTimeout(() => selectWhatsAppConversation(conversation, item), 0);
+      }
     })
   } catch (error) {
     console.error("Error loading WhatsApp conversations:", error)
@@ -212,7 +215,11 @@ async function loadWhatsAppConversations() {
 }
 
 // Select WhatsApp conversation
-function selectWhatsAppConversation(conversation, element) {
+function selectWhatsAppConversation(conversation, element = null) {
+  // If element is not provided, find it in the DOM
+  if (!element) {
+    element = document.querySelector(`[data-conversation-id="${conversation._id}"]`);
+  }
   currentWhatsAppConversationId = conversation._id
   currentWhatsAppNumber = conversation.participants?.[0]?.platformIds?.whatsapp || conversation.platformConversationId
 
