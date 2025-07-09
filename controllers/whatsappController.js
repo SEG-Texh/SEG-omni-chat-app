@@ -155,7 +155,38 @@ class WhatsAppController {
         ...chat.toObject(),
         platform: 'whatsapp',
       });
-  
+       // --- BOT/SESSION FLOW LOGIC ---
+      // Count number of inbound messages in this conversation
+      const inboundCount = await Chat.countDocuments({ conversation: conversation._id, direction: 'inbound' });
+      // Step 1: Welcome after first message
+      if (inboundCount === 1) {
+        await this.sendMessage(phoneNumber, 'Hi, welcome. How may I help you?');
+        return;
+      }
+      // Step 2: Offer live agent after second message
+      if (inboundCount === 2) {
+        await this.sendMessage(phoneNumber, 'Would you like to chat with a live user? Yes / No');
+        return;
+      }
+      // Step 3: Wait for Yes/No response
+      if (inboundCount > 2 && conversation.status !== 'awaiting_agent' && conversation.status !== 'active') {
+        if (text.trim().toLowerCase() === 'yes') {
+          // Mark conversation as awaiting agent
+          conversation.status = 'awaiting_agent';
+          await conversation.save();
+          // Broadcast to all online agents
+          const { broadcastToOnlineAgents } = require('../server');
+          broadcastToOnlineAgents(conversation);
+          await this.sendMessage(phoneNumber, 'Connecting you to a live agent...');
+          return;
+        } else if (text.trim().toLowerCase() === 'no') {
+          await this.sendMessage(phoneNumber, 'Okay! Let me know if you need anything else.');
+          return;
+        } else {
+          await this.sendMessage(phoneNumber, 'Please reply Yes or No if you want to chat with a live user.');
+          return;
+        }
+      }
       // Auto reply example
       if (text.toLowerCase().includes('hello')) {
         await this.sendMessage(phoneNumber, 'Hello! Thanks for reaching out. How can I assist you?');

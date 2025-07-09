@@ -138,6 +138,47 @@ async function createDefaultAdmin() {
 
 // Socket.io connection handling
 io.on('connection', async (socket) => {
+  // --- Agent claims live chat session ---
+  socket.on('claim_live_chat', async ({ conversationId }) => {
+    try {
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 30 * 60 * 1000); // 30 min
+      const Conversation = require('./models/conversation');
+      // Atomically assign agent if not already paired
+      const conversation = await Conversation.findOneAndUpdate(
+        {
+          _id: conversationId,
+          agentId: null,
+          locked: false,
+          status: { $in: ['pending', 'awaiting_agent'] }
+        },
+        {
+          agentId: socket.userId,
+          locked: true,
+          status: 'active',
+          startTime: now,
+          expiresAt
+        },
+        { new: true }
+      );
+      if (!conversation) {
+        socket.emit('claim_result', { success: false, message: "Session already claimed." });
+        return;
+      }
+      // Notify this agent and the customer
+      socket.emit('claim_result', { success: true, conversation });
+      io.to(conversation.customerId).emit('session_paired', { conversation });
+      // Notify all other agents to remove this request from their UI
+      for (const [userId, { socketId, user }] of connectedUsers.entries()) {
+        if ((user.role === 'agent' || user.role === 'supervisor') && userId !== socket.userId) {
+          io.to(socketId).emit('session_claimed', { conversationId });
+        }
+      }
+    } catch (err) {
+      socket.emit('claim_result', { success: false, message: "Server error." });
+    }
+  });
+
   try {
     // Get user info from socket auth
     const { userId, token } = socket.handshake.auth;
@@ -202,25 +243,59 @@ io.on('connection', async (socket) => {
 
   socket.on('sendMessage', async ({ conversationId, content, platform }) => {
     try {
+      const Conversation = require('./models/conversation');
+      const conversation = await Conversation.findById(conversationId);
+      if (!conversation) {
+        socket.emit('error', { message: 'Conversation not found' });
+        return;
+      }
+      // Session expiry check
+      const now = new Date();
+      if (conversation.status === 'active' && conversation.expiresAt && conversation.expiresAt < now) {
+        conversation.status = 'ended';
+        conversation.locked = false;
+        conversation.endTime = now;
+        await conversation.save();
+        // Notify both agent and customer
+        io.to(conversation.customerId).emit('session_ended', { conversationId });
+        if (conversation.agentId) io.to(conversation.agentId.toString()).emit('session_ended', { conversationId });
+        socket.emit('error', { message: 'Session has expired.' });
+        return;
+      }
+      // Only paired agent or customer can send messages during active session
+      if (conversation.status === 'active' && conversation.locked) {
+        if (socket.user.role === 'agent' || socket.user.role === 'supervisor') {
+          if (!conversation.agentId || !conversation.agentId.equals(socket.userId)) {
+            socket.emit('error', { message: 'You are not authorized to reply to this conversation.' });
+            return;
+          }
+        } else if (socket.userId !== conversation.customerId) {
+          socket.emit('error', { message: 'You are not authorized to reply to this conversation.' });
+          return;
+        }
+      }
+      // If session ended, block sending
+      if (conversation.status === 'ended') {
+        socket.emit('error', { message: 'Session has ended.' });
+        return;
+      }
+      // Proceed to send message
       const message = new Message({
         conversation: conversationId,
         sender: socket.user._id,
         content,
         platform
       });
-
       const savedMessage = await message.save();
       await savedMessage.populate('sender', 'name avatar');
-
       await Conversation.findByIdAndUpdate(conversationId, {
         lastMessage: savedMessage._id,
         $inc: { unreadCount: 1 }
       });
-
-        io.to(`conversation_${conversationId}`).emit('new_message', savedMessage);
+      io.to(`conversation_${conversationId}`).emit('new_message', savedMessage);
     } catch (err) {
       socket.emit('error', { message: 'Failed to send message' });
-        console.error('Error sending message:', err);
+      console.error('Error sending message:', err);
     }
   });
 

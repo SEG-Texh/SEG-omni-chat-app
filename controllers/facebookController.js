@@ -192,12 +192,45 @@ exports.webhook = async (req, res) => {
               const message = await Message.create({
                 platform: 'facebook',
                 platformMessageId: event.message.mid,
-        conversation: conversation._id,
+                conversation: conversation._id,
                 senderId,
                 content: messageText,
                 timestamp: new Date(timestamp)
               });
               console.log('Created new message:', message._id);
+
+              // --- BOT/SESSION FLOW LOGIC ---
+              // Count number of inbound messages in this conversation
+              const inboundCount = await Message.countDocuments({ conversation: conversation._id, senderId });
+              // Step 1: Welcome after first message
+              if (inboundCount === 1) {
+                await sendFacebookMessage(senderId, 'Hi, welcome. How may I help you?');
+                return;
+              }
+              // Step 2: Offer live agent after second message
+              if (inboundCount === 2) {
+                await sendFacebookMessage(senderId, 'Would you like to chat with a live user? Yes / No');
+                return;
+              }
+              // Step 3: Wait for Yes/No response
+              if (inboundCount > 2 && conversation.status !== 'awaiting_agent' && conversation.status !== 'active') {
+                if (messageText.trim().toLowerCase() === 'yes') {
+                  // Mark conversation as awaiting agent
+                  conversation.status = 'awaiting_agent';
+                  await conversation.save();
+                  // Broadcast to all online agents
+                  const { broadcastToOnlineAgents } = require('../server');
+                  broadcastToOnlineAgents(conversation);
+                  await sendFacebookMessage(senderId, 'Connecting you to a live agent...');
+                  return;
+                } else if (messageText.trim().toLowerCase() === 'no') {
+                  await sendFacebookMessage(senderId, 'Okay! Let me know if you need anything else.');
+                  return;
+                } else {
+                  await sendFacebookMessage(senderId, 'Please reply Yes or No if you want to chat with a live user.');
+                  return;
+                }
+              }
 
               // 3. Update conversation
               await Conversation.findByIdAndUpdate(

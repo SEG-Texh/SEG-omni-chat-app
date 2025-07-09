@@ -25,6 +25,32 @@ document.addEventListener("DOMContentLoaded", () => {
   // Listen for real-time new messages
   if (whatsappSocket) {
     whatsappSocket.on('new_message', (message) => {
+
+    // --- AGENT: Live chat events ---
+    // Handle new live chat request
+    whatsappSocket.on('new_live_chat_request', (data) => {
+      if (window.showAgentLiveChatRequest) {
+        window.showAgentLiveChatRequest(data);
+      } else {
+        alert('New WhatsApp live chat request! Conversation ID: ' + data.conversationId);
+      }
+    });
+    // Handle result of claim attempt
+    whatsappSocket.on('claim_result', (data) => {
+      if (data.success) {
+        alert('You have claimed the WhatsApp session!');
+        // Optionally load the conversation UI for this session
+      } else {
+        alert(data.message || 'Failed to claim WhatsApp session.');
+      }
+    });
+    // Remove request from UI if claimed by another agent
+    whatsappSocket.on('session_claimed', ({ conversationId }) => {
+      if (window.removeAgentLiveChatRequest) {
+        window.removeAgentLiveChatRequest(conversationId);
+      }
+    });
+
       // If message is for the active conversation, update chat instantly
       if (message.conversation === currentWhatsAppConversationId) {
         // Append the new message to the existing list in the UI
