@@ -160,6 +160,13 @@ io.on('connection', async (socket) => {
       conversation.startTime = now;
       conversation.expiresAt = expiresAt;
       await conversation.save();
+      // Send WhatsApp message to customer
+      try {
+        const whatsappController = require('./controllers/whatsappController');
+        await whatsappController.sendMessage(conversation.customerId, 'You are now connected to a live agent.');
+      } catch (err) {
+        console.error('Failed to send WhatsApp connection message:', err);
+      }
       socket.emit('claim_result', { success: true, conversation });
       // Notify all other agents to remove notification
       io.emit('session_claimed', { conversationId });

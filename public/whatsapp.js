@@ -103,8 +103,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (data.success) {
         alert('You have claimed the WhatsApp session!');
         loadWhatsAppConversations(); // Refresh list to show new active conversation
-        // Optionally auto-select the claimed conversation:
-        // if (data.conversation) selectWhatsAppConversation(data.conversation);
+        if (data.conversation) selectWhatsAppConversation(data.conversation);
       } else {
         alert(data.message || 'Failed to claim WhatsApp session.');
       }
