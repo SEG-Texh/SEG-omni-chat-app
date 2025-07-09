@@ -30,7 +30,28 @@ function showWhatsAppChatInterface(conversation) {
   }
   // Update chat header with conversation info
   const chatTitle = document.getElementById('chatTitle');
-  if (chatTitle) chatTitle.textContent = conversation.participants?.[0]?.name || 'Contact';
+  if (chatTitle) {
+    // Use the participant's name or fallback
+    chatTitle.textContent = conversation.participants?.[0]?.name || 'Contact';
+  }
+  const chatSubtitle = document.getElementById('chatSubtitle');
+  if (chatSubtitle) {
+    chatSubtitle.textContent = 'Online'; // You may update this with real status if available
+  }
+  // Load and display messages for this conversation
+  loadWhatsAppMessages(conversation._id);
+}
+
+// Also ensure that when no conversation is selected, the placeholder is shown and chat area hidden
+function showWhatsAppPlaceholder() {
+  const placeholder = document.getElementById('whatsappChatPlaceholder');
+  if (placeholder) placeholder.style.display = 'flex';
+  const chatStructured = document.getElementById('whatsappChatStructured');
+  if (chatStructured) {
+    chatStructured.classList.add('hidden');
+    chatStructured.style.display = 'none';
+  }
+}  if (chatTitle) chatTitle.textContent = conversation.participants?.[0]?.name || 'Contact';
 
   // Add End Session button if not present
   let chatHeader = chatStructured?.querySelector('.px-6.py-4.border-b');
@@ -239,8 +260,7 @@ function selectWhatsAppConversation(conversation, element = null) {
   if (element) element.classList.add("active")
 
   // Load messages and show chat interface
-  loadWhatsAppMessages(conversation._id)
-  showWhatsAppChatInterface(conversation)
+  showWhatsAppChatInterface(conversation);
 }
 
 // Load WhatsApp messages
