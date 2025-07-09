@@ -53,6 +53,29 @@ function showWhatsAppPlaceholder() {
   }
 }
 
+// Move this block into showWhatsAppChatInterface
+function showWhatsAppChatInterface(conversation) {
+  // Hide the placeholder and show the structured chat area
+  const placeholder = document.getElementById('whatsappChatPlaceholder');
+  if (placeholder) placeholder.style.display = 'none';
+  const chatStructured = document.getElementById('whatsappChatStructured');
+  if (chatStructured) {
+    chatStructured.classList.remove('hidden');
+    chatStructured.style.display = 'flex';
+  }
+  // Update chat header with conversation info
+  const chatTitle = document.getElementById('chatTitle');
+  if (chatTitle) {
+    // Use the participant's name or fallback
+    chatTitle.textContent = conversation.participants?.[0]?.name || 'Contact';
+  }
+  const chatSubtitle = document.getElementById('chatSubtitle');
+  if (chatSubtitle) {
+    chatSubtitle.textContent = 'Online'; // You may update this with real status if available
+  }
+  // Load and display messages for this conversation
+  loadWhatsAppMessages(conversation._id);
+
   // Add End Session button if not present
   let chatHeader = chatStructured?.querySelector('.px-6.py-4.border-b');
   if (!chatHeader) chatHeader = document.getElementById('chatHeader');
@@ -89,6 +112,8 @@ function showWhatsAppPlaceholder() {
     chatHeader.appendChild(endBtn);
   }
 }
+
+
 document.addEventListener("DOMContentLoaded", () => {
   connectWhatsAppSocket();
   loadWhatsAppConversations();
