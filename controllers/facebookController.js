@@ -176,66 +176,7 @@ exports.webhook = async (req, res) => {
   } catch (error) {
     console.error('Facebook webhook error:', error);
     res.status(500).json({ error: 'Facebook webhook handler failed', details: error.message });
-
-              // --- BOT/SESSION FLOW LOGIC ---
-              // Count number of inbound messages in this conversation
-              const inboundCount = await Message.countDocuments({ conversation: conversation._id, senderId: senderUser._id });
-              // Step 1: Welcome after first message
-              if (inboundCount === 1) {
-                await sendFacebookMessage(event.sender.id, 'Hi, welcome. How may I help you?');
-                return;
-              }
-              // Step 2: Offer live agent after second message
-              if (inboundCount === 2) {
-                await sendFacebookMessage(event.sender.id, 'Would you like to chat with a live user? Yes / No');
-                return;
-              }
-              // Step 3: Wait for Yes/No response
-              if (inboundCount > 2 && conversation.status !== 'awaiting_agent' && conversation.status !== 'active') {
-                if (messageText.trim().toLowerCase() === 'yes') {
-                  // Mark conversation as awaiting agent
-                  conversation.status = 'awaiting_agent';
-                  await conversation.save();
-                  // Broadcast to all online agents
-                  const { broadcastToOnlineAgents } = require('../server');
-                  broadcastToOnlineAgents(conversation);
-                  // Emit escalation event for frontend notification
-                  if (req.io) {
-                    req.io.to(`conversation_${conversation._id}`).emit('facebook_escalation', {
-                      conversationId: conversation._id,
-                      message: 'This conversation has been escalated to a human agent. Please wait for further assistance.'
-                    });
-                  }
-                  await sendFacebookMessage(event.sender.id, 'Connecting you to a live agent...');
-                  return;
-                } else if (messageText.trim().toLowerCase() === 'no') {
-                  await sendFacebookMessage(event.sender.id, 'Okay! Let me know if you need anything else.');
-                  return;
-                } else {
-                  await sendFacebookMessage(event.sender.id, 'Please reply Yes or No if you want to chat with a live user.');
-                  return;
-                }
-              }
-
-              // 3. Update conversation
-              try {
-                await Conversation.findByIdAndUpdate(
-                  conversation._id,
-                  {
-                    lastMessage: message._id,
-                    unreadCount: conversation.participants.includes('666543219865098') ? conversation.unreadCount + 1 : conversation.unreadCount
-                  }
-                );
-
-                conversation.status = 'ended';
-                conversation.locked = false;
-                conversation.agentId = null;
-                await conversation.save();
-                return res.json({ success: true, message: 'Conversation session ended', conversation });
-              } catch (error) {
-                console.error('[FB][EndSession] Error:', error);
-                return res.status(500).json({ error: 'Failed to end session' });
-              }
+  }
 };
 
 exports.listMessages = async (req, res) => {
@@ -304,66 +245,5 @@ exports.claimConversation = async (req, res) => {
   } catch (error) {
     console.error('[FB][ClaimConversation] Error:', error);
     return res.status(500).json({ error: 'Failed to claim conversation' });
-  }
-};
-// All logic after this line has been removed to ensure only valid exports exist. If you need to add more handlers, export them as functions.
-    console.error('Conversation participants missing or not an array:', conversation);
-    return res.status(500).json({ error: 'Conversation participants missing or invalid', conversation });
-  }
-
-  const recipientId = conversation.participants.find(p => p.toString() !== senderId.toString());
-  if (!recipientId) {
-    console.error('RecipientId could not be determined:', { participants: conversation.participants, senderId });
-    return res.status(500).json({ error: 'RecipientId could not be determined', participants: conversation.participants, senderId });
-  }
-
-  const platformMessageId = Date.now().toString();
-
-  try {
-    // Create message
-    const message = await Message.create({
-      platform: 'facebook',
-      platformMessageId,
-      conversation: conversation._id,
-      senderId,
-      content: content,
-      timestamp: new Date()
-    });
-
-    // Update conversation
-    await Conversation.findByIdAndUpdate(
-      conversation._id,
-      {
-        lastMessage: message._id,
-        unreadCount: conversation.participants.includes('456') ? conversation.unreadCount + 1 : conversation.unreadCount
-      }
-    );
-
-    // Emit socket event
-    if (req.io) {
-      req.io.emit('newMessage', {
-        conversationId: conversation._id,
-        message: {
-          id: message._id,
-          content: content,
-          senderId,
-          timestamp: message.timestamp
-        }
-      });
-    }
-
-    // Send to Facebook
-    await axios.post(
-      `https://graph.facebook.com/v17.0/me/messages?access_token=${process.env.FACEBOOK_PAGE_ACCESS_TOKEN}`,
-      {
-        recipient: { id: recipientId },
-        message: { text: content }
-      }
-    );
-
-    res.status(200).json({ status: 'success', message: message._id });
-  } catch (error) {
-    console.error('Send message error:', error);
-    res.status(500).json({ error: 'Failed to send message' });
   }
 };
