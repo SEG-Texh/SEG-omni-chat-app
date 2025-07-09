@@ -138,6 +138,33 @@ async function createDefaultAdmin() {
 
 // Socket.io connection handling
 io.on('connection', async (socket) => {
+  // Handle escalation accept/decline
+  socket.on('accept_escalation', async ({ conversationId }) => {
+    try {
+      const Conversation = require('./models/conversation');
+      const conversation = await Conversation.findById(conversationId);
+      if (!conversation) {
+        socket.emit('claim_result', { success: false, message: 'Conversation not found.' });
+        return;
+      }
+      // Only allow claim if not already locked
+      if (conversation.locked && conversation.agentId) {
+        socket.emit('claim_result', { success: false, message: 'Session already claimed.' });
+        return;
+      }
+      conversation.locked = true;
+      conversation.agentId = socket.userId;
+      conversation.status = 'active';
+      await conversation.save();
+      socket.emit('claim_result', { success: true, conversation });
+      io.emit('session_claimed', { conversationId });
+    } catch (err) {
+      socket.emit('claim_result', { success: false, message: 'Server error.' });
+    }
+  });
+  socket.on('decline_escalation', ({ conversationId }) => {
+    // Optionally handle metrics, but just dismiss on frontend for now
+  });
   // --- Agent claims live chat session ---
   socket.on('claim_live_chat', async ({ conversationId }) => {
     try {

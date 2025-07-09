@@ -219,26 +219,6 @@ class WhatsAppController {
       // Step 2: Offer live agent after second message
       if (inboundCount === 2) {
         await this.sendMessage(phoneNumber, 'Would you like to chat with a live user? Yes / No');
-        return;
-      }
-      // Step 3: Wait for Yes/No response
-      if (inboundCount > 2 && conversation.status !== 'awaiting_agent' && conversation.status !== 'active') {
-        if (text.trim().toLowerCase() === 'yes') {
-          // Mark conversation as awaiting agent
-          conversation.status = 'awaiting_agent';
-          await conversation.save();
-          // Broadcast to all online agents
-          const { broadcastToOnlineAgents } = require('../server');
-          broadcastToOnlineAgents(conversation);
-          await this.sendMessage(phoneNumber, 'Connecting you to a live agent...');
-          return;
-        } else if (text.trim().toLowerCase() === 'no') {
-          await this.sendMessage(phoneNumber, 'Okay! Let me know if you need anything else.');
-          return;
-        } else {
-          await this.sendMessage(phoneNumber, 'Please reply Yes or No if you want to chat with a live user.');
-          return;
-        }
       }
       // Auto reply example
       if (text.toLowerCase().includes('hello')) {

@@ -181,6 +181,22 @@ function initializeSocket(token) {
     joinFacebookRooms()
   })
 
+  // Escalation notification for all pages
+  socket.on('escalation_request', (data) => {
+    if (!window.showEscalationNotification) return;
+    window.showEscalationNotification({
+      ...data,
+      onAccept: () => socket.emit('accept_escalation', { conversationId: data.conversationId }),
+      onDecline: () => socket.emit('decline_escalation', { conversationId: data.conversationId })
+    });
+  });
+  socket.on('session_claimed', ({ conversationId }) => {
+    // Remove the escalation notification if present
+    const notif = document.getElementById('escalationNotification_' + conversationId);
+    if (notif) notif.remove();
+  });
+
+
   // Facebook Specific Events
   socket.on("new_message", (message) => {
     console.log("📨 New Facebook message:", message)

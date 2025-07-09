@@ -107,6 +107,58 @@ function formatPercentage(num) {
   return `${num.toFixed(1)}%`
 }
 
+// Global escalation notification (top right corner)
+function showEscalationNotification({ conversationId, customerId, platform, message, onAccept, onDecline }) {
+  let container = document.getElementById('escalationNotificationContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'escalationNotificationContainer';
+    container.style.position = 'fixed';
+    container.style.top = '24px';
+    container.style.right = '24px';
+    container.style.zIndex = 9999;
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.gap = '16px';
+    document.body.appendChild(container);
+  }
+
+  // Remove any existing notification for this conversation
+  const existing = document.getElementById('escalationNotification_' + conversationId);
+  if (existing) existing.remove();
+
+  const notif = document.createElement('div');
+  notif.id = 'escalationNotification_' + conversationId;
+  notif.style.background = '#fff';
+  notif.style.border = '1px solid #6366f1';
+  notif.style.boxShadow = '0 2px 8px rgba(0,0,0,0.10)';
+  notif.style.borderRadius = '12px';
+  notif.style.padding = '20px 24px';
+  notif.style.minWidth = '320px';
+  notif.style.maxWidth = '380px';
+  notif.style.fontFamily = 'inherit';
+  notif.innerHTML = `
+    <div style="font-weight:600;font-size:1.1rem;color:#3730a3;margin-bottom:4px;">Live Chat Escalation</div>
+    <div style="margin-bottom:12px;color:#334155;">A customer <b>wants to chat with a live agent</b>.<br><span style='font-size:0.95em;color:#6366f1;'>Platform: ${platform}</span></div>
+    <div style="margin-bottom:10px;font-size:0.97em;color:#64748b;">Message: <span style='color:#0f172a;'>${message}</span></div>
+    <div style="display:flex;gap:12px;justify-content:flex-end;">
+      <button id="acceptEscalationBtn_${conversationId}" style="background:#6366f1;color:#fff;border:none;padding:7px 18px;border-radius:8px;font-weight:500;cursor:pointer;">Accept</button>
+      <button id="declineEscalationBtn_${conversationId}" style="background:#e0e7ff;color:#3730a3;border:none;padding:7px 18px;border-radius:8px;font-weight:500;cursor:pointer;">Decline</button>
+    </div>
+  `;
+  container.appendChild(notif);
+
+  document.getElementById('acceptEscalationBtn_' + conversationId).onclick = function() {
+    if (onAccept) onAccept();
+    notif.remove();
+  };
+  document.getElementById('declineEscalationBtn_' + conversationId).onclick = function() {
+    if (onDecline) onDecline();
+    notif.remove();
+  };
+}
+window.showEscalationNotification = showEscalationNotification;
+
 // Show message function
 function showMessage(elementId, type, text, duration = 3000) {
   const messageElement = document.getElementById(elementId)
