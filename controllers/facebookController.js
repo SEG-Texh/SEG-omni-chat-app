@@ -165,18 +165,34 @@ exports.webhook = async (req, res) => {
               }
 
               if (!conversation) {
-                console.log('Creating new conversation');
+                // Look up or create Users for sender and recipient
+                const User = require('../models/User');
+                let senderUser = await User.findOne({ facebookId: senderId });
+                if (!senderUser) {
+                  senderUser = await User.create({ facebookId: senderId, name: `FB User ${senderId}` });
+                }
+                let recipientUser = await User.findOne({ facebookId: recipientId });
+                if (!recipientUser) {
+                  recipientUser = await User.create({ facebookId: recipientId, name: `FB Page ${recipientId}` });
+                }
                 conversation = new Conversation({
                   platform: 'facebook',
-                  participants: [senderId, recipientId],
+                  participants: [senderUser._id, recipientUser._id],
                   platformConversationId: event.message.mid,
-                  agentId: senderId,
+                  agentId: senderUser._id,
                   locked: true,
-                  status: 'active'
+                  status: 'active',
+                  customerId: senderUser._id
                 });
                 await conversation.save();
                 console.log('Created new conversation:', conversation._id);
               } else {
+                // Ensure customerId is set if missing
+                if (!conversation.customerId) {
+                  conversation.customerId = senderUser._id;
+                  await conversation.save();
+                  console.log('Set missing customerId on conversation:', conversation._id, '->', senderUser._id);
+                }
                 // Conversation lock/claim logic
                 const io = require('../config/socket').getIO();
                 const User = require('../models/User');
@@ -185,10 +201,9 @@ exports.webhook = async (req, res) => {
                   conversation.locked = true;
                   conversation.status = 'active';
                   if (!conversation.participants.includes(senderId)) {
-                    conversation.participants.push(senderId);
                   }
                   await conversation.save();
-                  console.log('Conversation re-claimed by user:', senderId);
+                  console.log('Conversation re-claimed by user:', senderUser._id);
                 } else if (conversation.locked && conversation.agentId) {
                   // Check if the locked agent is online
                   const lockedAgent = await User.findById(conversation.agentId);
@@ -197,13 +212,13 @@ exports.webhook = async (req, res) => {
                     console.log('[FB][Process] Locked agent offline, broadcasting escalation');
                     io.emit('new_live_chat_request', {
                       conversationId: conversation._id,
-                      customerId: conversation.participants.find(p => p !== conversation.agentId),
+                      customerId: conversation.participants.find(p => p.toString() !== conversation.agentId.toString()),
                       platform: 'facebook',
                       message: messageText,
                     });
                     // Do NOT unlock or reassign yet; wait for claim
                     return;
-                  } else if (conversation.agentId.toString() !== senderId.toString()) {
+                  } else if (conversation.agentId.toString() !== senderUser._id.toString()) {
                     // If locked by another online agent, block
                     console.log('Conversation locked by another agent:', conversation.agentId);
                     return res.status(403).json({ error: 'Conversation locked by another agent.' });
@@ -212,22 +227,22 @@ exports.webhook = async (req, res) => {
                   console.log('[FB][Process] Agent is the same as locked agent, proceeding');
                 } else if (!conversation.agentId) {
                   // No agent assigned, claim it
-                  conversation.agentId = senderId;
+                  conversation.agentId = senderUser._id;
                   conversation.locked = true;
-                  if (!conversation.participants.includes(senderId)) {
-                    conversation.participants.push(senderId);
+                  if (!conversation.participants.includes(senderUser._id)) {
+                    conversation.participants.push(senderUser._id);
                   }
                   await conversation.save();
-                  console.log('Conversation claimed by user:', senderId);
+                  console.log('Conversation claimed by user:', senderUser._id);
                 } else {
                   // Update participants if they're missing
-                  if (!conversation.participants.includes(senderId)) {
-                    conversation.participants.push(senderId);
+                  if (!conversation.participants.includes(senderUser._id)) {
+                    conversation.participants.push(senderUser._id);
                     await conversation.save();
                     console.log('Added sender to conversation participants');
                   }
-                  if (!conversation.participants.includes(recipientId)) {
-                    conversation.participants.push(recipientId);
+                  if (!conversation.participants.includes(recipientUser._id)) {
+                    conversation.participants.push(recipientUser._id);
                     await conversation.save();
                     console.log('Added recipient to conversation participants');
                   }
@@ -240,7 +255,7 @@ exports.webhook = async (req, res) => {
                 platform: 'facebook',
                 platformMessageId: event.message.mid,
                 conversation: conversation._id,
-                senderId,
+                senderId: senderUser._id,
                 content: messageText,
                 timestamp: new Date(timestamp)
               });
@@ -248,15 +263,15 @@ exports.webhook = async (req, res) => {
 
               // --- BOT/SESSION FLOW LOGIC ---
               // Count number of inbound messages in this conversation
-              const inboundCount = await Message.countDocuments({ conversation: conversation._id, senderId });
+              const inboundCount = await Message.countDocuments({ conversation: conversation._id, senderId: senderUser._id });
               // Step 1: Welcome after first message
               if (inboundCount === 1) {
-                await sendFacebookMessage(senderId, 'Hi, welcome. How may I help you?');
+                await sendFacebookMessage(event.sender.id, 'Hi, welcome. How may I help you?');
                 return;
               }
               // Step 2: Offer live agent after second message
               if (inboundCount === 2) {
-                await sendFacebookMessage(senderId, 'Would you like to chat with a live user? Yes / No');
+                await sendFacebookMessage(event.sender.id, 'Would you like to chat with a live user? Yes / No');
                 return;
               }
               // Step 3: Wait for Yes/No response
@@ -268,13 +283,13 @@ exports.webhook = async (req, res) => {
                   // Broadcast to all online agents
                   const { broadcastToOnlineAgents } = require('../server');
                   broadcastToOnlineAgents(conversation);
-                  await sendFacebookMessage(senderId, 'Connecting you to a live agent...');
+                  await sendFacebookMessage(event.sender.id, 'Connecting you to a live agent...');
                   return;
                 } else if (messageText.trim().toLowerCase() === 'no') {
-                  await sendFacebookMessage(senderId, 'Okay! Let me know if you need anything else.');
+                  await sendFacebookMessage(event.sender.id, 'Okay! Let me know if you need anything else.');
                   return;
                 } else {
-                  await sendFacebookMessage(senderId, 'Please reply Yes or No if you want to chat with a live user.');
+                  await sendFacebookMessage(event.sender.id, 'Please reply Yes or No if you want to chat with a live user.');
                   return;
                 }
               }
@@ -296,7 +311,7 @@ exports.webhook = async (req, res) => {
                   message: {
                     id: message._id,
                     content: messageText,
-                    senderId,
+                    senderId: senderUser._id,
                     timestamp: message.timestamp
                   }
                 });
@@ -308,11 +323,8 @@ exports.webhook = async (req, res) => {
           }
         }
       }
-      return res.status(200).json({ status: 'success' });
     }
-
-    // If not verification or page object, send a generic response
-    return res.status(200).json({ status: 'ignored' });
+    return res.status(200).json({ status: 'success' });
   } catch (error) {
     console.error('Webhook error:', {
       message: error.message,
@@ -321,7 +333,9 @@ exports.webhook = async (req, res) => {
     });
     return res.status(500).json({ error: 'Something went wrong' });
   }
-};
+  // If not verification or page object, send a generic response
+  return res.status(200).json({ status: 'ignored' });
+}
 
 // List all Facebook conversations (for now)
 exports.listConversations = async (req, res) => {
