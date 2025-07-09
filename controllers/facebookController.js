@@ -367,4 +367,3 @@ exports.claimConversation = async (req, res) => {
     res.status(500).json({ error: 'Failed to send message' });
   }
 };
-
