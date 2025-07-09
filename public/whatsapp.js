@@ -290,6 +290,7 @@ function selectWhatsAppConversation(conversation, element = null) {
 
 // Load WhatsApp messages
 async function loadWhatsAppMessages(conversationId) {
+  console.log('loadWhatsAppMessages called with:', conversationId);
   if (!currentUser?.token) return
 
   try {
@@ -304,6 +305,7 @@ async function loadWhatsAppMessages(conversationId) {
 
 // Display WhatsApp messages
 function displayWhatsAppMessages(messages = []) {
+  console.log('displayWhatsAppMessages called with:', messages);
   const messagesContainer = document.getElementById("messagesList");
   if (!messagesContainer) return;
 
