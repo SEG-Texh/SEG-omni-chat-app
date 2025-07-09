@@ -20,9 +20,17 @@ function connectWhatsAppSocket() {
 }
 
 function showWhatsAppChatInterface(conversation) {
-  // Example implementation: show the chat UI for the selected conversation
-  document.getElementById('whatsappChatContainer').style.display = 'block';
-  // You might want to update UI elements with conversation details here
+  // Hide the placeholder and show the structured chat area
+  const placeholder = document.getElementById('whatsappChatPlaceholder');
+  if (placeholder) placeholder.style.display = 'none';
+  const chatStructured = document.getElementById('whatsappChatStructured');
+  if (chatStructured) {
+    chatStructured.classList.remove('hidden');
+    chatStructured.style.display = 'flex';
+  }
+  // Update chat header with conversation info
+  const chatTitle = document.getElementById('chatTitle');
+  if (chatTitle) chatTitle.textContent = conversation.participants?.[0]?.name || 'Contact';
 }
 document.addEventListener("DOMContentLoaded", () => {
   connectWhatsAppSocket();
