@@ -168,15 +168,15 @@ exports.webhook = async (req, res) => {
                 // Look up or create Users for sender and recipient
                 const User = require('../models/User');
                 let senderUser = await User.findOneAndUpdate(
-                  { facebookId: senderId },
-                  { $setOnInsert: { name: `FB User ${senderId}` } },
-                  { upsert: true, new: true }
-                );
-                let recipientUser = await User.findOneAndUpdate(
-                  { facebookId: recipientId },
-                  { $setOnInsert: { name: `FB Page ${recipientId}` } },
-                  { upsert: true, new: true }
-                );
+  { facebookId: senderId },
+  { $setOnInsert: { facebookId: senderId, name: `FB User ${senderId}` } },
+  { upsert: true, new: true, setDefaultsOnInsert: true }
+);
+let recipientUser = await User.findOneAndUpdate(
+  { facebookId: recipientId },
+  { $setOnInsert: { facebookId: recipientId, name: `FB Page ${recipientId}` } },
+  { upsert: true, new: true, setDefaultsOnInsert: true }
+);
                 conversation = new Conversation({
                   platform: 'facebook',
                   participants: [senderUser._id, recipientUser._id],
