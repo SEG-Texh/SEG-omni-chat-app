@@ -86,31 +86,21 @@ exports.webhook = async (req, res) => {
 
     // Process incoming message
     if (req.body.object === 'page') {
-      console.log('Processing page object:', req.body);
-      
       for (const entry of req.body.entry) {
         if (entry.messaging) {
-          console.log('Found messaging event:', entry.messaging);
-          
           for (const event of entry.messaging) {
-            // Only process if message with text (ignore delivery/read events)
             if (!event.message || !event.message.text) continue;
             const senderId = event.sender.id;
-            const recipientId = event.recipient.id;
             const messageText = event.message.text;
             const timestamp = event.timestamp;
-            console.log('Processing messaging event:', event);
-            console.log('Message details:', { senderId, recipientId, messageText, timestamp });
 
             // 1. Create or find conversation
-            // Try to find by customerId (Facebook sender PSID) and status
             let conversation = await Conversation.findOne({
               platform: 'facebook',
               customerId: senderId,
               status: { $in: ['pending', 'awaiting_agent', 'active'] }
             });
             if (!conversation) {
-              // Create conversation
               conversation = new Conversation({
                 platform: 'facebook',
                 platformConversationId: event.message.mid || undefined,
@@ -121,20 +111,15 @@ exports.webhook = async (req, res) => {
                 customerId: senderId
               });
               await conversation.save();
-              console.log('Created new conversation:', conversation._id);
             }
 
             // Bot message logic
-            // Only count inbound messages from the customer (Facebook PSID, not agentId)
             const inboundCount = await Message.countDocuments({ conversation: conversation._id, sender: senderId });
             if (inboundCount === 0) {
-              // First message from customer
               await sendFacebookMessage(senderId, "Hi, welcome. How may I help you?");
             } else if (inboundCount === 1) {
-              // Second message from customer
               await sendFacebookMessage(senderId, "Would you like to chat with a live user? Yes / No");
             } else if (messageText.trim().toLowerCase() === 'yes') {
-              // Customer wants escalation
               await sendFacebookMessage(senderId, "Okay, connecting you to a live agent now...");
               conversation.status = 'awaiting_agent';
               await conversation.save();
@@ -146,60 +131,51 @@ exports.webhook = async (req, res) => {
                   message: messageText,
                 });
               }
+            } else if (messageText.trim().toLowerCase() === 'no') {
+              await sendFacebookMessage(senderId, "Okay! Let me know if you need anything else.");
+            } else if (inboundCount >= 2) {
+              await sendFacebookMessage(senderId, "Please reply Yes or No if you want to chat with a live user.");
+            }
+
+            // Always record the message
+            await Message.create({
+              platform: 'facebook',
+              platformMessageId: event.message.mid,
+              conversation: conversation._id,
+              sender: senderId,
+              content: messageText,
+              timestamp: new Date(timestamp)
+            });
+
+            // Update conversation lastMessage
+            await Conversation.findByIdAndUpdate(
+              conversation._id,
+              {
+                lastMessage: event.message.mid,
+                unreadCount: conversation.unreadCount + 1
+              }
+            );
+
+            // Emit socket event
+            if (req.io) {
+              req.io.emit('newMessage', {
+                conversationId: conversation._id,
+                message: {
+                  id: event.message.mid,
+                  content: messageText,
+                  senderId: senderId,
+                  timestamp: timestamp
+                }
+              });
             }
           }
-
-              const lockedAgent = await User.findById(conversation.agentId);
-              if (!lockedAgent || !lockedAgent.isOnline) {
-                // Escalate: broadcast to all agents for claim
-                console.log('[FB][Process] Locked agent offline, broadcasting escalation');
-                if (req.io) {
-                  req.io.emit('new_live_chat_request', {
-                    conversationId: conversation._id,
-                    customerId: conversation.participants.find(p => !conversation.agentId || (p && p.toString() !== conversation.agentId?.toString())), // Guard for null agentId
-                        platform: 'facebook',
-                        message: messageText,
-                      });
-                    }
-                    // Do NOT unlock or reassign yet; wait for claim
-                    return;
-                  } else if (conversation.agentId.toString() !== senderUser._id.toString()) {
-                    // If locked by another online agent, block
-                    console.log('Conversation locked by another agent:', conversation.agentId);
-                    return res.status(403).json({ error: 'Conversation locked by another agent.' });
-                  }
-                  // If the same agent returns, allow them to continue (unlocks automatically)
-                  console.log('[FB][Process] Agent is the same as locked agent, proceeding');
-                } else if (!conversation.agentId) {
-                  // No agent assigned. For Facebook senders, do not look up User. Only agents (internal users) are assigned as agentId when claimed from the UI.
-                  // If you want to auto-assign an agent, implement that logic here, otherwise leave agentId null until claimed.
-                  console.log('No agent assigned; waiting for claim by internal agent.');
-                } else {
-                  // Update participants if they're missing
-                  if (!conversation.participants.includes(senderId)) {
-                    conversation.participants.push(senderId);
-                    await conversation.save();
-                    console.log('Added sender to conversation participants');
-                  }
-                  if (!conversation.participants.includes(recipientUser._id)) {
-                    conversation.participants.push(recipientUser._id);
-                    await conversation.save();
-                    console.log('Added recipient to conversation participants');
-                  }
-                  console.log('Found existing conversation:', conversation._id);
-                }
-              }
-
-              // 2. Create message
-              const message = await Message.create({
-                platform: 'facebook',
-                platformMessageId: event.message.mid,
-                conversation: conversation._id,
-                senderId: senderUser._id,
-                content: messageText,
-                timestamp: new Date(timestamp)
-              });
-              console.log('Created new message:', message._id);
+        }
+      }
+    }
+    res.sendStatus(200);
+  } catch (error) {
+    console.error('Facebook webhook error:', error);
+    res.status(500).json({ error: 'Facebook webhook handler failed', details: error.message });
 
               // --- BOT/SESSION FLOW LOGIC ---
               // Count number of inbound messages in this conversation
@@ -242,132 +218,36 @@ exports.webhook = async (req, res) => {
               }
 
               // 3. Update conversation
-              await Conversation.findByIdAndUpdate(
-                conversation._id,
-                {
-                  lastMessage: message._id,
-                  unreadCount: conversation.participants.includes('666543219865098') ? conversation.unreadCount + 1 : conversation.unreadCount
-                }
-              );
-              console.log('Updated conversation:', conversation._id);
+              try {
+                await Conversation.findByIdAndUpdate(
+                  conversation._id,
+                  {
+                    lastMessage: message._id,
+                    unreadCount: conversation.participants.includes('666543219865098') ? conversation.unreadCount + 1 : conversation.unreadCount
+                  }
+                );
 
-              // 4. Emit socket event
-              if (req.io) {
-                req.io.emit('newMessage', {
-                  conversationId: conversation._id,
-                  message: {
-                    id: message._id,
-                    content: messageText,
-                    senderId: senderUser._id,
-                    timestamp: message.timestamp
-                }
-              });
-              await sendFacebookMessage(event.sender.id, 'Connecting you to a live agent...');
-              return;
-            } else if (messageText.trim().toLowerCase() === 'no') {
-              await sendFacebookMessage(event.sender.id, 'Okay! Let me know if you need anything else.');
-              return;
-            }
-
-            // 3. Update conversation
-            await Conversation.findByIdAndUpdate(
-              conversation._id,
-              {
-                lastMessage: message._id,
-                unreadCount: conversation.participants.includes('666543219865098') ? conversation.unreadCount + 1 : conversation.unreadCount
+                conversation.status = 'ended';
+                conversation.locked = false;
+                conversation.agentId = null;
+                await conversation.save();
+                return res.json({ success: true, message: 'Conversation session ended', conversation });
+              } catch (error) {
+                console.error('[FB][EndSession] Error:', error);
+                return res.status(500).json({ error: 'Failed to end session' });
               }
-            );
-            console.log('Updated conversation:', conversation._id);
-
-            // 4. Emit socket event
-            if (req.io) {
-              req.io.emit('newMessage', {
-                conversationId: conversation._id,
-                message: {
-                  id: message._id,
-                  content: messageText,
-                  senderId: senderUser._id,
-                  timestamp: message.timestamp
-                }
-              });
-            }
-            await sendFacebookMessage(event.sender.id, 'Connecting you to a live agent...');
-            return;
-          } else if (messageText.trim().toLowerCase() === 'no') {
-            await sendFacebookMessage(event.sender.id, 'Okay! Let me know if you need anything else.');
-            return;
-          } else {
-            await sendFacebookMessage(event.sender.id, 'Please reply Yes or No if you want to chat with a live user.');
-            return;
-          }
-        }
-        // Only update conversation and emit event if not handled by Yes/No escalation above
-      }
-    }
-  } catch (error) {
-    console.error('Webhook error:', {
-      message: error.message,
-      stack: error.stack,
-      body: req.body
-    });
-    return res.status(500).json({ error: 'Something went wrong' });
-  }
-};
-
-// List all Facebook conversations (for now)
-exports.listConversations = async (req, res) => {
-  try {
-    const conversations = await Conversation.find({
-      platform: 'facebook'
-    })
-    .populate('lastMessage')
-    .populate('participants', 'name')
-    .sort({ updatedAt: -1 });
-    
-    console.log('Found conversations:', conversations.length);
-    console.log('Conversations:', conversations);
-      res.json(conversations);
-    } catch (error) {
-    console.error('Error fetching conversations:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch conversations',
-      details: error.message
-    });
-  }
-};
-
-// List messages for a Facebook conversation
-// End Facebook conversation session
-// POST /api/facebook/conversation/:id/end
-exports.endSession = async (req, res) => {
-  try {
-    const Conversation = require('../models/conversation');
-    const conversationId = req.params.id;
-    const conversation = await Conversation.findById(conversationId);
-    if (!conversation) {
-      return res.status(404).json({ error: 'Conversation not found' });
-    }
-    conversation.status = 'ended';
-    conversation.locked = false;
-    conversation.agentId = null;
-    await conversation.save();
-    return res.json({ success: true, message: 'Conversation session ended', conversation });
-  } catch (error) {
-    console.error('[FB][EndSession] Error:', error);
-    return res.status(500).json({ error: 'Failed to end session' });
-  }
 };
 
 exports.listMessages = async (req, res) => {
   try {
     const { conversationId } = req.params;
-      const messages = await Message.find({
+    const messages = await Message.find({
       conversation: conversationId,
       platform: 'facebook'
     }).sort({ timestamp: 1 });
 
-      res.json(messages);
-    } catch (error) {
+    res.json(messages);
+  } catch (error) {
     console.error('Error fetching messages:', error);
     res.status(500).json({ error: 'Failed to fetch messages', details: error.message });
   }
@@ -426,15 +306,6 @@ exports.claimConversation = async (req, res) => {
     return res.status(500).json({ error: 'Failed to claim conversation' });
   }
 };
-
-// Send message to Facebook user
-exports.sendMessage = async (req, res) => {
-  const { conversationId, content } = req.body;
-  const conversation = await Conversation.findById(conversationId);
-  if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
-
-  const senderId = req.user._id || req.user.id;
-
   if (!conversation.participants || !Array.isArray(conversation.participants)) {
     console.error('Conversation participants missing or not an array:', conversation);
     return res.status(500).json({ error: 'Conversation participants missing or invalid', conversation });
@@ -496,5 +367,3 @@ exports.sendMessage = async (req, res) => {
     res.status(500).json({ error: 'Failed to send message' });
   }
 };
-
-// Final closing brace for the module
