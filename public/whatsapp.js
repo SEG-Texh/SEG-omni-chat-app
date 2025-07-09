@@ -31,6 +31,42 @@ function showWhatsAppChatInterface(conversation) {
   // Update chat header with conversation info
   const chatTitle = document.getElementById('chatTitle');
   if (chatTitle) chatTitle.textContent = conversation.participants?.[0]?.name || 'Contact';
+
+  // Add End Session button if not present
+  let chatHeader = chatStructured?.querySelector('.px-6.py-4.border-b');
+  if (!chatHeader) chatHeader = document.getElementById('chatHeader');
+  if (chatHeader && !document.getElementById('endSessionBtn')) {
+    const endBtn = document.createElement('button');
+    endBtn.id = 'endSessionBtn';
+    endBtn.textContent = 'End Session';
+    endBtn.className = 'ml-auto bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold transition';
+    endBtn.style.marginLeft = 'auto';
+    endBtn.onclick = async function() {
+      if (!conversation._id) return;
+      endBtn.disabled = true;
+      endBtn.textContent = 'Ending...';
+      try {
+        const res = await fetch(`/api/whatsapp/conversation/${conversation._id}/end`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${currentUser.token}` }
+        });
+        if (res.ok) {
+          endBtn.textContent = 'Session Ended';
+          endBtn.className += ' opacity-60';
+          showMessage('whatsappMessageStatus', 'success', 'Session ended.');
+        } else {
+          endBtn.textContent = 'End Session';
+          endBtn.disabled = false;
+          showMessage('whatsappMessageStatus', 'error', 'Failed to end session.');
+        }
+      } catch (e) {
+        endBtn.textContent = 'End Session';
+        endBtn.disabled = false;
+        showMessage('whatsappMessageStatus', 'error', 'Network error.');
+      }
+    };
+    chatHeader.appendChild(endBtn);
+  }
 }
 document.addEventListener("DOMContentLoaded", () => {
   connectWhatsAppSocket();

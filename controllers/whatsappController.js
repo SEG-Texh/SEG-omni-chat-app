@@ -70,6 +70,7 @@ class WhatsAppController {
       let responseTo = null;
       let responseTime = null;
       console.log('[WA][Process] Incoming message object:', message);
+
   
       if (message.type === 'text') {
         text = message.text.body;
@@ -110,70 +111,37 @@ class WhatsAppController {
         console.log('[WA][Process] Found user:', user);
       }
   
-      // Find or create Conversation
+      // Find only active session for this customer (expiresAt > now, status: 'active')
       const Conversation = require('../models/conversation');
-      
+      const now = new Date();
       let conversation = await Conversation.findOne({
         platform: 'whatsapp',
-        platformConversationId: phoneNumber
+        customerId: phoneNumber,
+        status: 'active'
       });
+      // If session expired, end it and start a new one
+      if (conversation && conversation.expiresAt && conversation.expiresAt <= now) {
+        conversation.status = 'ended';
+        conversation.locked = false;
+        conversation.agentId = null;
+        conversation.expiresAt = null;
+        await conversation.save();
+        conversation = null;
+      }
+      // If no active session, create a new pending session
       if (!conversation) {
         conversation = await Conversation.create({
           participants: [user._id],
           platform: 'whatsapp',
-          platformConversationId: phoneNumber,
+          platformConversationId: `${phoneNumber}_${Date.now()}`,
           customerId: phoneNumber,
-          status: 'active',
-          agentId: user._id,
-          locked: true
+          status: 'pending', // not active until agent accepts
+          expiresAt: null,   // set when agent accepts
+          locked: false
         });
-        console.log('[WA][Process] Created new conversation:', conversation);
-      } else {
-        // If conversation is ended, unlock and re-claim for new user
-        if (conversation.status === 'ended') {
-          conversation.agentId = user._id;
-          conversation.locked = true;
-          conversation.status = 'active';
-          if (!conversation.participants.includes(user._id.toString())) {
-            conversation.participants.push(user._id);
-          }
-          await conversation.save();
-          console.log('[WA][Process] Conversation re-claimed by user:', user._id);
-        } else if (conversation.locked && conversation.agentId) {
-          // Check if the locked agent is online
-          const lockedAgent = await User.findById(conversation.agentId);
-          if (!lockedAgent || !lockedAgent.isOnline) {
-            // Escalate: broadcast to all agents for claim
-            console.log('[WA][Process] Locked agent offline, broadcasting escalation');
-            const io = require('../config/socket').getIO();
-            io.emit('new_live_chat_request', {
-              conversationId: conversation._id,
-              customerId: conversation.customerId,
-              platform: 'whatsapp',
-              message: text,
-            });
-            // Do NOT unlock or reassign yet; wait for claim
-            return;
-          } else if (conversation.agentId.toString() !== user._id.toString()) {
-            // If locked by another online agent, block
-            console.log('[WA][Process] Conversation locked by another agent:', conversation.agentId);
-            return;
-          }
-          // If the same agent returns, allow them to continue (unlocks automatically)
-          console.log('[WA][Process] Agent is the same as locked agent, proceeding');
-        } else if (!conversation.agentId) {
-          // No agent assigned, claim it
-          conversation.agentId = user._id;
-          conversation.locked = true;
-          if (!conversation.participants.includes(user._id.toString())) {
-            conversation.participants.push(user._id);
-          }
-          await conversation.save();
-          console.log('[WA][Process] Conversation claimed by user:', user._id);
-        } else {
-          console.log('[WA][Process] Found conversation:', conversation);
-        }
+        console.log('[WA][Process] Created new pending conversation:', conversation);
       }
+      // Bot dialog and escalation handled after message save below.
   
       // Always set a unique platformMessageId
       const platformMessageId =
@@ -207,20 +175,36 @@ class WhatsAppController {
       });
 
       // --- BOT/SESSION FLOW LOGIC ---
-      // Move logic AFTER saving so count includes this message
-      const inboundCount = await Message.countDocuments({ conversation: conversation._id, direction: 'inbound' });
-      console.log('[WA][Process] inboundCount:', inboundCount);
+      // Only run bot dialog if session is pending
+      if (conversation.status === 'pending') {
+        const inboundCount = await Message.countDocuments({ conversation: conversation._id, direction: 'inbound' });
+        console.log('[WA][Process] inboundCount:', inboundCount);
 
-      // Step 1: Welcome after first message
-      if (inboundCount === 1) {
-        await this.sendMessage(phoneNumber, 'Hi, welcome. How may I help you?');
-        return;
+        if (inboundCount === 1) {
+          await this.sendMessage(phoneNumber, 'Hi, welcome. How may I help you?');
+          return;
+        }
+        if (inboundCount === 2) {
+          await this.sendMessage(phoneNumber, 'Would you like to chat with a live person? Yes/No');
+          return;
+        }
+        // Escalation trigger
+        if (text.trim().toLowerCase() === 'yes') {
+          conversation.status = 'awaiting_agent';
+          await conversation.save();
+          const io = require('../config/socket').getIO();
+          io.emit('escalation_request', {
+            conversationId: conversation._id,
+            customerId: conversation.customerId,
+            platform: 'whatsapp',
+            message: text,
+          });
+          await this.sendMessage(phoneNumber, 'Connecting you to a live agent...');
+          return;
+        }
+        // Optionally handle "No" or other responses
       }
-      // Step 2: Offer live agent after second message
-      if (inboundCount === 2) {
-        await this.sendMessage(phoneNumber, 'Would you like to chat with a live user? Yes / No');
-      }
-      // Auto reply example
+      // Optionally, auto-reply for greetings
       if (text.toLowerCase().includes('hello')) {
         await this.sendMessage(phoneNumber, 'Hello! Thanks for reaching out. How can I assist you?');
       }

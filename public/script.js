@@ -384,40 +384,24 @@ function showFacebookChatInterface(conversation) {
 
   chatArea.innerHTML = `
         <!-- Chat Header -->
-        <div class="p-4 border-b border-slate-200 bg-slate-50">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-semibold">
-                    👤
-                </div>
-                <div>
-                    <div class="font-medium">${participant?.name || "Unknown User"}</div>
-                    <div class="text-sm text-green-500">Online</div>
-                </div>
+        <div class="p-4 border-b border-slate-200 bg-slate-50 flex items-center gap-3" id="facebookChatHeader">
+            <div class="w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-semibold">
+                👤
             </div>
+            <div>
+                <div class="font-semibold text-lg">${participant?.name || 'Contact'}</div>
+                <div class="text-xs text-slate-500">Facebook User</div>
+            </div>
+            <button id="fbEndSessionBtn" class="ml-auto bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold transition" style="margin-left:auto;">End Session</button>
         </div>
-
-        <!-- Messages -->
-        <div id="facebookMessages" class="flex-1 overflow-y-auto p-4 space-y-4">
-            <!-- Messages will be loaded here -->
-        </div>
-
+        <!-- Messages List -->
+        <div id="facebookMessagesList" class="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4 bg-white scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-transparent"></div>
         <!-- Message Input -->
-        <div class="p-4 border-t border-slate-200">
-            <div class="flex gap-3">
-                <input
-                    type="text"
-                    id="facebookMessageInput"
-                    placeholder="Type a message..."
-                    class="flex-1 px-4 py-2 border border-slate-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <button
-                    id="facebookSendButton"
-                    class="px-6 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-                >
-                    Send
-                </button>
-            </div>
-        </div>
+        <form id="facebookMessageForm" class="message-input px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center gap-2">
+            <input id="facebookMessageInput" type="text" placeholder="Type a message..." class="flex-1 px-4 py-2 rounded-full border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" autocomplete="off" />
+            <button id="facebookSendButton" type="button" class="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-full font-semibold transition">Send</button>
+        </form>
+        <div id="facebookMessageStatus" class="hidden"></div>
     `
 
   // Add event listeners for message input
@@ -431,6 +415,34 @@ function showFacebookChatInterface(conversation) {
   })
 
   sendButton.addEventListener("click", sendFacebookMessage)
+
+  // End Session button handler
+  const endBtn = document.getElementById("fbEndSessionBtn");
+  if (endBtn) {
+    endBtn.onclick = async function() {
+      endBtn.disabled = true;
+      endBtn.textContent = 'Ending...';
+      try {
+        const res = await fetch(`/api/facebook/conversation/${conversation._id}/end`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${currentUser.token}` }
+        });
+        if (res.ok) {
+          endBtn.textContent = 'Session Ended';
+          endBtn.className += ' opacity-60';
+          showMessage('facebookMessageStatus', 'success', 'Session ended.');
+        } else {
+          endBtn.textContent = 'End Session';
+          endBtn.disabled = false;
+          showMessage('facebookMessageStatus', 'error', 'Failed to end session.');
+        }
+      } catch (e) {
+        endBtn.textContent = 'End Session';
+        endBtn.disabled = false;
+        showMessage('facebookMessageStatus', 'error', 'Network error.');
+      }
+    }
+  }
 }
 
 // Display Facebook messages

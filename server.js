@@ -142,12 +142,14 @@ io.on('connection', async (socket) => {
   socket.on('accept_escalation', async ({ conversationId }) => {
     try {
       const Conversation = require('./models/conversation');
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 30 * 60 * 1000); // 30 min
       const conversation = await Conversation.findById(conversationId);
       if (!conversation) {
         socket.emit('claim_result', { success: false, message: 'Conversation not found.' });
         return;
       }
-      // Only allow claim if not already locked
+      // Only allow claim if not already locked/claimed
       if (conversation.locked && conversation.agentId) {
         socket.emit('claim_result', { success: false, message: 'Session already claimed.' });
         return;
@@ -155,8 +157,11 @@ io.on('connection', async (socket) => {
       conversation.locked = true;
       conversation.agentId = socket.userId;
       conversation.status = 'active';
+      conversation.startTime = now;
+      conversation.expiresAt = expiresAt;
       await conversation.save();
       socket.emit('claim_result', { success: true, conversation });
+      // Notify all other agents to remove notification
       io.emit('session_claimed', { conversationId });
     } catch (err) {
       socket.emit('claim_result', { success: false, message: 'Server error.' });
