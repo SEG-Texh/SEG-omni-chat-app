@@ -159,6 +159,7 @@ class WhatsAppController {
        // --- BOT/SESSION FLOW LOGIC ---
       // Count number of inbound messages in this conversation
       const inboundCount = await Chat.countDocuments({ conversation: conversation._id, direction: 'inbound' });
+      console.log('[WA][Process] inboundCount:', inboundCount);
       // Step 1: Welcome after first message
       if (inboundCount === 1) {
         await this.sendMessage(phoneNumber, 'Hi, welcome. How may I help you?');
