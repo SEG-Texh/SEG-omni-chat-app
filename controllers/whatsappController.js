@@ -4,6 +4,8 @@ const mongoose = require('mongoose');
 
 const Message = require('../models/message');
 
+
+
 class WhatsAppController {
   // Verify webhook
   async verifyWebhook(req, res) {
@@ -112,7 +114,7 @@ class WhatsAppController {
   
       // Find or create Conversation
       const Conversation = require('../models/conversation');
-      const io = require('../config/socket').getIO();
+      
       let conversation = await Conversation.findOne({
         platform: 'whatsapp',
         platformConversationId: phoneNumber
@@ -197,7 +199,7 @@ class WhatsAppController {
       console.log('[WA][Process] Saved chat message:', messageDoc);
 
       // Emit real-time event after saving
-      const io = require('../config/socket').getIO();
+      
       console.log('[WA][Process] Emitting new_message to room:', `conversation_${conversation._id}`);
       io.to(`conversation_${conversation._id}`).emit('new_message', {
         ...messageDoc.toObject(),
