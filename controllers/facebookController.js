@@ -314,8 +314,6 @@ if (!conversation) {
     });
     return res.status(500).json({ error: 'Something went wrong' });
   }
-  // If not verification or page object, send a generic response
-  return res.status(200).json({ status: 'ignored' });
 }
 
 // List all Facebook conversations (for now)
@@ -374,6 +372,51 @@ exports.listMessages = async (req, res) => {
     } catch (error) {
     console.error('Error fetching messages:', error);
     res.status(500).json({ error: 'Failed to fetch messages', details: error.message });
+  }
+};
+
+// Agent claims a Facebook conversation (first-come, first-served)
+exports.claimConversation = async (req, res) => {
+  try {
+    const { id } = req.params; // conversation ID
+    const agentId = req.user._id || req.user.id;
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 30 * 60 * 1000); // 30 minutes from now
+
+    // Atomically assign agent if not already assigned
+    const conversation = await Conversation.findOneAndUpdate(
+      {
+        _id: id,
+        agentId: null,
+        status: 'awaiting_agent',
+        locked: false
+      },
+      {
+        agentId,
+        $addToSet: { participants: agentId },
+        locked: true,
+        status: 'active',
+        expiresAt
+      },
+      { new: true }
+    );
+
+    if (!conversation) {
+      return res.status(409).json({ error: 'Conversation already claimed or not awaiting agent.' });
+    }
+
+    // Optionally, notify via socket.io
+    if (req.io) {
+      req.io.emit('conversation_claimed', {
+        conversationId: conversation._id,
+        agentId
+      });
+    }
+
+    return res.json({ success: true, conversation });
+  } catch (error) {
+    console.error('[FB][ClaimConversation] Error:', error);
+    return res.status(500).json({ error: 'Failed to claim conversation' });
   }
 };
 

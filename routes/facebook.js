@@ -128,6 +128,9 @@ router.get('/messages/:conversationId', auth, facebookController.listMessages);
 router.post('/send', auth, facebookController.sendMessage);
 router.post('/create-test-conversation', auth, facebookController.createTestConversation);
 
+// Agent claims a Facebook conversation
+router.post('/conversation/:id/claim', auth, facebookController.claimConversation);
+
 // End Facebook conversation session
 router.post('/conversation/:id/end', facebookController.endSession);
 
