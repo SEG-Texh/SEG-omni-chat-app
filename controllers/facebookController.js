@@ -93,78 +93,61 @@ exports.webhook = async (req, res) => {
           console.log('Found messaging event:', entry.messaging);
           
           for (const event of entry.messaging) {
+            // Only process if message with text (ignore delivery/read events)
+            if (!event.message || !event.message.text) continue;
             const senderId = event.sender.id;
             const recipientId = event.recipient.id;
+            const messageText = event.message.text;
+            const timestamp = event.timestamp;
             console.log('Processing messaging event:', event);
-            
-            if (event.message && event.message.text) {
-              console.log('Processing message:', event.message);
-              
-              const messageText = event.message.text;
-              const timestamp = event.timestamp;
-              
-              console.log('Message details:', {
-                senderId,
-                recipientId,
-                messageText,
-                timestamp
+            console.log('Message details:', { senderId, recipientId, messageText, timestamp });
+
+            // 1. Create or find conversation
+            // Try to find by customerId (Facebook sender PSID) and status
+            let conversation = await Conversation.findOne({
+              platform: 'facebook',
+              customerId: senderId,
+              status: { $in: ['pending', 'awaiting_agent', 'active'] }
+            });
+            if (!conversation) {
+              // Create conversation
+              conversation = new Conversation({
+                platform: 'facebook',
+                platformConversationId: event.message.mid || undefined,
+                participants: [senderId],
+                agentId: null,
+                locked: false,
+                status: 'pending',
+                customerId: senderId
               });
+              await conversation.save();
+              console.log('Created new conversation:', conversation._id);
+            }
 
-              // 1. Create or find conversation
-              // First try to find conversation by platformConversationId
-              let conversation = await Conversation.findOne({
-          platform: 'facebook',
-                platformConversationId: event.message.mid
-        });
-        
-        if (!conversation) {
-                // If not found, try to find by customerId (Facebook sender PSID) and status
-conversation = await Conversation.findOne({
-  platform: 'facebook',
-  customerId: senderId,
-  status: { $in: ['pending', 'awaiting_agent', 'active'] }
-});
-
-if (!conversation) {
-  // Create conversation
-  conversation = new Conversation({
-    platform: 'facebook',
-    platformConversationId: event.message.mid,
-    participants: [senderId], // Only customerId for now, agentId added when assigned
-    agentId: null, // Not assigned yet
-    locked: false,
-    status: 'pending',
-    customerId: senderId
-  });
-  await conversation.save();
-  console.log('Created new conversation:', conversation._id);
-}
-
-// No user creation/upsert. All logic is based on senderId (customerId) and agentId (when assigned).
-
-              // Bot message logic
-              // Only count inbound messages from the customer (Facebook PSID, not agentId)
-              const inboundCount = await Message.countDocuments({ conversation: conversation._id, sender: senderId });
-              if (inboundCount === 0) {
-                // First message from customer
-                await sendFacebookMessage(senderId, "Hi, welcome. How may I help you?");
-              } else if (inboundCount === 1) {
-                // Second message from customer
-                await sendFacebookMessage(senderId, "Would you like to chat with a live user? Yes / No");
-              } else if (messageText.trim().toLowerCase() === 'yes') {
-                // Customer wants escalation
-                await sendFacebookMessage(senderId, "Okay, connecting you to a live agent now...");
-                conversation.status = 'awaiting_agent';
-                await conversation.save();
-                if (req.io) {
-                  req.io.emit('new_live_chat_request', {
-                    conversationId: conversation._id,
-                    customerId: senderId,
-                    platform: 'facebook',
-                    message: messageText,
-                  });
-                }
+            // Bot message logic
+            // Only count inbound messages from the customer (Facebook PSID, not agentId)
+            const inboundCount = await Message.countDocuments({ conversation: conversation._id, sender: senderId });
+            if (inboundCount === 0) {
+              // First message from customer
+              await sendFacebookMessage(senderId, "Hi, welcome. How may I help you?");
+            } else if (inboundCount === 1) {
+              // Second message from customer
+              await sendFacebookMessage(senderId, "Would you like to chat with a live user? Yes / No");
+            } else if (messageText.trim().toLowerCase() === 'yes') {
+              // Customer wants escalation
+              await sendFacebookMessage(senderId, "Okay, connecting you to a live agent now...");
+              conversation.status = 'awaiting_agent';
+              await conversation.save();
+              if (req.io) {
+                req.io.emit('new_live_chat_request', {
+                  conversationId: conversation._id,
+                  customerId: senderId,
+                  platform: 'facebook',
+                  message: messageText,
+                });
               }
+            }
+          }
 
               const lockedAgent = await User.findById(conversation.agentId);
               if (!lockedAgent || !lockedAgent.isOnline) {
@@ -284,16 +267,44 @@ if (!conversation) {
             } else if (messageText.trim().toLowerCase() === 'no') {
               await sendFacebookMessage(event.sender.id, 'Okay! Let me know if you need anything else.');
               return;
-            } else {
-              await sendFacebookMessage(event.sender.id, 'Please reply Yes or No if you want to chat with a live user.');
-              return;
             }
+
+            // 3. Update conversation
+            await Conversation.findByIdAndUpdate(
+              conversation._id,
+              {
+                lastMessage: message._id,
+                unreadCount: conversation.participants.includes('666543219865098') ? conversation.unreadCount + 1 : conversation.unreadCount
+              }
+            );
+            console.log('Updated conversation:', conversation._id);
+
+            // 4. Emit socket event
+            if (req.io) {
+              req.io.emit('newMessage', {
+                conversationId: conversation._id,
+                message: {
+                  id: message._id,
+                  content: messageText,
+                  senderId: senderUser._id,
+                  timestamp: message.timestamp
+                }
+              });
+            }
+            await sendFacebookMessage(event.sender.id, 'Connecting you to a live agent...');
+            return;
+          } else if (messageText.trim().toLowerCase() === 'no') {
+            await sendFacebookMessage(event.sender.id, 'Okay! Let me know if you need anything else.');
+            return;
+          } else {
+            await sendFacebookMessage(event.sender.id, 'Please reply Yes or No if you want to chat with a live user.');
+            return;
           }
-          // Only update conversation and emit event if not handled by Yes/No escalation above
         }
+        // Only update conversation and emit event if not handled by Yes/No escalation above
       }
     }
-   } catch (error) {
+  } catch (error) {
     console.error('Webhook error:', {
       message: error.message,
       stack: error.stack,
@@ -301,7 +312,7 @@ if (!conversation) {
     });
     return res.status(500).json({ error: 'Something went wrong' });
   }
-}
+};
 
 // List all Facebook conversations (for now)
 exports.listConversations = async (req, res) => {
@@ -398,6 +409,15 @@ exports.claimConversation = async (req, res) => {
         conversationId: conversation._id,
         agentId
       });
+    }
+
+    // Send bot message to customer: "You are now connected to a live agent."
+    try {
+      if (conversation && conversation.customerId) {
+        await sendFacebookMessage(conversation.customerId, 'You are now connected to a live agent.');
+      }
+    } catch (err) {
+      console.error('[FB][ClaimConversation] Failed to send connection message:', err);
     }
 
     return res.json({ success: true, conversation });
