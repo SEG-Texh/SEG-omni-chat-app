@@ -222,6 +222,7 @@ function selectWhatsAppConversation(conversation, element = null) {
   }
   currentWhatsAppConversationId = conversation._id
   currentWhatsAppNumber = conversation.participants?.[0]?.platformIds?.whatsapp || conversation.platformConversationId
+  window.lastSelectedWhatsAppConversation = conversation; // Track last selected
 
   // Join socket room for this conversation
   if (whatsappSocket) {
@@ -235,7 +236,7 @@ function selectWhatsAppConversation(conversation, element = null) {
   document.querySelectorAll(".conversation-item").forEach((item) => {
     item.classList.remove("active")
   })
-  element.classList.add("active")
+  if (element) element.classList.add("active")
 
   // Load messages and show chat interface
   loadWhatsAppMessages(conversation._id)
@@ -321,8 +322,13 @@ async function sendWhatsAppMessage() {
 
     if (response.ok) {
       messageInput.value = ""
-      // Reload messages
+      // Only reload messages, do not reload conversation list or reset chat UI
       loadWhatsAppMessages(currentWhatsAppConversationId)
+      // Ensure chat interface remains visible and active
+      if (currentWhatsAppConversationId) {
+        const conversation = window.lastSelectedWhatsAppConversation;
+        if (conversation) showWhatsAppChatInterface(conversation);
+      }
     } else {
       const error = await response.json()
       alert("Failed to send message: " + (error.error || response.status))
