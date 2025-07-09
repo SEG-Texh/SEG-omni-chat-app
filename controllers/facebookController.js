@@ -157,57 +157,29 @@ exports.webhook = async (req, res) => {
         });
         
         if (!conversation) {
-                // If not found, try to find by participants
-                conversation = await Conversation.findOne({
-            platform: 'facebook',
-                  participants: { $all: [senderId, recipientId] }
-                });
-              }
+                // If not found, try to find by customerId (Facebook sender PSID) and status
+conversation = await Conversation.findOne({
+  platform: 'facebook',
+  customerId: senderId,
+  status: { $in: ['pending', 'awaiting_agent', 'active'] }
+});
 
-              if (!conversation) {
-                // Look up or create Users for sender and recipient
-                const User = require('../models/User');
-                let senderUser = await User.findOneAndUpdate(
-  { facebookId: senderId },
-  { $setOnInsert: { facebookId: senderId, name: `FB User ${senderId}` } },
-  { upsert: true, new: true, setDefaultsOnInsert: true }
-);
-let recipientUser = await User.findOneAndUpdate(
-  { facebookId: recipientId },
-  { $setOnInsert: { facebookId: recipientId, name: `FB Page ${recipientId}` } },
-  { upsert: true, new: true, setDefaultsOnInsert: true }
-);
-                conversation = new Conversation({
-                  platform: 'facebook',
-                  participants: [senderUser._id, recipientUser._id],
-                  platformConversationId: event.message.mid,
-                  agentId: senderUser._id,
-                  locked: true,
-                  status: 'active',
-                  customerId: senderUser._id
-                });
-                await conversation.save();
-                console.log('Created new conversation:', conversation._id);
-              } else {
-                // Ensure customerId is set if missing
-                if (!conversation.customerId) {
-                  conversation.customerId = senderUser._id;
-                  await conversation.save();
-                  console.log('Set missing customerId on conversation:', conversation._id, '->', senderUser._id);
-                }
-                // Conversation lock/claim logic
-                const io = require('../config/socket').getIO();
-                const User = require('../models/User');
-                if (conversation.status === 'ended') {
-                  conversation.agentId = senderId;
-                  conversation.locked = true;
-                  conversation.status = 'active';
-                  if (!conversation.participants.includes(senderId)) {
-                  }
-                  await conversation.save();
-                  console.log('Conversation re-claimed by user:', senderUser._id);
-                } else if (conversation.locked && conversation.agentId) {
-                  // Check if the locked agent is online
+if (!conversation) {
+  // Create a new conversation for this Facebook customer
+  conversation = new Conversation({
+    platform: 'facebook',
+    platformConversationId: event.message.mid,
+    participants: [senderId], // Only customerId for now, agentId added when assigned
+    agentId: null, // Not assigned yet
+    locked: false,
+    status: 'pending',
+    customerId: senderId
+  });
+  await conversation.save();
+  console.log('Created new conversation:', conversation._id);
+}
+// No user creation/upsert. All logic is based on senderId (customerId) and agentId (when assigned).
+
                   const lockedAgent = await User.findById(conversation.agentId);
                   if (!lockedAgent || !lockedAgent.isOnline) {
                     // Escalate: broadcast to all agents for claim
