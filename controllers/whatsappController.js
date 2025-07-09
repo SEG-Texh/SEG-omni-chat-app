@@ -4,8 +4,6 @@ const mongoose = require('mongoose');
 
 const Message = require('../models/message');
 
-const io = require('../config/socket').getIO();
-
 class WhatsAppController {
   // Verify webhook
   async verifyWebhook(req, res) {
@@ -147,6 +145,7 @@ class WhatsAppController {
           if (!lockedAgent || !lockedAgent.isOnline) {
             // Escalate: broadcast to all agents for claim
             console.log('[WA][Process] Locked agent offline, broadcasting escalation');
+            const io = require('../config/socket').getIO();
             io.emit('new_live_chat_request', {
               conversationId: conversation._id,
               customerId: conversation.customerId,
@@ -201,6 +200,7 @@ class WhatsAppController {
       // Emit real-time event after saving
       
       console.log('[WA][Process] Emitting new_message to room:', `conversation_${conversation._id}`);
+      const io = require('../config/socket').getIO();
       io.to(`conversation_${conversation._id}`).emit('new_message', {
         ...messageDoc.toObject(),
         platform: 'whatsapp',
