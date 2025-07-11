@@ -491,31 +491,17 @@ async function sendFacebookMessage() {
   }
 
   try {
-    const response = await fetch("/api/facebook/messages", {
+    await fetch("/api/facebook/send", {
       method: "POST",
-        headers: {
-        "Content-Type": "application/json",
-          Authorization: `Bearer ${currentUser.token}`,
-        },
-        body: JSON.stringify({
-          recipientId: currentFacebookRecipientId,
-        text: text,
-          conversationId: currentFacebookConversationId,
-        }),
-    })
-
-    if (response.ok) {
-      messageInput.value = ""
-      // Reload messages
-      loadFacebookMessages(currentFacebookConversationId)
-      } else {
-      const error = await response.json()
-      alert("Failed to send message: " + (error.error || response.status))
-      }
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${currentUser.token}` },
+      body: JSON.stringify({ conversationId: currentFacebookConversationId, content: { text: text } }),
+    });
+    messageInput.value = ""
+    // Reload messages
+    loadFacebookMessages(currentFacebookConversationId)
   } catch (error) {
-    console.error("Error sending Facebook message:", error)
-    alert("Failed to send message: " + error.message)
-    }
+    console.error("Error sending Facebook message:", error);
+  }
 }
 
 // Load WhatsApp conversations
