@@ -10,6 +10,8 @@ function isAdmin() {
 function setupWhatsAppSocket() {
   if (!isAdmin()) return;
   if (whatsappSocket) return;
+  if (!currentUser || !currentUser.token) return;
+  
   // Use the current host for socket connection
   let socketUrl;
   if (window.location.hostname.includes('herokuapp.com')) {
@@ -146,16 +148,27 @@ async function sendWhatsAppMessage(e) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  if (!isAdmin()) {
-    document.getElementById('whatsappConversationsList').innerHTML = '<div class="p-4 text-center text-red-500">Only admins can view WhatsApp conversations.</div>';
-    showWhatsAppPlaceholder();
-    return;
-  }
-  setupWhatsAppSocket();
-  loadWhatsAppConversations();
-  // Message form submit
-  const form = document.getElementById('whatsappMessageForm');
-  if (form) {
-    form.addEventListener('submit', sendWhatsAppMessage);
-  }
+  // Wait for authentication check to complete
+  const checkAuthAndInit = () => {
+    if (currentUser) {
+      // Authentication check completed
+      if (!isAdmin()) {
+        document.getElementById('whatsappConversationsList').innerHTML = '<div class="p-4 text-center text-red-500">Only admins can view WhatsApp conversations.</div>';
+        showWhatsAppPlaceholder();
+        return;
+      }
+      setupWhatsAppSocket();
+      loadWhatsAppConversations();
+      // Message form submit
+      const form = document.getElementById('whatsappMessageForm');
+      if (form) {
+        form.addEventListener('submit', sendWhatsAppMessage);
+      }
+    } else {
+      // Authentication check not complete yet, wait a bit and try again
+      setTimeout(checkAuthAndInit, 100);
+    }
+  };
+  
+  checkAuthAndInit();
 });

@@ -111,30 +111,46 @@ async function sendFacebookMessage(e) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  if (!isAdmin()) {
-    document.getElementById('facebookConversationsList').innerHTML = '<div class="p-4 text-center text-red-500">Only admins can view Facebook conversations.</div>';
-    showFacebookPlaceholder();
-    return;
-  }
-  loadFacebookConversations();
-  // Message form submit
-  const form = document.getElementById('facebookMessageForm');
-  if (form) {
-    form.addEventListener('submit', sendFacebookMessage);
-  }
+  // Wait for authentication check to complete
+  const checkAuthAndInit = () => {
+    if (currentUser) {
+      // Authentication check completed
+      initializeSocket();
+      
+      if (!isAdmin()) {
+        document.getElementById('facebookConversationsList').innerHTML = '<div class="p-4 text-center text-red-500">Only admins can view Facebook conversations.</div>';
+        showFacebookPlaceholder();
+        return;
+      }
+      loadFacebookConversations();
+      // Message form submit
+      const form = document.getElementById('facebookMessageForm');
+      if (form) {
+        form.addEventListener('submit', sendFacebookMessage);
+      }
+    } else {
+      // Authentication check not complete yet, wait a bit and try again
+      setTimeout(checkAuthAndInit, 100);
+    }
+  };
+  
+  checkAuthAndInit();
 });
 
-if (typeof socket === 'undefined') {
-  // If not using a global socket, create one
-  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  const socketUrl = `${protocol}://${window.location.host}`;
-  window.socket = io(socketUrl, {
-    auth: { token: currentUser.token },
-    transports: ['websocket'],
-    reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000
-  });
+// Initialize socket connection after authentication check
+function initializeSocket() {
+  if (typeof socket === 'undefined' && currentUser && currentUser.token) {
+    // If not using a global socket, create one
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const socketUrl = `${protocol}://${window.location.host}`;
+    window.socket = io(socketUrl, {
+      auth: { token: currentUser.token },
+      transports: ['websocket'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000
+    });
+  }
 }
 
 (socket || window.socket).on('new_conversation', ({ conversation }) => {
