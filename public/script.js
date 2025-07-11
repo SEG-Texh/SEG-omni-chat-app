@@ -206,6 +206,15 @@ function initializeSocket(token) {
     updateConversationList(message)
   })
 
+  // Handle result of claim attempt (for escalation acceptance)
+  socket.on('claim_result', (data) => {
+    if (data.success && data.conversation) {
+      selectFacebookConversation(data.conversation);
+    } else {
+      alert(data.message || 'Failed to claim session.');
+    }
+  });
+
   socket.on("disconnect", () => {
     console.log("🔌 Disconnected from socket")
   })
