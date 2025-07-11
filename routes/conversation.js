@@ -82,13 +82,18 @@ router.get('/:id/messages', auth, authorize('admin'), async (req, res) => {
 router.post('/:id/messages', auth, authorize('admin'), async (req, res) => {
   try {
     const { content, platform } = req.body;
-
+    // Always set a unique platformMessageId for WhatsApp
+    let platformMessageId = undefined;
+    if ((platform || '').toLowerCase() === 'whatsapp') {
+      platformMessageId = `wa_out_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
     const message = new Message({
       conversation: req.params.id,
       sender: req.user._id,
       content,
       platform,
-      direction: 'outbound'
+      direction: 'outbound',
+      ...(platformMessageId ? { platformMessageId } : {})
     });
 
     const savedMessage = await message.save();
