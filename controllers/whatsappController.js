@@ -113,34 +113,26 @@ class WhatsAppController {
   
       // Find only active session for this customer (expiresAt > now, status: 'active')
       const Conversation = require('../models/conversation');
-      const now = new Date();
-      // Find the most recent open session for this customer
+      // Find an active session for this customer
       let conversation = await Conversation.findOne({
         platform: 'whatsapp',
         customerId: phoneNumber,
-        status: { $in: ['pending', 'awaiting_agent', 'active'] }
-      }).sort({ createdAt: -1 });
-      // If found and status is 'active', check expiry
-      if (conversation && conversation.status === 'active' && conversation.expiresAt && conversation.expiresAt <= now) {
-        conversation.status = 'ended';
-        conversation.locked = false;
-        conversation.agentId = null;
-        conversation.expiresAt = null;
-        await conversation.save();
-        conversation = null;
-      }
-      // If no open session, create a new pending session
+        status: 'active',
+        expiresAt: { $gt: new Date() }
+      });
+      // If no active session, create a new one
       if (!conversation) {
+        const expiresAt = new Date(Date.now() + 35 * 60 * 1000);
         conversation = await Conversation.create({
           participants: [user._id],
           platform: 'whatsapp',
           platformConversationId: `${phoneNumber}_${Date.now()}`,
           customerId: phoneNumber,
-          status: 'pending', // not active until agent accepts
-          expiresAt: null,   // set when agent accepts
+          status: 'active',
+          expiresAt,
           locked: false
         });
-        console.log('[WA][Process] Created new pending conversation:', conversation);
+        console.log('[WA][Process] Created new active conversation:', conversation);
       }
       // Bot dialog and escalation handled after message save below.
   
@@ -176,35 +168,7 @@ class WhatsAppController {
       });
 
       // --- BOT/SESSION FLOW LOGIC ---
-      // Only run bot dialog if session is pending
-      if (conversation.status === 'pending') {
-        const inboundCount = await Message.countDocuments({ conversation: conversation._id, direction: 'inbound' });
-        console.log('[WA][Process] inboundCount:', inboundCount);
-
-        if (inboundCount === 1) {
-          await this.sendMessage(phoneNumber, 'Hi, welcome. How may I help you?');
-          return;
-        }
-        if (inboundCount === 2) {
-          await this.sendMessage(phoneNumber, 'Would you like to chat with a live person? Yes/No');
-          return;
-        }
-        // Escalation trigger
-        if (text.trim().toLowerCase() === 'yes') {
-          conversation.status = 'awaiting_agent';
-          await conversation.save();
-          const io = require('../config/socket').getIO();
-          io.emit('escalation_request', {
-            conversationId: conversation._id,
-            customerId: conversation.customerId,
-            platform: 'whatsapp',
-            message: text,
-          });
-          await this.sendMessage(phoneNumber, 'Connecting you to a live agent...');
-          return;
-        }
-        // Optionally handle "No" or other responses
-      }
+      // Remove bot dialog/escalation logic for parity with Facebook
       // Optionally, auto-reply for greetings
       if (text.toLowerCase().includes('hello')) {
         await this.sendMessage(phoneNumber, 'Hello! Thanks for reaching out. How can I assist you?');
