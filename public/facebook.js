@@ -34,14 +34,25 @@ async function loadFacebookConversations() {
   const list = document.getElementById('facebookConversationsList');
   list.innerHTML = '<div class="p-4 text-center text-slate-500">Loading conversations...</div>';
   try {
+    console.log('Loading Facebook conversations...');
     const res = await apiRequest('/api/conversation?platform=facebook');
-    if (!res.ok) throw new Error('Failed to load conversations');
+    console.log('Conversations API response status:', res.status);
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('Conversations API error response:', errorText);
+      throw new Error(`Failed to load conversations: ${res.status} ${errorText}`);
+    }
+    
     const conversations = await res.json();
+    console.log('Loaded conversations:', conversations);
+    
     if (!Array.isArray(conversations) || conversations.length === 0) {
       list.innerHTML = '<div class="p-4 text-center text-slate-500">No conversations found</div>';
       showFacebookPlaceholder();
       return;
     }
+    
     list.innerHTML = '';
     conversations.forEach(conv => {
       const item = document.createElement('div');
@@ -53,7 +64,8 @@ async function loadFacebookConversations() {
     // Auto-select first
     showFacebookChat(conversations[0]);
   } catch (e) {
-    list.innerHTML = '<div class="p-4 text-center text-red-500">Error loading conversations</div>';
+    console.error('Error loading conversations:', e);
+    list.innerHTML = `<div class="p-4 text-center text-red-500">Error loading conversations: ${e.message}</div>`;
     showFacebookPlaceholder();
   }
 }
@@ -62,17 +74,28 @@ async function loadFacebookMessages(conversationId) {
   const list = document.getElementById('facebookMessagesList');
   list.innerHTML = '<div class="p-4 text-center text-slate-500">Loading messages...</div>';
   try {
+    console.log('Loading messages for conversation:', conversationId);
     const res = await apiRequest(`/api/conversation/${conversationId}/messages?platform=facebook`);
-    if (!res.ok) throw new Error('Failed to load messages');
+    console.log('API response status:', res.status);
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('API error response:', errorText);
+      throw new Error(`Failed to load messages: ${res.status} ${errorText}`);
+    }
+    
     const messages = await res.json();
+    console.log('Loaded messages:', messages);
+    
     if (!Array.isArray(messages) || messages.length === 0) {
       list.innerHTML = '<div class="p-4 text-center text-slate-500">No messages yet</div>';
       return;
     }
+    
     list.innerHTML = '';
     messages.forEach(msg => {
       const isMine = msg.direction === 'outbound' && (msg.sender?._id === currentUser._id || msg.sender?._id === currentUser.id);
-      const isBot = msg.sender?._id === SEG_BOT_ID || msg.sender === SEG_BOT_ID;
+      const isBot = msg.sender?.name === 'SEGbot' || msg.sender?.role === 'bot';
       const bubble = document.createElement('div');
       bubble.className = 'chat-bubble facebook ' + (isMine ? 'sent' : 'received');
       bubble.innerHTML = `
@@ -84,7 +107,8 @@ async function loadFacebookMessages(conversationId) {
     });
     list.scrollTop = list.scrollHeight;
   } catch (e) {
-    list.innerHTML = '<div class="p-4 text-center text-red-500">Error loading messages</div>';
+    console.error('Error loading messages:', e);
+    list.innerHTML = `<div class="p-4 text-center text-red-500">Error loading messages: ${e.message}</div>`;
   }
 }
 

@@ -77,8 +77,15 @@ async function apiRequest(url, options = {}) {
     },
   }
 
+  console.log('API Request:', url);
+  console.log('Request headers:', mergedOptions.headers);
+  console.log('Current user:', currentUser ? { id: currentUser.id, name: currentUser.name, role: currentUser.role } : 'null');
+
   try {
     const response = await fetch(url, mergedOptions)
+
+    console.log('Response status:', response.status);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
     if (response.status === 401) {
       alert('Session expired or unauthorized. Please log in again.');

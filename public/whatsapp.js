@@ -109,7 +109,7 @@ async function loadWhatsAppMessages(conversationId) {
     list.innerHTML = '';
     messages.forEach(msg => {
       const isMine = msg.direction === 'outbound' && (msg.sender?._id === currentUser._id || msg.sender?._id === currentUser.id);
-      const isBot = msg.sender?._id === SEG_BOT_ID || msg.sender === SEG_BOT_ID;
+      const isBot = msg.sender?.name === 'SEGbot' || msg.sender?.role === 'bot';
       const bubble = document.createElement('div');
       bubble.className = 'chat-bubble whatsapp ' + (isMine ? 'sent' : 'received');
       bubble.innerHTML = `
