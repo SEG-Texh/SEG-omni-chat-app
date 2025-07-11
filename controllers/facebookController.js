@@ -133,7 +133,7 @@ exports.webhook = async (req, res) => {
               }
             } else if (messageText.trim().toLowerCase() === 'no') {
               await sendFacebookMessage(senderId, "Okay! Let me know if you need anything else.");
-            } else if (inboundCount >= 2) {
+            } else if (inboundCount >= 2 && conversation.status === 'pending') {
               await sendFacebookMessage(senderId, "Please reply Yes or No if you want to chat with a live user.");
             }
 
