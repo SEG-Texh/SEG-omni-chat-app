@@ -87,7 +87,8 @@ router.post('/:id/messages', auth, authorize('admin'), async (req, res) => {
       conversation: req.params.id,
       sender: req.user._id,
       content,
-      platform
+      platform,
+      direction: 'outbound'
     });
 
     const savedMessage = await message.save();
