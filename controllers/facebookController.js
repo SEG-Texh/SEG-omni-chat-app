@@ -138,7 +138,7 @@ exports.webhook = async (req, res) => {
             }
 
             // Always record the message
-            await Message.create({
+            const savedMessage = await Message.create({
               platform: 'facebook',
               platformMessageId: event.message.mid,
               conversation: conversation._id,
@@ -148,11 +148,11 @@ exports.webhook = async (req, res) => {
               direction: 'inbound' // Added direction field
             });
 
-            // Update conversation lastMessage
+            // Update conversation lastMessage with the actual Message _id
             await Conversation.findByIdAndUpdate(
               conversation._id,
               {
-                lastMessage: event.message.mid,
+                lastMessage: savedMessage._id, // Use the saved message's ObjectId
                 unreadCount: conversation.unreadCount + 1
               }
             );
