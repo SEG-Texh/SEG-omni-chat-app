@@ -1,7 +1,7 @@
 const Conversation = require('../models/conversation');
 const Message = require('../models/message');
 const axios = require('axios');
-const User = require('../models/user');
+const User = require('../models/User');
 
 class FacebookController {
   // Webhook for receiving Facebook messages from customers
