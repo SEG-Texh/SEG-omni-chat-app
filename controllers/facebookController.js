@@ -94,50 +94,31 @@ exports.webhook = async (req, res) => {
             const messageText = event.message.text;
             const timestamp = event.timestamp;
 
-            // 1. Create or find conversation
+            // Find an active session for this customer
             let conversation = await Conversation.findOne({
               platform: 'facebook',
               customerId: senderId,
-              status: { $in: ['pending', 'awaiting_agent', 'active'] }
+              status: 'active',
+              expiresAt: { $gt: new Date() }
             });
+
             if (!conversation) {
+              // No active session, create a new conversation
+              const expiresAt = new Date(Date.now() + 35 * 60 * 1000);
               conversation = new Conversation({
                 platform: 'facebook',
                 platformConversationId: event.message.mid || undefined,
                 participants: [senderId],
                 agentId: null,
                 locked: false,
-                status: 'pending',
-                customerId: senderId
+                status: 'active',
+                customerId: senderId,
+                expiresAt
               });
               await conversation.save();
             }
 
-            // Bot message logic
-            const inboundCount = await Message.countDocuments({ conversation: conversation._id, sender: senderId });
-            if (inboundCount === 0) {
-              await sendFacebookMessage(senderId, "Hi, welcome. How may I help you?");
-            } else if (inboundCount === 1) {
-              await sendFacebookMessage(senderId, "Would you like to chat with a live user? Yes / No");
-            } else if (messageText.trim().toLowerCase() === 'yes') {
-              await sendFacebookMessage(senderId, "Okay, connecting you to a live agent now...");
-              conversation.status = 'awaiting_agent';
-              await conversation.save();
-              if (req.io) {
-                req.io.emit('escalation_request', {
-                  conversationId: conversation._id,
-                  customerId: senderId,
-                  platform: 'facebook',
-                  message: messageText,
-                });
-              }
-            } else if (messageText.trim().toLowerCase() === 'no') {
-              await sendFacebookMessage(senderId, "Okay! Let me know if you need anything else.");
-            } else if (inboundCount >= 2 && conversation.status === 'pending') {
-              await sendFacebookMessage(senderId, "Please reply Yes or No if you want to chat with a live user.");
-            }
-
-            // Always record the message
+            // Save the message to the found or new conversation
             const savedMessage = await Message.create({
               platform: 'facebook',
               platformMessageId: event.message.mid,
@@ -145,15 +126,15 @@ exports.webhook = async (req, res) => {
               sender: senderId,
               content: messageText,
               timestamp: new Date(timestamp),
-              direction: 'inbound' // Added direction field
+              direction: 'inbound'
             });
 
-            // Update conversation lastMessage with the actual Message _id
+            // Update conversation lastMessage
             await Conversation.findByIdAndUpdate(
               conversation._id,
               {
-                lastMessage: savedMessage._id, // Use the saved message's ObjectId
-                unreadCount: conversation.unreadCount + 1
+                lastMessage: savedMessage._id,
+                unreadCount: 1
               }
             );
 
@@ -249,9 +230,19 @@ exports.claimConversation = async (req, res) => {
   }
 };
 
-// Placeholder: List Facebook conversations
+// List all conversations for admins, or only assigned for others
 exports.listConversations = async (req, res) => {
-  res.status(200).json({ status: 'success', message: 'listConversations not implemented yet' });
+  try {
+    let conversations;
+    if (req.user && req.user.role === 'admin') {
+      conversations = await Conversation.find({ platform: 'facebook' }).sort({ updatedAt: -1 });
+    } else {
+      conversations = await Conversation.find({ platform: 'facebook', agentId: req.user._id }).sort({ updatedAt: -1 });
+    }
+    res.json(conversations);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch conversations', details: error.message });
+  }
 };
 
 // Placeholder: Send a Facebook message
