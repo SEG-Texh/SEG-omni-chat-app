@@ -1,5 +1,6 @@
 const Conversation = require('../models/conversation');
 const Message = require('../models/message');
+const axios = require('axios');
 
 class FacebookController {
   // Webhook for receiving Facebook messages from customers
@@ -74,11 +75,22 @@ class FacebookController {
     }
   }
 
-  // Send outbound Facebook message (placeholder, to be implemented)
+  // Send outbound Facebook message using Graph API
   async sendMessage(recipientId, text) {
-    // Implement Facebook Graph API send logic here if needed
-    console.log(`[FB][Bot] Would send message to ${recipientId}: ${text}`);
-    return { status: 'ok' };
+    try {
+      await axios.post(
+        `https://graph.facebook.com/v17.0/me/messages?access_token=${process.env.FACEBOOK_PAGE_ACCESS_TOKEN}`,
+        {
+          recipient: { id: recipientId },
+          message: { text }
+        }
+      );
+      console.log(`[FB][Bot] Sent message to ${recipientId}: ${text}`);
+      return { status: 'ok' };
+    } catch (error) {
+      console.error('[FB][Bot] Failed to send message:', error?.response?.data || error.message || error);
+      throw error;
+    }
   }
 }
 

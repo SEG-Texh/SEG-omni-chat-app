@@ -4,6 +4,7 @@ const Conversation = require('../models/conversation');
 const Message = require('../models/message');
 const { auth, authorize } = require('../middleware/auth');
 const whatsappController = require('../controllers/whatsappController');
+const facebookController = require('../controllers/facebookController');
 
 // Create or get active conversation for a recipient
 router.post('/', auth, authorize('admin'), async (req, res) => {
@@ -114,6 +115,17 @@ router.post('/:id/messages', auth, authorize('admin'), async (req, res) => {
         await whatsappController.sendMessage(phoneNumber, text);
       } catch (err) {
         console.error('Failed to send WhatsApp message to customer:', err);
+      }
+    }
+    // Actually send Facebook message to customer
+    if ((platform || '').toLowerCase() === 'facebook') {
+      const conversation = await Conversation.findById(req.params.id);
+      const recipientId = conversation.customerId;
+      const text = content?.text || '';
+      try {
+        await facebookController.sendMessage(recipientId, text);
+      } catch (err) {
+        console.error('Failed to send Facebook message to customer:', err);
       }
     }
 
