@@ -124,7 +124,7 @@ exports.webhook = async (req, res) => {
               conversation.status = 'awaiting_agent';
               await conversation.save();
               if (req.io) {
-                req.io.emit('new_live_chat_request', {
+                req.io.emit('escalation_request', {
                   conversationId: conversation._id,
                   customerId: senderId,
                   platform: 'facebook',
