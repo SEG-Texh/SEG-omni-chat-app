@@ -215,6 +215,15 @@ function initializeSocket(token) {
     }
   });
 
+  // Listen for new conversation events (real-time)
+  socket.on('new_conversation', ({ conversation }) => {
+    if (conversation.platform === 'facebook') {
+      loadFacebookConversations();
+    } else if (conversation.platform === 'whatsapp') {
+      loadWhatsAppConversations();
+    }
+  });
+
   socket.on("disconnect", () => {
     console.log("🔌 Disconnected from socket")
   })

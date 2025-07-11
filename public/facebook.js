@@ -118,3 +118,22 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('submit', sendFacebookMessage);
   }
 });
+
+if (typeof socket === 'undefined') {
+  // If not using a global socket, create one
+  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  const socketUrl = `${protocol}://${window.location.host}`;
+  window.socket = io(socketUrl, {
+    auth: { token: currentUser.token },
+    transports: ['websocket'],
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000
+  });
+}
+
+(socket || window.socket).on('new_conversation', ({ conversation }) => {
+  if (conversation.platform === 'facebook') {
+    loadFacebookConversations();
+  }
+});
