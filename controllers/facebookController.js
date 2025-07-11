@@ -273,6 +273,18 @@ exports.sendMessage = async (req, res) => {
     }
     // Get the text to send
     const text = typeof content === 'string' ? content : content.text;
+    // Check if session is active and not expired
+    if (conversation.status !== 'active' || (conversation.expiresAt && conversation.expiresAt < new Date())) {
+      // Optionally, mark as ended if expired
+      if (conversation.expiresAt && conversation.expiresAt < new Date()) {
+        conversation.status = 'ended';
+        conversation.locked = false;
+        conversation.agentId = null;
+        conversation.expiresAt = null;
+        await conversation.save();
+      }
+      return res.status(403).json({ error: 'Session has expired or is not active.' });
+    }
     // Send the message to Facebook
     await sendFacebookMessage(recipientId, text);
     // Save the message to the database
