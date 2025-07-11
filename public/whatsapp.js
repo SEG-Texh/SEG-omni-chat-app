@@ -51,41 +51,6 @@ function setupWhatsAppSocket() {
       loadWhatsAppConversations();
     }
   });
-  
-  // Escalation notification for agents/supervisors
-  whatsappSocket.on('escalation_request', (data) => {
-    console.log('[WA][Client] Received escalation request:', data);
-    console.log('[WA][Client] Current user role:', currentUser?.role);
-    console.log('[WA][Client] isAgentOrSupervisor():', isAgentOrSupervisor());
-    console.log('[WA][Client] showEscalationNotification available:', typeof window.showEscalationNotification);
-    
-    if (!window.showEscalationNotification) {
-      console.error('[WA][Client] showEscalationNotification function not found');
-      return;
-    }
-    // Only show escalation notifications to agents, supervisors, and admins
-    if (!isAgentOrSupervisor()) {
-      console.log('[WA][Client] User is not agent/supervisor/admin, ignoring escalation');
-      return;
-    }
-    console.log('[WA][Client] Showing escalation notification');
-    try {
-      window.showEscalationNotification({
-        ...data,
-        onAccept: () => whatsappSocket.emit('accept_escalation', { conversationId: data.conversationId }),
-        onDecline: () => whatsappSocket.emit('decline_escalation', { conversationId: data.conversationId })
-      });
-      console.log('[WA][Client] Escalation notification displayed successfully');
-    } catch (error) {
-      console.error('[WA][Client] Error showing escalation notification:', error);
-    }
-  });
-  
-  // Remove escalation notification when session is claimed
-  whatsappSocket.on('session_claimed', ({ conversationId }) => {
-    const notif = document.getElementById('escalationNotification_' + conversationId);
-    if (notif) notif.remove();
-  });
 }
 
 function showWhatsAppPlaceholder() {

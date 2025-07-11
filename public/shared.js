@@ -186,3 +186,73 @@ function showMessage(elementId, type, text, duration = 3000) {
     }, duration)
   }
 }
+
+let globalSocket = null;
+
+function isAgentOrSupervisor() {
+  return currentUser && (currentUser.role === 'agent' || currentUser.role === 'supervisor' || currentUser.role === 'admin');
+}
+
+function initializeGlobalSocket() {
+  if (!currentUser || !currentUser.token || !isAgentOrSupervisor()) {
+    console.log('[GlobalSocket] Not initializing: user not authenticated or not agent/supervisor/admin');
+    return;
+  }
+  if (window.globalSocket && window.globalSocket.connected) {
+    console.log('[GlobalSocket] Already connected');
+    return;
+  }
+  if (!window.io) {
+    console.error('[GlobalSocket] socket.io client not loaded');
+    return;
+  }
+  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  const socketUrl = `${protocol}://${window.location.host}`;
+  console.log('[GlobalSocket] Connecting to', socketUrl);
+  window.globalSocket = io(socketUrl, {
+    auth: { userId: currentUser.id, token: currentUser.token },
+    transports: ['websocket'],
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000
+  });
+  window.globalSocket.on('connect', () => {
+    console.log('[GlobalSocket] Connected');
+  });
+  window.globalSocket.on('disconnect', () => {
+    console.log('[GlobalSocket] Disconnected');
+  });
+  window.globalSocket.on('connect_error', (err) => {
+    console.error('[GlobalSocket] Connection error:', err);
+  });
+  window.globalSocket.on('escalation_request', (data) => {
+    console.log('[GlobalSocket] Received escalation request:', data);
+    if (!window.showEscalationNotification) {
+      console.error('[GlobalSocket] showEscalationNotification function not found');
+      return;
+    }
+    if (!isAgentOrSupervisor()) {
+      console.log('[GlobalSocket] User is not agent/supervisor/admin, ignoring escalation');
+      return;
+    }
+    window.showEscalationNotification({
+      ...data,
+      onAccept: () => window.globalSocket.emit('accept_escalation', { conversationId: data.conversationId }),
+      onDecline: () => window.globalSocket.emit('decline_escalation', { conversationId: data.conversationId })
+    });
+  });
+  window.globalSocket.on('session_claimed', ({ conversationId }) => {
+    const notif = document.getElementById('escalationNotification_' + conversationId);
+    if (notif) notif.remove();
+  });
+}
+window.initializeGlobalSocket = initializeGlobalSocket;
+
+// After authentication, initialize global socket
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    if (currentUser) initializeGlobalSocket();
+  });
+} else {
+  if (currentUser) initializeGlobalSocket();
+}
