@@ -446,11 +446,14 @@ const FacebookChat = (() => {
     renderConversations(); // Update badges
   };
 
-  facebookSocket.on('facebook_escalation', (data) => {
-    if (data.conversationId === currentConversationId) {
-      showFacebookEscalationNotification(data.message);
-    }
-  });
+  // Only add this event listener if facebookSocket is initialized
+  if (facebookSocket) {
+    facebookSocket.on('facebook_escalation', (data) => {
+      if (data.conversationId === currentConversationId) {
+        showFacebookEscalationNotification(data.message);
+      }
+    });
+  }
 
   // Public Interface
   return {
