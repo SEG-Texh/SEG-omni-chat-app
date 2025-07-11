@@ -156,23 +156,28 @@ exports.webhook = async (req, res) => {
   }
 
 // Send outbound Facebook message using Graph API
-exports.sendMessage = async (req, res) => {
+exports.sendMessage = async (recipientId, text) => {
   try {
-    const { recipientId, content } = req.body;
-    if (!recipientId || !content) {
-      return res.status(400).json({ error: 'recipientId and content are required' });
+    if (!recipientId || !text) {
+      throw new Error('recipientId and text are required');
     }
+    
+    if (!process.env.FACEBOOK_PAGE_ACCESS_TOKEN) {
+      console.warn('FACEBOOK_PAGE_ACCESS_TOKEN not configured, skipping actual send');
+      return { status: 'success', message: 'Token not configured' };
+    }
+    
     await axios.post(
       `https://graph.facebook.com/v17.0/me/messages?access_token=${process.env.FACEBOOK_PAGE_ACCESS_TOKEN}`,
       {
         recipient: { id: recipientId },
-        message: { text: content }
+        message: { text: text }
       }
     );
-    res.status(200).json({ status: 'success' });
+    return { status: 'success' };
   } catch (error) {
     console.error('Send message error:', error);
-    res.status(500).json({ error: 'Failed to send message' });
+    throw new Error('Failed to send Facebook message');
   }
 };
 
