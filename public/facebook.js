@@ -133,70 +133,72 @@ const FacebookChat = (() => {
     if (window.FacebookChat) window.FacebookChat._socket = facebookSocket;
 
     // Socket Event Handlers
-    facebookSocket.on('connect', () => {
-      console.log('✅ Facebook socket connected');
-      facebookSocket.emit('joinFacebookRoom');
-    });
+    if (facebookSocket) {
+      facebookSocket.on('connect', () => {
+        console.log('✅ Facebook socket connected');
+        facebookSocket.emit('joinFacebookRoom');
+      });
 
-    facebookSocket.on('disconnect', () => {
-      console.log('⚠️ Facebook socket disconnected');
-    });
+      facebookSocket.on('disconnect', () => {
+        console.log('⚠️ Facebook socket disconnected');
+      });
 
-    facebookSocket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
-    });
+      facebookSocket.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+      });
 
-    facebookSocket.on('newMessage', handleNewMessage);
+      facebookSocket.on('newMessage', handleNewMessage);
 
-    // Facebook escalation notification event
-    facebookSocket.on('facebook_escalation', (data) => {
-      if (!data) return;
-      const { conversationId, message } = data;
-      if (conversationId === currentConversationId) {
-        showFacebookEscalationNotification(message);
-      }
-    });
+      // Facebook escalation notification event
+      facebookSocket.on('facebook_escalation', (data) => {
+        if (!data) return;
+        const { conversationId, message } = data;
+        if (conversationId === currentConversationId) {
+          showFacebookEscalationNotification(message);
+        }
+      });
 
-    // Facebook escalation notification event
-    facebookSocket.on('facebook_escalation', (data) => {
-      if (!data) return;
-      const { conversationId, message } = data;
-      if (conversationId === currentConversationId) {
-        showFacebookEscalationNotification(message);
-      }
-    });
+      // Facebook escalation notification event
+      facebookSocket.on('facebook_escalation', (data) => {
+        if (!data) return;
+        const { conversationId, message } = data;
+        if (conversationId === currentConversationId) {
+          showFacebookEscalationNotification(message);
+        }
+      });
 
-    // Hide escalation notification when switching conversations
-    window.addEventListener('facebook_switch_conversation', () => {
-      hideFacebookEscalationNotification();
-    });
+      // Hide escalation notification when switching conversations
+      window.addEventListener('facebook_switch_conversation', () => {
+        hideFacebookEscalationNotification();
+      });
 
-    // --- AGENT: Live chat events ---
-    // Handle new live chat request
-    facebookSocket.on('new_live_chat_request', (data) => {
-      // This is a basic placeholder. You may want to customize UI.
-      if (window.showAgentLiveChatRequest) {
-        window.showAgentLiveChatRequest(data);
-      } else {
-        alert('New live chat request! Conversation ID: ' + data.conversationId);
-      }
-    });
-    // Handle result of claim attempt
-    facebookSocket.on('claim_result', (data) => {
-      if (data.success) {
-        alert('You have claimed the session!');
-        // Optionally load the conversation UI for this session
-      } else {
-        alert(data.message || 'Failed to claim session.');
-      }
-    });
-    // Remove request from UI if claimed by another agent
-    facebookSocket.on('session_claimed', ({ conversationId }) => {
-      // Optionally remove/hide the request from the agent's UI
-      if (window.removeAgentLiveChatRequest) {
-        window.removeAgentLiveChatRequest(conversationId);
-      }
-    });
+      // --- AGENT: Live chat events ---
+      // Handle new live chat request
+      facebookSocket.on('new_live_chat_request', (data) => {
+        // This is a basic placeholder. You may want to customize UI.
+        if (window.showAgentLiveChatRequest) {
+          window.showAgentLiveChatRequest(data);
+        } else {
+          alert('New live chat request! Conversation ID: ' + data.conversationId);
+        }
+      });
+      // Handle result of claim attempt
+      facebookSocket.on('claim_result', (data) => {
+        if (data.success) {
+          alert('You have claimed the session!');
+          // Optionally load the conversation UI for this session
+        } else {
+          alert(data.message || 'Failed to claim session.');
+        }
+      });
+      // Remove request from UI if claimed by another agent
+      facebookSocket.on('session_claimed', ({ conversationId }) => {
+        // Optionally remove/hide the request from the agent's UI
+        if (window.removeAgentLiveChatRequest) {
+          window.removeAgentLiveChatRequest(conversationId);
+        }
+      });
+    }
   };
 
 
