@@ -345,7 +345,7 @@ async function loadFacebookConversations() {
 }
 
 // Select Facebook conversation
-function selectFacebookConversation(conversation) {
+function selectFacebookConversation(conversation, element = null) {
   currentFacebookConversationId = conversation._id
 
   // Find the Facebook participant
@@ -363,7 +363,9 @@ function selectFacebookConversation(conversation) {
   document.querySelectorAll(".conversation-item").forEach((item) => {
     item.classList.remove("active")
   })
-  event.currentTarget.classList.add("active")
+  if (element) {
+    element.classList.add("active")
+  }
 
   // Load messages and show chat interface
   loadFacebookMessages(conversation._id)
