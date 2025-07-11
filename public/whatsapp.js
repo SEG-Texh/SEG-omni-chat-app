@@ -1,9 +1,44 @@
 // WhatsApp admin chat logic
 let currentWhatsAppConversationId = null;
 let currentWhatsAppConversation = null;
+let whatsappSocket = null;
 
 function isAdmin() {
   return currentUser && currentUser.role === 'admin';
+}
+
+function setupWhatsAppSocket() {
+  if (!isAdmin()) return;
+  if (whatsappSocket) return;
+  // Use the current host for socket connection
+  let socketUrl;
+  if (window.location.hostname.includes('herokuapp.com')) {
+    socketUrl = window.location.protocol === 'https:'
+      ? 'wss://omnichatapp-5312a76969fb.herokuapp.com'
+      : 'ws://omnichatapp-5312a76969fb.herokuapp.com';
+  } else {
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    socketUrl = `${protocol}://${window.location.host}`;
+  }
+  whatsappSocket = io(socketUrl, {
+    auth: { token: currentUser.token },
+    transports: ['websocket'],
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000
+  });
+  whatsappSocket.on('connect', () => {
+    console.log('✅ WhatsApp socket connected');
+  });
+  whatsappSocket.on('disconnect', () => {
+    console.log('⚠️ WhatsApp socket disconnected');
+  });
+  whatsappSocket.on('new_conversation', ({ conversation }) => {
+    // Only reload if it's a WhatsApp conversation
+    if (conversation.platform === 'whatsapp') {
+      loadWhatsAppConversations();
+    }
+  });
 }
 
 function showWhatsAppPlaceholder() {
@@ -111,6 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
     showWhatsAppPlaceholder();
     return;
   }
+  setupWhatsAppSocket();
   loadWhatsAppConversations();
   // Message form submit
   const form = document.getElementById('whatsappMessageForm');

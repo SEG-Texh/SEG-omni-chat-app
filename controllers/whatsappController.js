@@ -49,6 +49,13 @@ class WhatsAppController {
           startTime: now,
           expiresAt
         });
+        // Emit real-time event for new conversation
+        try {
+          const io = require('../config/socket').getIO();
+          io.emit('new_conversation', { conversation });
+        } catch (e) {
+          console.error('[WA][Socket] Failed to emit new_conversation:', e);
+        }
       }
       // Save inbound message
       // Always set a unique platformMessageId for inbound messages
