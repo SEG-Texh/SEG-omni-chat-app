@@ -51,12 +51,30 @@ class WhatsAppController {
         });
       }
       // Save inbound message
+      // Always set a unique platformMessageId for inbound messages
+      let platformMessageId = null;
+      if (body.MessageSid) {
+        platformMessageId = body.MessageSid;
+      } else if (body.object && body.entry) {
+        // Try to extract from Meta payload if present
+        for (const entry of body.entry) {
+          for (const change of entry.changes) {
+            if (change.value.messages && change.value.messages[0]?.id) {
+              platformMessageId = change.value.messages[0].id;
+            }
+          }
+        }
+      }
+      if (!platformMessageId) {
+        platformMessageId = `wa_in_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      }
       const messageDoc = new Message({
         conversation: conversation._id,
         sender: phoneNumber,
         content: { text },
         platform: 'whatsapp',
-        direction: 'inbound'
+        direction: 'inbound',
+        platformMessageId
       });
       await messageDoc.save();
       // Optionally emit real-time event here if needed
