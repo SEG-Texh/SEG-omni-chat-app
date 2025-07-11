@@ -2,10 +2,10 @@ const express = require('express');
 const router = express.Router();
 const Conversation = require('../models/conversation');
 const Message = require('../models/message');
-const { auth } = require('../middleware/auth');
+const { auth, authorize } = require('../middleware/auth');
 
 // Get all conversations for a user
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, authorize('admin'), async (req, res) => {
   try {
     let filter = {};
     if (req.query.platform) {
@@ -28,7 +28,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Get messages in a conversation
-router.get('/:id/messages', auth, async (req, res) => {
+router.get('/:id/messages', auth, authorize('admin'), async (req, res) => {
   try {
     const platform = req.query.platform;
     const filter = { conversation: req.params.id };
@@ -44,7 +44,7 @@ router.get('/:id/messages', auth, async (req, res) => {
 });
 
 // Create new message in conversation
-router.post('/:id/messages', auth, async (req, res) => {
+router.post('/:id/messages', auth, authorize('admin'), async (req, res) => {
   try {
     const { content, platform } = req.body;
 
