@@ -150,11 +150,12 @@ function initializeSocket() {
       reconnectionAttempts: 5,
       reconnectionDelay: 1000
     });
+    
+    // Set up socket event listeners
+    window.socket.on('new_conversation', ({ conversation }) => {
+      if (conversation.platform === 'facebook') {
+        loadFacebookConversations();
+      }
+    });
   }
 }
-
-(socket || window.socket).on('new_conversation', ({ conversation }) => {
-  if (conversation.platform === 'facebook') {
-    loadFacebookConversations();
-  }
-});
