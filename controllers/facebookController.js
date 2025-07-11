@@ -271,8 +271,10 @@ exports.sendMessage = async (req, res) => {
     if (!recipientId) {
       return res.status(400).json({ error: 'Recipient not found for this conversation' });
     }
+    // Get the text to send
+    const text = typeof content === 'string' ? content : content.text;
     // Send the message to Facebook
-    await sendFacebookMessage(recipientId, content);
+    await sendFacebookMessage(recipientId, text);
     // Save the message to the database
     const messageDoc = await Message.create({
       conversation: conversation._id,
