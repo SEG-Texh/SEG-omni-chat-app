@@ -1,6 +1,4 @@
 const axios = require('axios');
-const Chat = require('../models/message');
-const mongoose = require('mongoose');
 const Conversation = require('../models/conversation');
 const Message = require('../models/message');
 const User = require('../models/user');
@@ -128,7 +126,6 @@ class WhatsAppController {
           // Emit escalation notification (to agents/supervisors only)
           try {
             const io = require('../config/socket').getIO();
-            const User = require('../models/user');
             const agents = await User.find({ role: { $in: ['agent', 'supervisor'] } });
             agents.forEach(agent => {
               io.to(agent._id.toString()).emit('escalation_request', {
