@@ -256,7 +256,42 @@ exports.listConversations = async (req, res) => {
 
 // Placeholder: Send a Facebook message
 exports.sendMessage = async (req, res) => {
-  res.status(200).json({ status: 'success', message: 'sendMessage not implemented yet' });
+  try {
+    const { conversationId, content } = req.body;
+    if (!conversationId || !content) {
+      return res.status(400).json({ error: 'conversationId and content are required' });
+    }
+    // Find the conversation
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+    // Get the Facebook recipient (customerId)
+    const recipientId = conversation.customerId;
+    if (!recipientId) {
+      return res.status(400).json({ error: 'Recipient not found for this conversation' });
+    }
+    // Send the message to Facebook
+    await sendFacebookMessage(recipientId, content);
+    // Save the message to the database
+    const messageDoc = await Message.create({
+      conversation: conversation._id,
+      sender: req.user?._id || 'agent', // Use agent's user ID if available
+      content,
+      platform: 'facebook',
+      direction: 'outbound',
+      timestamp: new Date()
+    });
+    // Update conversation lastMessage and unreadCount
+    await Conversation.findByIdAndUpdate(conversation._id, {
+      lastMessage: messageDoc._id,
+      $inc: { unreadCount: 1 }
+    });
+    res.status(200).json({ status: 'success', message: messageDoc });
+  } catch (error) {
+    console.error('Error sending Facebook message:', error);
+    res.status(500).json({ error: 'Failed to send Facebook message', details: error.message });
+  }
 };
 
 // Placeholder: End a Facebook conversation session
