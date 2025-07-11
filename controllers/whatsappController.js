@@ -66,6 +66,29 @@ class WhatsAppController {
       res.sendStatus(500);
     }
   }
+
+  // Send outbound WhatsApp message to customer using Twilio
+  async sendMessage(phoneNumber, text) {
+    try {
+      const accountSid = process.env.TWILIO_ACCOUNT_SID;
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
+      const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER.startsWith('whatsapp:')
+        ? process.env.TWILIO_WHATSAPP_NUMBER
+        : `whatsapp:+${process.env.TWILIO_WHATSAPP_NUMBER.replace(/[^\d]/g, '')}`;
+      const toNumber = phoneNumber.startsWith('whatsapp:') ? phoneNumber : `whatsapp:${phoneNumber}`;
+      const client = require('twilio')(accountSid, authToken);
+      const response = await client.messages.create({
+        from: fromNumber,
+        to: toNumber,
+        body: text
+      });
+      console.log('[WA][Twilio] Sent WhatsApp message to', phoneNumber, 'SID:', response.sid);
+      return response;
+    } catch (error) {
+      console.error('[WA][Twilio] Failed to send WhatsApp message:', error.message || error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new WhatsAppController();

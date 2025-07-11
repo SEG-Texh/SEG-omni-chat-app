@@ -3,6 +3,7 @@ const router = express.Router();
 const Conversation = require('../models/conversation');
 const Message = require('../models/message');
 const { auth, authorize } = require('../middleware/auth');
+const whatsappController = require('../controllers/whatsappController');
 
 // Create or get active conversation for a recipient
 router.post('/', auth, authorize('admin'), async (req, res) => {
@@ -103,6 +104,18 @@ router.post('/:id/messages', auth, authorize('admin'), async (req, res) => {
       req.params.id,
       { $addToSet: { participants: req.user._id }, lastMessage: savedMessage._id, $inc: { unreadCount: 1 } }
     );
+
+    // Actually send WhatsApp message to customer
+    if ((platform || '').toLowerCase() === 'whatsapp') {
+      const conversation = await Conversation.findById(req.params.id);
+      const phoneNumber = conversation.customerId;
+      const text = content?.text || '';
+      try {
+        await whatsappController.sendMessage(phoneNumber, text);
+      } catch (err) {
+        console.error('Failed to send WhatsApp message to customer:', err);
+      }
+    }
 
     res.status(201).json(savedMessage);
   } catch (error) {
