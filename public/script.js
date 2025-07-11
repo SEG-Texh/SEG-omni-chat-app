@@ -169,7 +169,7 @@ function initializeSocket(token) {
   console.log('Connecting to socket:', socketUrl);
   
   socket = io(socketUrl, {
-    auth: { token: token },
+    auth: { userId: currentUser.id, token: token },
     transports: ["websocket"],
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,

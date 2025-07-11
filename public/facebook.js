@@ -172,12 +172,27 @@ function initializeSocket() {
     // If not using a global socket, create one
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const socketUrl = `${protocol}://${window.location.host}`;
+    console.log('[FB][Client] Initializing socket connection to:', socketUrl);
+    console.log('[FB][Client] Current user token available:', !!currentUser.token);
+    
     window.socket = io(socketUrl, {
-      auth: { token: currentUser.token },
+      auth: { userId: currentUser.id, token: currentUser.token },
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000
+    });
+    
+    window.socket.on('connect', () => {
+      console.log('[FB][Client] Socket connected successfully');
+    });
+    
+    window.socket.on('disconnect', () => {
+      console.log('[FB][Client] Socket disconnected');
+    });
+    
+    window.socket.on('connect_error', (error) => {
+      console.error('[FB][Client] Socket connection error:', error);
     });
     
     // Set up socket event listeners
@@ -190,6 +205,10 @@ function initializeSocket() {
     // Escalation notification for agents/supervisors
     window.socket.on('escalation_request', (data) => {
       console.log('[FB][Client] Received escalation request:', data);
+      console.log('[FB][Client] Current user role:', currentUser?.role);
+      console.log('[FB][Client] isAgentOrSupervisor():', isAgentOrSupervisor());
+      console.log('[FB][Client] showEscalationNotification available:', typeof window.showEscalationNotification);
+      
       if (!window.showEscalationNotification) {
         console.error('[FB][Client] showEscalationNotification function not found');
         return;
@@ -200,11 +219,16 @@ function initializeSocket() {
         return;
       }
       console.log('[FB][Client] Showing escalation notification');
-      window.showEscalationNotification({
-        ...data,
-        onAccept: () => window.socket.emit('accept_escalation', { conversationId: data.conversationId }),
-        onDecline: () => window.socket.emit('decline_escalation', { conversationId: data.conversationId })
-      });
+      try {
+        window.showEscalationNotification({
+          ...data,
+          onAccept: () => window.socket.emit('accept_escalation', { conversationId: data.conversationId }),
+          onDecline: () => window.socket.emit('decline_escalation', { conversationId: data.conversationId })
+        });
+        console.log('[FB][Client] Escalation notification displayed successfully');
+      } catch (error) {
+        console.error('[FB][Client] Error showing escalation notification:', error);
+      }
     });
     
     // Remove escalation notification when session is claimed

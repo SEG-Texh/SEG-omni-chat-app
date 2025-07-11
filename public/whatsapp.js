@@ -26,18 +26,24 @@ function setupWhatsAppSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     socketUrl = `${protocol}://${window.location.host}`;
   }
+  console.log('[WA][Client] Initializing socket connection to:', socketUrl);
+  console.log('[WA][Client] Current user token available:', !!currentUser.token);
+  
   whatsappSocket = io(socketUrl, {
-    auth: { token: currentUser.token },
+    auth: { userId: currentUser.id, token: currentUser.token },
     transports: ['websocket'],
     reconnection: true,
     reconnectionAttempts: 5,
     reconnectionDelay: 1000
   });
   whatsappSocket.on('connect', () => {
-    console.log('✅ WhatsApp socket connected');
+    console.log('[WA][Client] Socket connected successfully');
   });
   whatsappSocket.on('disconnect', () => {
-    console.log('⚠️ WhatsApp socket disconnected');
+    console.log('[WA][Client] Socket disconnected');
+  });
+  whatsappSocket.on('connect_error', (error) => {
+    console.error('[WA][Client] Socket connection error:', error);
   });
   whatsappSocket.on('new_conversation', ({ conversation }) => {
     // Only reload if it's a WhatsApp conversation
@@ -49,6 +55,10 @@ function setupWhatsAppSocket() {
   // Escalation notification for agents/supervisors
   whatsappSocket.on('escalation_request', (data) => {
     console.log('[WA][Client] Received escalation request:', data);
+    console.log('[WA][Client] Current user role:', currentUser?.role);
+    console.log('[WA][Client] isAgentOrSupervisor():', isAgentOrSupervisor());
+    console.log('[WA][Client] showEscalationNotification available:', typeof window.showEscalationNotification);
+    
     if (!window.showEscalationNotification) {
       console.error('[WA][Client] showEscalationNotification function not found');
       return;
@@ -59,11 +69,16 @@ function setupWhatsAppSocket() {
       return;
     }
     console.log('[WA][Client] Showing escalation notification');
-    window.showEscalationNotification({
-      ...data,
-      onAccept: () => whatsappSocket.emit('accept_escalation', { conversationId: data.conversationId }),
-      onDecline: () => whatsappSocket.emit('decline_escalation', { conversationId: data.conversationId })
-    });
+    try {
+      window.showEscalationNotification({
+        ...data,
+        onAccept: () => whatsappSocket.emit('accept_escalation', { conversationId: data.conversationId }),
+        onDecline: () => whatsappSocket.emit('decline_escalation', { conversationId: data.conversationId })
+      });
+      console.log('[WA][Client] Escalation notification displayed successfully');
+    } catch (error) {
+      console.error('[WA][Client] Error showing escalation notification:', error);
+    }
   });
   
   // Remove escalation notification when session is claimed
