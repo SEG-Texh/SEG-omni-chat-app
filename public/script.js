@@ -491,11 +491,27 @@ async function sendFacebookMessage() {
   }
 
   try {
-    await fetch("/api/facebook/send", {
+    const response = await fetch("/api/facebook/send", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${currentUser.token}` },
       body: JSON.stringify({ conversationId: currentFacebookConversationId, content: { text: text } }),
     });
+    if (!response.ok) {
+      if (response.status === 403) {
+        // Session expired or not active
+        alert("Session expired. You can no longer send messages in this conversation.");
+        messageInput.disabled = true;
+        messageInput.placeholder = "Session expired. You can no longer send messages.";
+        // Optionally, disable the send button
+        const sendBtn = document.querySelector('button[type="submit"]');
+        if (sendBtn) sendBtn.disabled = true;
+        return;
+      } else {
+        const error = await response.json();
+        alert("Failed to send message: " + (error.error || response.status));
+        return;
+      }
+    }
     messageInput.value = ""
     // Reload messages
     loadFacebookMessages(currentFacebookConversationId)
