@@ -68,6 +68,13 @@ class WhatsAppController {
           platformMessageId: `wa_bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
         });
         await botMsg.save();
+        
+        // Actually send the message to customer via WhatsApp API
+        try {
+          await this.sendMessage(phoneNumber, 'Hi, welcome! How may I help?');
+        } catch (err) {
+          console.error('[WA][Webhook] Failed to send welcome message to customer:', err);
+        }
       }
       // Save inbound message
       // Always set a unique platformMessageId for inbound messages
@@ -109,6 +116,13 @@ class WhatsAppController {
           platformMessageId: `wa_bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
         });
         await botMsg2.save();
+        
+        // Actually send the message to customer via WhatsApp API
+        try {
+          await this.sendMessage(phoneNumber, 'Would you like to chat with a live person? Yes/No');
+        } catch (err) {
+          console.error('[WA][Webhook] Failed to send escalation question to customer:', err);
+        }
       } else if (customerMsgCount > 2) {
         // Check for escalation trigger
         const lastMsg = text.trim().toLowerCase();
@@ -123,6 +137,14 @@ class WhatsAppController {
             platformMessageId: `wa_bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
           });
           await botMsg3.save();
+          
+          // Actually send the message to customer via WhatsApp API
+          try {
+            await this.sendMessage(phoneNumber, 'Connecting you to a live agent...');
+          } catch (err) {
+            console.error('[WA][Webhook] Failed to send escalation message to customer:', err);
+          }
+          
           // Emit escalation notification (to agents/supervisors only)
           try {
             const io = require('../config/socket').getIO();
@@ -149,6 +171,13 @@ class WhatsAppController {
             platformMessageId: `wa_bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
           });
           await botMsg4.save();
+          
+          // Actually send the message to customer via WhatsApp API
+          try {
+            await this.sendMessage(phoneNumber, 'Okay, let me know if you need anything else!');
+          } catch (err) {
+            console.error('[WA][Webhook] Failed to send decline message to customer:', err);
+          }
         }
       }
       res.sendStatus(200);

@@ -64,6 +64,13 @@ exports.webhook = async (req, res) => {
           platformMessageId: `fb_bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
         });
         await botMsg.save();
+        
+        // Actually send the message to customer via Facebook API
+        try {
+          await exports.sendMessage(senderId, 'Hi, welcome! How may I help?');
+        } catch (err) {
+          console.error('[FB][Webhook] Failed to send welcome message to customer:', err);
+        }
       }
       // Save inbound message
       let platformMessageId = null;
@@ -105,6 +112,13 @@ exports.webhook = async (req, res) => {
           platformMessageId: `fb_bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
         });
         await botMsg2.save();
+        
+        // Actually send the message to customer via Facebook API
+        try {
+          await exports.sendMessage(senderId, 'Would you like to chat with a live person? Yes/No');
+        } catch (err) {
+          console.error('[FB][Webhook] Failed to send escalation question to customer:', err);
+        }
       } else if (customerMsgCount > 2) {
         // Check for escalation trigger
         const lastMsg = text.trim().toLowerCase();
@@ -119,6 +133,14 @@ exports.webhook = async (req, res) => {
             platformMessageId: `fb_bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
           });
           await botMsg3.save();
+          
+          // Actually send the message to customer via Facebook API
+          try {
+            await exports.sendMessage(senderId, 'Connecting you to a live agent...');
+          } catch (err) {
+            console.error('[FB][Webhook] Failed to send escalation message to customer:', err);
+          }
+          
           // Emit escalation notification (to agents/supervisors only)
           try {
             const io = require('../config/socket').getIO();
@@ -146,6 +168,13 @@ exports.webhook = async (req, res) => {
             platformMessageId: `fb_bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
           });
           await botMsg4.save();
+          
+          // Actually send the message to customer via Facebook API
+          try {
+            await exports.sendMessage(senderId, 'Okay, let me know if you need anything else!');
+          } catch (err) {
+            console.error('[FB][Webhook] Failed to send decline message to customer:', err);
+          }
         }
       }
       res.sendStatus(200);
