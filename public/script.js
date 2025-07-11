@@ -377,7 +377,7 @@ async function loadFacebookMessages(conversationId) {
   if (!currentUser?.token) return
 
   try {
-    const response = await fetch(`/api/facebook/conversations/${conversationId}/messages`, {
+    const response = await fetch(`/api/facebook/messages/${conversationId}`, {
       headers: { Authorization: `Bearer ${currentUser.token}` },
     })
 
