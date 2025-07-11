@@ -9,7 +9,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
 // Models
-const User = require('./models/User');
+const User = require('./models/user');
 const UserStats = require('./models/userStats');
 const Conversation = require('./models/conversation');
 const Message = require('./models/message');

@@ -2,7 +2,7 @@
 // SERVER/ROUTES/USERS.JS
 // ============================================================================
 const express = require('express');
-const User = require('../models/User');
+const User = require('../models/user');
 const { auth, authorize } = require('../middleware/auth');
 
 const router = express.Router();

@@ -7,7 +7,7 @@ const Message = require('../models/message'); // Add this line
 const Conversation = require('../models/conversation');
 
 // Users count endpoint (already present)
-const User = require('../models/User');
+const User = require('../models/user');
 router.get('/users/count', async (req, res) => {
   try {
     const count = await User.countDocuments({ type: 'internal' });
