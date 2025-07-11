@@ -3,6 +3,7 @@ const Chat = require('../models/message');
 const mongoose = require('mongoose');
 const Conversation = require('../models/conversation');
 const Message = require('../models/message');
+const User = require('../models/user');
 
 class WhatsAppController {
   // Webhook for receiving WhatsApp messages from customers
@@ -29,6 +30,9 @@ class WhatsAppController {
       if (!phoneNumber || !text) {
         return res.status(400).json({ error: 'Invalid WhatsApp webhook payload' });
       }
+      // Find SEGbot user
+      const segbot = await User.findOne({ role: 'bot', name: '🤖 SEGbot' });
+      if (!segbot) throw new Error('SEGbot user not found');
       // Check for active conversation
       let conversation = await Conversation.findOne({
         customerId: phoneNumber,
@@ -56,6 +60,16 @@ class WhatsAppController {
         } catch (e) {
           console.error('[WA][Socket] Failed to emit new_conversation:', e);
         }
+        // Send bot welcome message
+        const botMsg = new Message({
+          conversation: conversation._id,
+          sender: segbot._id,
+          content: { text: 'Hi, welcome! How may I help?' },
+          platform: 'whatsapp',
+          direction: 'outbound',
+          platformMessageId: `wa_bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        });
+        await botMsg.save();
       }
       // Save inbound message
       // Always set a unique platformMessageId for inbound messages
@@ -84,7 +98,62 @@ class WhatsAppController {
         platformMessageId
       });
       await messageDoc.save();
-      // Optionally emit real-time event here if needed
+      // Bot logic: count customer messages in this conversation
+      const customerMsgCount = await Message.countDocuments({ conversation: conversation._id, sender: phoneNumber });
+      if (customerMsgCount === 2) {
+        // Second message from customer: ask about live agent
+        const botMsg2 = new Message({
+          conversation: conversation._id,
+          sender: segbot._id,
+          content: { text: 'Would you like to chat with a live person? Yes/No' },
+          platform: 'whatsapp',
+          direction: 'outbound',
+          platformMessageId: `wa_bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        });
+        await botMsg2.save();
+      } else if (customerMsgCount > 2) {
+        // Check for escalation trigger
+        const lastMsg = text.trim().toLowerCase();
+        if (lastMsg === 'yes') {
+          // Escalate: send bot message and notify agents/supervisors
+          const botMsg3 = new Message({
+            conversation: conversation._id,
+            sender: segbot._id,
+            content: { text: 'Connecting you to a live agent...' },
+            platform: 'whatsapp',
+            direction: 'outbound',
+            platformMessageId: `wa_bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+          });
+          await botMsg3.save();
+          // Emit escalation notification (to agents/supervisors only)
+          try {
+            const io = require('../config/socket').getIO();
+            const User = require('../models/user');
+            const agents = await User.find({ role: { $in: ['agent', 'supervisor'] } });
+            agents.forEach(agent => {
+              io.to(agent._id.toString()).emit('escalation_request', {
+                conversationId: conversation._id,
+                customerId: phoneNumber,
+                platform: 'whatsapp',
+                message: text
+              });
+            });
+          } catch (e) {
+            console.error('[WA][Socket] Failed to emit escalation_request:', e);
+          }
+        } else if (lastMsg === 'no') {
+          // Customer declined escalation
+          const botMsg4 = new Message({
+            conversation: conversation._id,
+            sender: segbot._id,
+            content: { text: 'Okay, let me know if you need anything else!' },
+            platform: 'whatsapp',
+            direction: 'outbound',
+            platformMessageId: `wa_bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+          });
+          await botMsg4.save();
+        }
+      }
       res.sendStatus(200);
     } catch (error) {
       console.error('[WA][Webhook] Error handling WhatsApp message:', error);

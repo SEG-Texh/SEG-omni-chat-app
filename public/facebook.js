@@ -71,10 +71,15 @@ async function loadFacebookMessages(conversationId) {
     }
     list.innerHTML = '';
     messages.forEach(msg => {
-      const isMine = msg.direction === 'outbound';
+      const isMine = msg.direction === 'outbound' && (msg.sender?._id === currentUser._id || msg.sender?._id === currentUser.id);
+      const isBot = msg.sender?._id === SEG_BOT_ID || msg.sender === SEG_BOT_ID;
       const bubble = document.createElement('div');
       bubble.className = 'chat-bubble facebook ' + (isMine ? 'sent' : 'received');
-      bubble.innerHTML = `<div class="bubble-content">${msg.content?.text || msg.text || ''}</div><div class="bubble-meta">${msg.createdAt ? new Date(msg.createdAt).toLocaleString() : ''}</div>`;
+      bubble.innerHTML = `
+        ${isBot ? '<span title="SEGbot" style="margin-right:6px;">🤖 <b>SEGbot</b>:</span>' : ''}
+        <div class="bubble-content">${msg.content?.text || msg.text || ''}</div>
+        <div class="bubble-meta">${msg.createdAt ? new Date(msg.createdAt).toLocaleString() : ''}</div>
+      `;
       list.appendChild(bubble);
     });
     list.scrollTop = list.scrollHeight;
