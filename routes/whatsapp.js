@@ -1,41 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const whatsappController = require('../controllers/whatsappController');
-const { auth, authorize } = require('../middleware/auth');
 
-// Webhook verification
-router.get('/webhook', whatsappController.verifyWebhook.bind(whatsappController));
-
-// Webhook for receiving messages
+// Webhook for receiving WhatsApp messages from customers
 router.post('/webhook', whatsappController.handleMessage.bind(whatsappController));
-
-// Send text message
-router.post('/send-message', auth, authorize('admin'), async (req, res) => {
-  try {
-    const { phoneNumber, message } = req.body;
-    const result = await whatsappController.sendMessage(phoneNumber, message);
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Send template message
-router.post('/send-template', auth, authorize('admin'), async (req, res) => {
-  try {
-    const { phoneNumber, templateName, languageCode } = req.body;
-    const result = await whatsappController.sendTemplateMessage(
-      phoneNumber, 
-      templateName, 
-      languageCode
-    );
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// End WhatsApp conversation session
-router.post('/conversation/:id/end', auth, authorize('admin'), whatsappController.endSession.bind(whatsappController));
 
 module.exports = router;

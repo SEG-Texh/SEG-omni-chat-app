@@ -4,6 +4,41 @@ const Conversation = require('../models/conversation');
 const Message = require('../models/message');
 const { auth, authorize } = require('../middleware/auth');
 
+// Create or get active conversation for a recipient
+router.post('/', auth, authorize('admin'), async (req, res) => {
+  try {
+    const { customerId, platform } = req.body;
+    if (!customerId) {
+      return res.status(400).json({ error: 'customerId is required' });
+    }
+    // Find active conversation for this customer
+    let conversation = await Conversation.findOne({
+      customerId,
+      status: 'active',
+      expiresAt: { $gt: new Date() },
+      ...(platform ? { platform } : {})
+    });
+    if (conversation) {
+      return res.json(conversation);
+    }
+    // Create new conversation
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 35 * 60 * 1000);
+    conversation = await Conversation.create({
+      platform: platform || 'whatsapp',
+      platformConversationId: `${customerId}_${Date.now()}`,
+      customerId,
+      participants: [customerId],
+      status: 'active',
+      startTime: now,
+      expiresAt
+    });
+    res.status(201).json(conversation);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get all conversations for a user
 router.get('/', auth, authorize('admin'), async (req, res) => {
   try {
