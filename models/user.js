@@ -49,7 +49,7 @@ const userSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['internal', 'platform'],
+    enum: ['internal', 'platform', 'bot'],
     default: 'internal'
   },
   profilePic: String,
