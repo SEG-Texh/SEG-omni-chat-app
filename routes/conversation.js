@@ -84,10 +84,12 @@ router.get('/:id/messages', auth, authorize('admin'), async (req, res) => {
 router.post('/:id/messages', auth, authorize('admin'), async (req, res) => {
   try {
     const { content, platform } = req.body;
-    // Always set a unique platformMessageId for WhatsApp
+    // Always set a unique platformMessageId for WhatsApp and Facebook
     let platformMessageId = undefined;
     if ((platform || '').toLowerCase() === 'whatsapp') {
       platformMessageId = `wa_out_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    } else if ((platform || '').toLowerCase() === 'facebook') {
+      platformMessageId = `fb_out_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
     const message = new Message({
       conversation: req.params.id,
