@@ -357,13 +357,11 @@ async function sendWhatsAppMessage() {
   }
 
   try {
-    const response = await apiRequest("/api/messages", {
+    const response = await apiRequest(`/api/conversation/${currentWhatsAppConversationId}/messages`, {
       method: "POST",
       body: JSON.stringify({
-        conversationId: currentWhatsAppConversationId,
         content: { text: text },
-        platform: "whatsapp",
-        to: currentWhatsAppNumber,
+        platform: "whatsapp"
       }),
     })
 
@@ -377,6 +375,11 @@ async function sendWhatsAppMessage() {
         if (conversation) showWhatsAppChatInterface(conversation);
       }
     } else {
+      if (response.status === 403) {
+        showMessage('whatsappMessageStatus', 'error', 'You do not have permission to send messages. Only admins can send messages.');
+        // Do NOT close the chat interface or revert to placeholder
+        return;
+      }
       const error = await response.json()
       alert("Failed to send message: " + (error.error || response.status))
     }
