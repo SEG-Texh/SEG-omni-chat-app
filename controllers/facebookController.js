@@ -146,7 +146,10 @@ exports.webhook = async (req, res) => {
             const io = require('../config/socket').getIO();
             const User = require('../models/user');
             const agents = await User.find({ role: { $in: ['agent', 'supervisor'] } });
+            console.log('[FB][Escalation] Found agents/supervisors:', agents.map(a => ({ id: a._id, name: a.name, role: a.role })));
+            
             agents.forEach(agent => {
+              console.log('[FB][Escalation] Sending notification to agent:', agent._id.toString());
               io.to(agent._id.toString()).emit('escalation_request', {
                 conversationId: conversation._id,
                 customerId: senderId,

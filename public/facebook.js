@@ -6,6 +6,10 @@ function isAdmin() {
   return currentUser && currentUser.role === 'admin';
 }
 
+function isAgentOrSupervisor() {
+  return currentUser && (currentUser.role === 'agent' || currentUser.role === 'supervisor' || currentUser.role === 'admin');
+}
+
 function showFacebookPlaceholder() {
   document.getElementById('facebookChatPlaceholder').style.display = 'flex';
   document.getElementById('facebookChatStructured').classList.add('hidden');
@@ -139,6 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const checkAuthAndInit = () => {
     if (currentUser) {
       // Authentication check completed
+      console.log('[FB][Client] Current user:', { id: currentUser.id, name: currentUser.name, role: currentUser.role });
       initializeSocket();
       
       if (!isAdmin()) {
@@ -180,6 +185,32 @@ function initializeSocket() {
       if (conversation.platform === 'facebook') {
         loadFacebookConversations();
       }
+    });
+    
+    // Escalation notification for agents/supervisors
+    window.socket.on('escalation_request', (data) => {
+      console.log('[FB][Client] Received escalation request:', data);
+      if (!window.showEscalationNotification) {
+        console.error('[FB][Client] showEscalationNotification function not found');
+        return;
+      }
+      // Only show escalation notifications to agents, supervisors, and admins
+      if (!isAgentOrSupervisor()) {
+        console.log('[FB][Client] User is not agent/supervisor/admin, ignoring escalation');
+        return;
+      }
+      console.log('[FB][Client] Showing escalation notification');
+      window.showEscalationNotification({
+        ...data,
+        onAccept: () => window.socket.emit('accept_escalation', { conversationId: data.conversationId }),
+        onDecline: () => window.socket.emit('decline_escalation', { conversationId: data.conversationId })
+      });
+    });
+    
+    // Remove escalation notification when session is claimed
+    window.socket.on('session_claimed', ({ conversationId }) => {
+      const notif = document.getElementById('escalationNotification_' + conversationId);
+      if (notif) notif.remove();
     });
   }
 }

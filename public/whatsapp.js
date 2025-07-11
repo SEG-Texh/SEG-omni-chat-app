@@ -7,6 +7,10 @@ function isAdmin() {
   return currentUser && currentUser.role === 'admin';
 }
 
+function isAgentOrSupervisor() {
+  return currentUser && (currentUser.role === 'agent' || currentUser.role === 'supervisor' || currentUser.role === 'admin');
+}
+
 function setupWhatsAppSocket() {
   if (!isAdmin()) return;
   if (whatsappSocket) return;
@@ -40,6 +44,32 @@ function setupWhatsAppSocket() {
     if (conversation.platform === 'whatsapp') {
       loadWhatsAppConversations();
     }
+  });
+  
+  // Escalation notification for agents/supervisors
+  whatsappSocket.on('escalation_request', (data) => {
+    console.log('[WA][Client] Received escalation request:', data);
+    if (!window.showEscalationNotification) {
+      console.error('[WA][Client] showEscalationNotification function not found');
+      return;
+    }
+    // Only show escalation notifications to agents, supervisors, and admins
+    if (!isAgentOrSupervisor()) {
+      console.log('[WA][Client] User is not agent/supervisor/admin, ignoring escalation');
+      return;
+    }
+    console.log('[WA][Client] Showing escalation notification');
+    window.showEscalationNotification({
+      ...data,
+      onAccept: () => whatsappSocket.emit('accept_escalation', { conversationId: data.conversationId }),
+      onDecline: () => whatsappSocket.emit('decline_escalation', { conversationId: data.conversationId })
+    });
+  });
+  
+  // Remove escalation notification when session is claimed
+  whatsappSocket.on('session_claimed', ({ conversationId }) => {
+    const notif = document.getElementById('escalationNotification_' + conversationId);
+    if (notif) notif.remove();
   });
 }
 
@@ -152,6 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const checkAuthAndInit = () => {
     if (currentUser) {
       // Authentication check completed
+      console.log('[WA][Client] Current user:', { id: currentUser.id, name: currentUser.name, role: currentUser.role });
       if (!isAdmin()) {
         document.getElementById('whatsappConversationsList').innerHTML = '<div class="p-4 text-center text-red-500">Only admins can view WhatsApp conversations.</div>';
         showWhatsAppPlaceholder();

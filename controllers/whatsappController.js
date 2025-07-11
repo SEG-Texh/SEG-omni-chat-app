@@ -149,7 +149,10 @@ class WhatsAppController {
           try {
             const io = require('../config/socket').getIO();
             const agents = await User.find({ role: { $in: ['agent', 'supervisor'] } });
+            console.log('[WA][Escalation] Found agents/supervisors:', agents.map(a => ({ id: a._id, name: a.name, role: a.role })));
+            
             agents.forEach(agent => {
+              console.log('[WA][Escalation] Sending notification to agent:', agent._id.toString());
               io.to(agent._id.toString()).emit('escalation_request', {
                 conversationId: conversation._id,
                 customerId: phoneNumber,
