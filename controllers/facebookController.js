@@ -91,6 +91,7 @@ exports.webhook = async (req, res) => {
           for (const event of entry.messaging) {
             if (!event.message || !event.message.text) continue;
             const senderId = event.sender.id;
+            console.log('[FB][DEBUG] Webhook senderId:', senderId);
             const messageText = event.message.text;
             const timestamp = event.timestamp;
 
@@ -259,6 +260,7 @@ exports.sendMessage = async (req, res) => {
     }
     // Get the Facebook recipient (customerId)
     const recipientId = conversation.customerId;
+    console.log('[FB][DEBUG] Sending to recipientId:', recipientId, 'for conversation:', conversation._id);
     if (!recipientId) {
       return res.status(400).json({ error: 'Recipient not found for this conversation' });
     }
