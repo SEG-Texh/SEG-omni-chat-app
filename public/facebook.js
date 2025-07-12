@@ -98,7 +98,21 @@ async function loadFacebookMessages(conversationId) {
     
     list.innerHTML = '';
     messages.forEach(msg => {
-      const isMine = msg.direction === 'outbound' && (msg.sender?._id === currentUser._id || msg.sender?._id === currentUser.id);
+      console.log('Message data:', {
+        direction: msg.direction,
+        sender: msg.sender,
+        currentUser: { id: currentUser.id, _id: currentUser._id },
+        content: msg.content
+      });
+      
+      const isMine = msg.direction === 'outbound' && (
+        msg.sender?._id === currentUser._id || 
+        msg.sender?._id === currentUser.id ||
+        msg.sender === currentUser._id ||
+        msg.sender === currentUser.id
+      );
+      console.log('Is mine:', isMine, 'Direction:', msg.direction, 'Sender ID:', msg.sender?._id, 'Current user ID:', currentUser.id);
+      
       const isBot = msg.sender?.name === 'SEGbot' || msg.sender?.role === 'bot';
       const bubble = document.createElement('div');
       bubble.className = 'chat-bubble facebook ' + (isMine ? 'sent' : 'received');
