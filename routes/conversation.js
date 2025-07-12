@@ -42,15 +42,19 @@ router.post('/', auth, authorize('admin'), async (req, res) => {
 });
 
 // Get all conversations for a user
-router.get('/', auth, authorize('admin'), async (req, res) => {
+router.get('/', auth, authorize('admin', 'supervisor', 'agent'), async (req, res) => {
   try {
     let filter = {};
     if (req.query.platform) {
       filter.platform = req.query.platform;
     }
     
-    // Show all conversations initially, not just those where user is a participant
-    // This allows users to see all incoming messages before they reply
+    // For admins: show all conversations
+    // For agents/supervisors: only show conversations they have claimed
+    if (req.user.role !== 'admin') {
+      filter.agentId = req.user._id;
+    }
+    
     console.log('Conversation filter:', filter);
     const conversations = await Conversation.find(filter)
       .populate('participants', 'name email avatar')
@@ -65,8 +69,16 @@ router.get('/', auth, authorize('admin'), async (req, res) => {
 });
 
 // Get messages in a conversation
-router.get('/:id/messages', auth, authorize('admin'), async (req, res) => {
+router.get('/:id/messages', auth, authorize('admin', 'supervisor', 'agent'), async (req, res) => {
   try {
+    // For agents/supervisors: verify they have claimed this conversation
+    if (req.user.role !== 'admin') {
+      const conversation = await Conversation.findById(req.params.id);
+      if (!conversation || !conversation.agentId || !conversation.agentId.equals(req.user._id)) {
+        return res.status(403).json({ error: 'Access denied. You can only view messages for conversations you have claimed.' });
+      }
+    }
+    
     const platform = req.query.platform;
     const filter = { conversation: req.params.id };
     if (platform) filter.platform = platform;
@@ -81,8 +93,16 @@ router.get('/:id/messages', auth, authorize('admin'), async (req, res) => {
 });
 
 // Create new message in conversation
-router.post('/:id/messages', auth, authorize('admin'), async (req, res) => {
+router.post('/:id/messages', auth, authorize('admin', 'supervisor', 'agent'), async (req, res) => {
   try {
+    // For agents/supervisors: verify they have claimed this conversation
+    if (req.user.role !== 'admin') {
+      const conversation = await Conversation.findById(req.params.id);
+      if (!conversation || !conversation.agentId || !conversation.agentId.equals(req.user._id)) {
+        return res.status(403).json({ error: 'Access denied. You can only send messages to conversations you have claimed.' });
+      }
+    }
+    
     const { content, platform } = req.body;
     // Always set a unique platformMessageId for WhatsApp and Facebook
     let platformMessageId = undefined;
