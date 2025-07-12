@@ -207,11 +207,11 @@ router.post('/:id/end', auth, authorize('admin', 'supervisor', 'agent'), async (
       }
     }
     
-    // Update conversation status to ended
+    // Update conversation status to inactive
     const updatedConversation = await Conversation.findByIdAndUpdate(
       req.params.id,
       { 
-        status: 'ended',
+        status: 'inactive',
         endTime: new Date(),
         agentId: null // Remove agent assignment
       },
@@ -223,7 +223,7 @@ router.post('/:id/end', auth, authorize('admin', 'supervisor', 'agent'), async (
     if (io) {
       io.to(req.params.id).emit('session_ended', {
         conversationId: req.params.id,
-        status: 'ended'
+        status: 'inactive'
       });
     }
     

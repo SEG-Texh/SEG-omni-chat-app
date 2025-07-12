@@ -31,6 +31,13 @@ function showWhatsAppChat(conversation) {
   } else {
     form.classList.add('hidden');
   }
+  // Show/hide end session button
+  const endSessionButton = document.getElementById('whatsappEndSessionButton');
+  if (isAdmin() && conversation.status === 'active') {
+    endSessionButton.classList.remove('hidden');
+  } else {
+    endSessionButton.classList.add('hidden');
+  }
   // Load messages
   loadWhatsAppMessages(conversation._id);
 }
@@ -184,14 +191,17 @@ async function endWhatsAppSession() {
     
     showMessage('whatsappMessageStatus', 'success', 'Session ended successfully');
     
-    // Clear current conversation
-    currentWhatsAppConversationId = null;
-    currentWhatsAppConversation = null;
+    // Update current conversation status
+    if (currentWhatsAppConversation) {
+      currentWhatsAppConversation.status = 'inactive';
+      currentWhatsAppConversation.endTime = new Date();
+    }
     
-    // Show placeholder
-    showWhatsAppPlaceholder();
+    // Update UI to reflect inactive status
+    document.getElementById('whatsappChatSubtitle').textContent = 'Inactive';
+    document.getElementById('whatsappEndSessionButton').classList.add('hidden');
     
-    // Reload conversations list
+    // Reload conversations list to update status
     loadWhatsAppConversations();
     
   } catch (e) {

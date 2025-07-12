@@ -85,12 +85,17 @@
                         <!-- Structured chat area, initially hidden -->
                         <div id="facebookChatStructured" class="flex-1 flex flex-col hidden">
                             <!-- Chat Header -->
-                            <div class="px-6 py-4 border-b border-slate-200 flex items-center gap-4 bg-white">
-                                <div class="w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center text-xl">🔵</div>
-                                <div>
-                                    <div id="facebookChatTitle" class="font-semibold text-lg">Contact Name</div>
-                                    <div id="facebookChatSubtitle" class="text-xs text-slate-500">Online</div>
+                            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-white">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center text-xl">🔵</div>
+                                    <div>
+                                        <div id="facebookChatTitle" class="font-semibold text-lg">Contact Name</div>
+                                        <div id="facebookChatSubtitle" class="text-xs text-slate-500">Online</div>
+                                    </div>
                                 </div>
+                                <button id="facebookEndSessionButton" type="button" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold transition hidden">
+                                    End Session
+                                </button>
                             </div>
                             <!-- Messages List -->
                             <div id="facebookMessagesList" class="flex-1 overflow-y-auto px-6 py-4 space-y-3 bg-blue-50">
@@ -101,9 +106,6 @@
                                 <input id="facebookMessageInput" type="text" placeholder="Type a message..." class="flex-1 px-4 py-2 rounded-full border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" autocomplete="off">
                                 <button id="facebookSendButton" type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-full font-semibold transition">
                                     Send
-                                </button>
-                                <button id="facebookEndSessionButton" type="button" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full font-semibold transition">
-                                    End Session
                                 </button>
                             </form>
                             <div id="facebookMessageStatus" class="hidden"></div>

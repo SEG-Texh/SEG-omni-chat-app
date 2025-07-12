@@ -30,6 +30,13 @@ function showFacebookChat(conversation) {
   } else {
     form.classList.add('hidden');
   }
+  // Show/hide end session button
+  const endSessionButton = document.getElementById('facebookEndSessionButton');
+  if (isAgentOrSupervisor() && conversation.status === 'active') {
+    endSessionButton.classList.remove('hidden');
+  } else {
+    endSessionButton.classList.add('hidden');
+  }
   // Load messages
   loadFacebookMessages(conversation._id);
 }
@@ -208,14 +215,17 @@ async function endFacebookSession() {
     
     showMessage('facebookMessageStatus', 'success', 'Session ended successfully');
     
-    // Clear current conversation
-    currentFacebookConversationId = null;
-    currentFacebookConversation = null;
+    // Update current conversation status
+    if (currentFacebookConversation) {
+      currentFacebookConversation.status = 'inactive';
+      currentFacebookConversation.endTime = new Date();
+    }
     
-    // Show placeholder
-    showFacebookPlaceholder();
+    // Update UI to reflect inactive status
+    document.getElementById('facebookChatSubtitle').textContent = 'Inactive';
+    document.getElementById('facebookEndSessionButton').classList.add('hidden');
     
-    // Reload conversations list
+    // Reload conversations list to update status
     loadFacebookConversations();
     
   } catch (e) {

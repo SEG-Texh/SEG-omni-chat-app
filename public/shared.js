@@ -259,20 +259,24 @@ function initializeNotificationListeners(socket) {
   socket.on('session_ended', (data) => {
     console.log('[Socket] Session ended:', data);
     if (data.conversationId) {
-      // Remove conversation from lists if it's ended
+      // Update conversation status in lists
       const facebookList = document.getElementById('facebookConversationsList');
       const whatsappList = document.getElementById('whatsappConversationsList');
       
-      const removeFromList = (list) => {
+      const updateList = (list) => {
         if (!list) return;
         const conversationItem = list.querySelector(`[data-conversation-id="${data.conversationId}"]`);
         if (conversationItem) {
-          conversationItem.remove();
+          // Update the conversation item to show inactive status
+          const content = conversationItem.querySelector('.flex-1');
+          if (content) {
+            content.innerHTML += ' <span class="text-xs text-slate-500">(Inactive)</span>';
+          }
         }
       };
       
-      removeFromList(facebookList);
-      removeFromList(whatsappList);
+      updateList(facebookList);
+      updateList(whatsappList);
     }
   });
 }
