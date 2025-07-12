@@ -237,6 +237,7 @@ io.on('connection', async (socket) => {
   connectedUsers.set(socket.userId, { socketId: socket.id, user: socket.user });
   await User.findByIdAndUpdate(socket.userId, { isOnline: true });
     socket.join(socket.userId);
+    console.log('Socket joined room:', socket.userId, 'Socket ID:', socket.id);
 
     console.log(`🟢 User connected: ${socket.user && socket.user.name ? socket.user.name : 'Unknown'}`);
 
