@@ -23,9 +23,9 @@ function showFacebookChat(conversation) {
   // Header
   document.getElementById('facebookChatTitle').textContent = conversation.participants?.[0] || 'Contact';
   document.getElementById('facebookChatSubtitle').textContent = (conversation.status === 'active' && conversation.expiresAt && new Date(conversation.expiresAt) > new Date()) ? 'Active' : 'Inactive';
-  // Show/hide input for admin
+  // Show/hide input for agents, supervisors, and admins
   const form = document.getElementById('facebookMessageForm');
-  if (isAdmin()) {
+  if (isAgentOrSupervisor()) {
     form.classList.remove('hidden');
   } else {
     form.classList.add('hidden');
@@ -145,8 +145,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Authentication check completed
       console.log('[FB][Client] Current user:', { id: currentUser.id, name: currentUser.name, role: currentUser.role });
       
-      if (!isAdmin()) {
-        document.getElementById('facebookConversationsList').innerHTML = '<div class="p-4 text-center text-red-500">Only admins can view Facebook conversations.</div>';
+      if (!isAgentOrSupervisor()) {
+        document.getElementById('facebookConversationsList').innerHTML = '<div class="p-4 text-center text-red-500">Only agents, supervisors, and admins can view Facebook conversations.</div>';
         showFacebookPlaceholder();
         return;
       }
