@@ -859,6 +859,10 @@ body {
   border-bottom: 1px solid var(--border-color);
   cursor: pointer;
   transition: background-color 0.2s;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .conversation-item:hover {
@@ -868,6 +872,27 @@ body {
 .conversation-item.active {
   background-color: #e0f2fe;
   border-left: 4px solid var(--primary-color);
+}
+
+.conversation-item.unread {
+  background-color: #fef3c7;
+  border-left: 4px solid #f59e0b;
+}
+
+.notification-badge {
+  background: #ef4444;
+  color: white;
+  border-radius: 50%;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  min-width: 1.5rem;
+  text-align: center;
+  display: inline-block;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
 }
 
 /* CHAT BUBBLES */

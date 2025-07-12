@@ -127,6 +127,16 @@ router.post('/:id/messages', auth, authorize('admin', 'supervisor', 'agent'), as
       req.params.id,
       { $addToSet: { participants: req.user._id }, lastMessage: savedMessage._id, $inc: { unreadCount: 1 } }
     );
+    
+    // Emit socket event for new message notification
+    const io = req.app.get('io');
+    if (io) {
+      io.to(req.params.id).emit('new_message', {
+        conversationId: req.params.id,
+        message: savedMessage,
+        unreadCount: (await Conversation.findById(req.params.id)).unreadCount
+      });
+    }
 
     // Actually send WhatsApp message to customer
     if ((platform || '').toLowerCase() === 'whatsapp') {
@@ -154,6 +164,35 @@ router.post('/:id/messages', auth, authorize('admin', 'supervisor', 'agent'), as
     res.status(201).json(savedMessage);
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+});
+
+// Mark conversation as read
+router.post('/:id/read', auth, authorize('admin', 'supervisor', 'agent'), async (req, res) => {
+  try {
+    // For agents/supervisors: verify they have claimed this conversation
+    if (req.user.role !== 'admin') {
+      const conversation = await Conversation.findById(req.params.id);
+      if (!conversation || !conversation.agentId || !conversation.agentId.equals(req.user._id)) {
+        return res.status(403).json({ error: 'Access denied. You can only mark conversations you have claimed as read.' });
+      }
+    }
+    
+    // Reset unread count to 0
+    await Conversation.findByIdAndUpdate(req.params.id, { unreadCount: 0 });
+    
+    // Emit socket event for conversation update
+    const io = req.app.get('io');
+    if (io) {
+      io.to(req.params.id).emit('conversation_updated', {
+        conversationId: req.params.id,
+        unreadCount: 0
+      });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

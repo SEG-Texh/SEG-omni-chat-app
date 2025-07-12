@@ -133,6 +133,42 @@ function showEscalationNotification({ conversationId, customerId, platform, mess
     document.body.appendChild(container);
   }
 
+// Update conversation notification badge
+function updateConversationBadge(conversationId, unreadCount) {
+  console.log('[updateConversationBadge] Updating badge for conversation:', conversationId, 'unread:', unreadCount);
+  
+  // Find conversation item in both Facebook and WhatsApp lists
+  const facebookList = document.getElementById('facebookConversationsList');
+  const whatsappList = document.getElementById('whatsappConversationsList');
+  
+  const updateList = (list) => {
+    if (!list) return;
+    
+    const conversationItem = list.querySelector(`[data-conversation-id="${conversationId}"]`);
+    if (conversationItem) {
+      let badge = conversationItem.querySelector('.notification-badge');
+      
+      if (unreadCount > 0) {
+        conversationItem.classList.add('unread');
+        if (!badge) {
+          badge = document.createElement('div');
+          badge.className = 'notification-badge';
+          conversationItem.appendChild(badge);
+        }
+        badge.textContent = unreadCount > 99 ? '99+' : unreadCount.toString();
+      } else {
+        conversationItem.classList.remove('unread');
+        if (badge) {
+          badge.remove();
+        }
+      }
+    }
+  };
+  
+  updateList(facebookList);
+  updateList(whatsappList);
+}
+
   // Remove any existing notification for this conversation
   const existing = document.getElementById('escalationNotification_' + conversationId);
   if (existing) existing.remove();
@@ -199,6 +235,27 @@ function isAgentOrSupervisor() {
   return currentUser && (currentUser.role === 'agent' || currentUser.role === 'supervisor' || currentUser.role === 'admin');
 }
 
+// Initialize socket event listeners for notifications
+function initializeNotificationListeners(socket) {
+  if (!socket) return;
+  
+  // Listen for new message notifications
+  socket.on('new_message', (data) => {
+    console.log('[Socket] New message received:', data);
+    if (data.conversationId && data.unreadCount !== undefined) {
+      updateConversationBadge(data.conversationId, data.unreadCount);
+    }
+  });
+  
+  // Listen for conversation updates
+  socket.on('conversation_updated', (data) => {
+    console.log('[Socket] Conversation updated:', data);
+    if (data.conversationId && data.unreadCount !== undefined) {
+      updateConversationBadge(data.conversationId, data.unreadCount);
+    }
+  });
+}
+
 function initializeGlobalSocket() {
   if (!currentUser || !currentUser.token || !isAgentOrSupervisor()) {
     console.log('[GlobalSocket] Not initializing: user not authenticated or not agent/supervisor/admin');
@@ -256,6 +313,9 @@ function initializeGlobalSocket() {
     const notif = document.getElementById('escalationNotification_' + conversationId);
     if (notif) notif.remove();
   });
+  
+  // Initialize notification listeners
+  initializeNotificationListeners(window.globalSocket);
 }
 window.initializeGlobalSocket = initializeGlobalSocket;
 

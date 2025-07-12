@@ -61,8 +61,41 @@ async function loadFacebookConversations() {
     conversations.forEach(conv => {
       const item = document.createElement('div');
       item.className = 'conversation-item';
-      item.textContent = conv.participants?.[0] || conv.customerId || 'Contact';
-      item.onclick = () => showFacebookChat(conv);
+      
+      // Create conversation content
+      const content = document.createElement('div');
+      content.className = 'flex-1';
+      content.textContent = conv.participants?.[0] || conv.customerId || 'Contact';
+      
+      // Create notification badge if there are unread messages
+      const unreadCount = conv.unreadCount || 0;
+      if (unreadCount > 0) {
+        item.classList.add('unread');
+        const badge = document.createElement('div');
+        badge.className = 'notification-badge';
+        badge.textContent = unreadCount > 99 ? '99+' : unreadCount.toString();
+        item.appendChild(badge);
+      }
+      
+      item.appendChild(content);
+      item.setAttribute('data-conversation-id', conv._id);
+      item.onclick = async () => {
+        // Remove unread styling when clicked
+        item.classList.remove('unread');
+        const badge = item.querySelector('.notification-badge');
+        if (badge) badge.remove();
+        
+        // Mark conversation as read
+        if (conv.unreadCount > 0) {
+          try {
+            await apiRequest(`/api/conversation/${conv._id}/read`, { method: 'POST' });
+          } catch (error) {
+            console.error('Failed to mark conversation as read:', error);
+          }
+        }
+        
+        showFacebookChat(conv);
+      };
       list.appendChild(item);
     });
     // Auto-select first
