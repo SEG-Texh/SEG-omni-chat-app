@@ -144,7 +144,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (currentUser) {
       // Authentication check completed
       console.log('[FB][Client] Current user:', { id: currentUser.id, name: currentUser.name, role: currentUser.role });
-      initializeSocket();
       
       if (!isAdmin()) {
         document.getElementById('facebookConversationsList').innerHTML = '<div class="p-4 text-center text-red-500">Only admins can view Facebook conversations.</div>';
@@ -165,41 +164,3 @@ document.addEventListener('DOMContentLoaded', () => {
   
   checkAuthAndInit();
 });
-
-// Initialize socket connection after authentication check
-function initializeSocket() {
-  if (typeof socket === 'undefined' && currentUser && currentUser.token) {
-    // If not using a global socket, create one
-    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const socketUrl = `${protocol}://${window.location.host}`;
-    console.log('[FB][Client] Initializing socket connection to:', socketUrl);
-    console.log('[FB][Client] Current user token available:', !!currentUser.token);
-    
-    window.socket = io(socketUrl, {
-      auth: { userId: currentUser.id, token: currentUser.token },
-      transports: ['websocket'],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000
-    });
-    
-    window.socket.on('connect', () => {
-      console.log('[FB][Client] Socket connected successfully');
-    });
-    
-    window.socket.on('disconnect', () => {
-      console.log('[FB][Client] Socket disconnected');
-    });
-    
-    window.socket.on('connect_error', (error) => {
-      console.error('[FB][Client] Socket connection error:', error);
-    });
-    
-    // Set up socket event listeners
-    window.socket.on('new_conversation', ({ conversation }) => {
-      if (conversation.platform === 'facebook') {
-        loadFacebookConversations();
-      }
-    });
-  }
-}
