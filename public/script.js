@@ -208,17 +208,23 @@ function initializeSocket(token) {
 
   // Handle result of claim attempt (for escalation acceptance)
   socket.on('claim_result', (data) => {
+    console.log('Claim result received:', data);
     if (data.success && data.conversation) {
+      console.log('Conversation data:', data.conversation);
+      console.log('Conversation platform:', data.conversation.platform);
       // Check platform and load appropriate conversation
       if (data.conversation.platform === 'facebook') {
+        console.log('Loading Facebook conversation');
         selectFacebookConversation(data.conversation);
       } else if (data.conversation.platform === 'whatsapp') {
+        console.log('Loading WhatsApp conversation');
         selectWhatsAppConversation(data.conversation);
       } else {
         console.warn('Unknown platform for conversation:', data.conversation.platform);
         alert('Conversation loaded but platform not recognized.');
       }
     } else {
+      console.error('Claim failed:', data.message);
       alert(data.message || 'Failed to claim session.');
     }
   });
@@ -363,10 +369,13 @@ async function loadFacebookConversations() {
 
 // Select Facebook conversation
 function selectFacebookConversation(conversation, element = null) {
+  console.log('selectFacebookConversation called with:', conversation);
   currentFacebookConversationId = conversation._id
+  console.log('Set currentFacebookConversationId to:', currentFacebookConversationId);
 
   // Find the Facebook participant
   const recipient = conversation.participants.find((p) => p._id !== currentUser.id && p._id !== currentUser._id)
+  console.log('Found recipient:', recipient);
 
   if (recipient) {
     currentFacebookRecipientId =
@@ -374,6 +383,7 @@ function selectFacebookConversation(conversation, element = null) {
       (recipient.platformIds && recipient.platformIds.facebook) ||
       recipient.platformSenderId ||
       (conversation.platformConversationId && conversation.platformConversationId.split("_")[1])
+    console.log('Set currentFacebookRecipientId to:', currentFacebookRecipientId);
   }
 
   // Update active conversation styling
@@ -385,20 +395,35 @@ function selectFacebookConversation(conversation, element = null) {
   }
 
   // Load messages and show chat interface
+  console.log('Loading Facebook messages for conversation:', conversation._id);
   loadFacebookMessages(conversation._id)
+  console.log('Showing Facebook chat interface');
   showFacebookChatInterface(conversation)
 }
 
 // Load Facebook messages
 async function loadFacebookMessages(conversationId) {
-  if (!currentUser?.token) return
+  console.log('loadFacebookMessages called with conversationId:', conversationId);
+  if (!currentUser?.token) {
+    console.error('No user token available');
+    return;
+  }
 
   try {
+    console.log('Making API request to:', `/api/conversation/${conversationId}/messages?platform=facebook`);
     const response = await fetch(`/api/conversation/${conversationId}/messages?platform=facebook`, {
       headers: { Authorization: `Bearer ${currentUser.token}` },
     })
 
+    console.log('API response status:', response.status);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API error response:', errorText);
+      throw new Error(`API request failed: ${response.status} ${errorText}`);
+    }
+
     const messages = await response.json()
+    console.log('Loaded messages:', messages);
     displayFacebookMessages(messages)
   } catch (error) {
     console.error("Error loading Facebook messages:", error)
