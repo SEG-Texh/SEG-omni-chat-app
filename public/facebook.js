@@ -185,6 +185,44 @@ async function sendFacebookMessage(e) {
   }
 }
 
+async function endFacebookSession() {
+  if (!currentFacebookConversationId) {
+    showMessage('facebookMessageStatus', 'error', 'No active conversation to end');
+    return;
+  }
+  
+  if (!confirm('Are you sure you want to end this conversation session? This action cannot be undone.')) {
+    return;
+  }
+  
+  try {
+    const res = await apiRequest(`/api/conversation/${currentFacebookConversationId}/end`, {
+      method: 'POST'
+    });
+    
+    if (!res.ok) {
+      const err = await res.json();
+      showMessage('facebookMessageStatus', 'error', err.error || 'Failed to end session');
+      return;
+    }
+    
+    showMessage('facebookMessageStatus', 'success', 'Session ended successfully');
+    
+    // Clear current conversation
+    currentFacebookConversationId = null;
+    currentFacebookConversation = null;
+    
+    // Show placeholder
+    showFacebookPlaceholder();
+    
+    // Reload conversations list
+    loadFacebookConversations();
+    
+  } catch (e) {
+    showMessage('facebookMessageStatus', 'error', e.message || 'Failed to end session');
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Wait for authentication check to complete
   const checkAuthAndInit = () => {
@@ -202,6 +240,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const form = document.getElementById('facebookMessageForm');
       if (form) {
         form.addEventListener('submit', sendFacebookMessage);
+      }
+      
+      // End session button
+      const endSessionButton = document.getElementById('facebookEndSessionButton');
+      if (endSessionButton) {
+        endSessionButton.addEventListener('click', endFacebookSession);
       }
     } else {
       // Authentication check not complete yet, wait a bit and try again

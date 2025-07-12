@@ -196,4 +196,44 @@ router.post('/:id/read', auth, authorize('admin', 'supervisor', 'agent'), async 
   }
 });
 
+// End conversation session
+router.post('/:id/end', auth, authorize('admin', 'supervisor', 'agent'), async (req, res) => {
+  try {
+    // For agents/supervisors: verify they have claimed this conversation
+    if (req.user.role !== 'admin') {
+      const conversation = await Conversation.findById(req.params.id);
+      if (!conversation || !conversation.agentId || !conversation.agentId.equals(req.user._id)) {
+        return res.status(403).json({ error: 'Access denied. You can only end conversations you have claimed.' });
+      }
+    }
+    
+    // Update conversation status to ended
+    const updatedConversation = await Conversation.findByIdAndUpdate(
+      req.params.id,
+      { 
+        status: 'ended',
+        endTime: new Date(),
+        agentId: null // Remove agent assignment
+      },
+      { new: true }
+    );
+    
+    // Emit socket event for session ended
+    const io = req.app.get('io');
+    if (io) {
+      io.to(req.params.id).emit('session_ended', {
+        conversationId: req.params.id,
+        status: 'ended'
+      });
+    }
+    
+    res.json({ 
+      success: true, 
+      conversation: updatedConversation 
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

@@ -153,12 +153,49 @@ async function sendWhatsAppMessage(e) {
     if (!res.ok) {
       const err = await res.json();
       showMessage('whatsappMessageStatus', 'error', err.error || 'Failed to send message');
-      return;
     }
     input.value = '';
     loadWhatsAppMessages(currentWhatsAppConversationId);
   } catch (e) {
     showMessage('whatsappMessageStatus', 'error', e.message || 'Failed to send message');
+  }
+}
+
+async function endWhatsAppSession() {
+  if (!currentWhatsAppConversationId) {
+    showMessage('whatsappMessageStatus', 'error', 'No active conversation to end');
+    return;
+  }
+  
+  if (!confirm('Are you sure you want to end this conversation session? This action cannot be undone.')) {
+    return;
+  }
+  
+  try {
+    const res = await apiRequest(`/api/conversation/${currentWhatsAppConversationId}/end`, {
+      method: 'POST'
+    });
+    
+    if (!res.ok) {
+      const err = await res.json();
+      showMessage('whatsappMessageStatus', 'error', err.error || 'Failed to end session');
+      return;
+    }
+    
+    showMessage('whatsappMessageStatus', 'success', 'Session ended successfully');
+    
+    // Clear current conversation
+    currentWhatsAppConversationId = null;
+    currentWhatsAppConversation = null;
+    
+    // Show placeholder
+    showWhatsAppPlaceholder();
+    
+    // Reload conversations list
+    loadWhatsAppConversations();
+    
+  } catch (e) {
+    showMessage('whatsappMessageStatus', 'error', e.message || 'Failed to end session');
   }
 }
 
@@ -178,6 +215,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const form = document.getElementById('whatsappMessageForm');
       if (form) {
         form.addEventListener('submit', sendWhatsAppMessage);
+      }
+      
+      // End session button
+      const endSessionButton = document.getElementById('whatsappEndSessionButton');
+      if (endSessionButton) {
+        endSessionButton.addEventListener('click', endWhatsAppSession);
       }
     } else {
       // Authentication check not complete yet, wait a bit and try again

@@ -254,6 +254,27 @@ function initializeNotificationListeners(socket) {
       updateConversationBadge(data.conversationId, data.unreadCount);
     }
   });
+  
+  // Listen for session ended events
+  socket.on('session_ended', (data) => {
+    console.log('[Socket] Session ended:', data);
+    if (data.conversationId) {
+      // Remove conversation from lists if it's ended
+      const facebookList = document.getElementById('facebookConversationsList');
+      const whatsappList = document.getElementById('whatsappConversationsList');
+      
+      const removeFromList = (list) => {
+        if (!list) return;
+        const conversationItem = list.querySelector(`[data-conversation-id="${data.conversationId}"]`);
+        if (conversationItem) {
+          conversationItem.remove();
+        }
+      };
+      
+      removeFromList(facebookList);
+      removeFromList(whatsappList);
+    }
+  });
 }
 
 function initializeGlobalSocket() {
