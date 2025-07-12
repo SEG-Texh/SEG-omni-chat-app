@@ -116,8 +116,11 @@ function formatPercentage(num) {
 
 // Global escalation notification (top right corner)
 function showEscalationNotification({ conversationId, customerId, platform, message, onAccept, onDecline }) {
+  console.log('[showEscalationNotification] Called with:', { conversationId, customerId, platform, message });
+  
   let container = document.getElementById('escalationNotificationContainer');
   if (!container) {
+    console.log('[showEscalationNotification] Creating notification container');
     container = document.createElement('div');
     container.id = 'escalationNotificationContainer';
     container.style.position = 'fixed';
@@ -154,12 +157,15 @@ function showEscalationNotification({ conversationId, customerId, platform, mess
     </div>
   `;
   container.appendChild(notif);
+  console.log('[showEscalationNotification] Notification created and added to DOM');
 
   document.getElementById('acceptEscalationBtn_' + conversationId).onclick = function() {
+    console.log('[showEscalationNotification] Accept button clicked');
     if (onAccept) onAccept();
     notif.remove();
   };
   document.getElementById('declineEscalationBtn_' + conversationId).onclick = function() {
+    console.log('[showEscalationNotification] Decline button clicked');
     if (onDecline) onDecline();
     notif.remove();
   };
@@ -227,6 +233,10 @@ function initializeGlobalSocket() {
   });
   window.globalSocket.on('escalation_request', (data) => {
     console.log('[GlobalSocket] Received escalation request:', data);
+    console.log('[GlobalSocket] Current user:', currentUser);
+    console.log('[GlobalSocket] isAgentOrSupervisor():', isAgentOrSupervisor());
+    console.log('[GlobalSocket] showEscalationNotification function exists:', !!window.showEscalationNotification);
+    
     if (!window.showEscalationNotification) {
       console.error('[GlobalSocket] showEscalationNotification function not found');
       return;
@@ -235,6 +245,7 @@ function initializeGlobalSocket() {
       console.log('[GlobalSocket] User is not agent/supervisor/admin, ignoring escalation');
       return;
     }
+    console.log('[GlobalSocket] Showing escalation notification');
     window.showEscalationNotification({
       ...data,
       onAccept: () => window.globalSocket.emit('accept_escalation', { conversationId: data.conversationId }),
