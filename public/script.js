@@ -394,7 +394,7 @@ async function loadFacebookMessages(conversationId) {
   if (!currentUser?.token) return
 
   try {
-    const response = await fetch(`/api/facebook/messages/${conversationId}`, {
+    const response = await fetch(`/api/conversation/${conversationId}/messages?platform=facebook`, {
       headers: { Authorization: `Bearer ${currentUser.token}` },
     })
 
@@ -475,7 +475,7 @@ function showFacebookChatInterface(conversation) {
 
 // Display Facebook messages
 function displayFacebookMessages(messages) {
-  const messagesContainer = document.getElementById("facebookMessages")
+  const messagesContainer = document.getElementById("facebookMessagesList")
   if (!messagesContainer) return
 
   messagesContainer.innerHTML = ""
