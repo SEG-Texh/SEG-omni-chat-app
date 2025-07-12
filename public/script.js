@@ -209,7 +209,15 @@ function initializeSocket(token) {
   // Handle result of claim attempt (for escalation acceptance)
   socket.on('claim_result', (data) => {
     if (data.success && data.conversation) {
-      selectFacebookConversation(data.conversation);
+      // Check platform and load appropriate conversation
+      if (data.conversation.platform === 'facebook') {
+        selectFacebookConversation(data.conversation);
+      } else if (data.conversation.platform === 'whatsapp') {
+        selectWhatsAppConversation(data.conversation);
+      } else {
+        console.warn('Unknown platform for conversation:', data.conversation.platform);
+        alert('Conversation loaded but platform not recognized.');
+      }
     } else {
       alert(data.message || 'Failed to claim session.');
     }
