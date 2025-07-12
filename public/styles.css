@@ -883,17 +883,21 @@ body {
 }
 
 .chat-bubble.sent {
-  background: var(--primary-color);
+  background: #3b82f6;
   color: white;
   border-bottom-right-radius: 0.25rem;
   margin-left: auto;
+  max-width: 70%;
+  align-self: flex-end;
 }
 
 .chat-bubble.received {
-  background: white;
+  background: #f1f5f9;
   color: var(--text-primary);
-  border: 1px solid var(--border-color);
+  border: 1px solid #e2e8f0;
   border-bottom-left-radius: 0.25rem;
+  max-width: 70%;
+  align-self: flex-start;
 }
 
 .chat-bubble.whatsapp.sent {
@@ -1260,12 +1264,19 @@ tbody tr:hover {
   overflow: hidden;
 }
 
+#facebookMessagesList {
+  display: flex;
+  flex-direction: column;
+}
+
 #messagesContainer {
   flex: 1 1 auto;
   overflow-y: auto;
   padding: 16px;
   background: #f7fafc;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .message-input {
@@ -1314,7 +1325,6 @@ main.fullscreen-chat {
 }
 
 .fullscreen-chat .flex {
-  height: 100%;
   min-height: 0;
 }
 
@@ -1329,12 +1339,19 @@ main.fullscreen-chat {
   overflow: hidden;
 }
 
+#whatsappMessagesList {
+  display: flex;
+  flex-direction: column;
+}
+
 #messagesList,
 #whatsappChatArea .messages-container,
 #whatsappChatArea #messagesContainer {
   flex: 1 1 auto;
   overflow-y: auto;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 #messageForm,
