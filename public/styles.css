@@ -1295,7 +1295,7 @@ tbody tr:hover {
   flex-direction: column;
 }
 #facebookEndSessionButton{
-  background: red;
+  background: rgb(252, 57, 57);
 }
 
 #messagesContainer {
