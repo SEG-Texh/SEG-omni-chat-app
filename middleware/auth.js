@@ -14,7 +14,7 @@ const auth = async (req, res, next) => {
     const decoded = verifyToken(token);
     
     // 3. User Verification
-    const user = await User.findById(decoded.userId)
+    const user = await User.findById(decoded.id)
       .select('-password -__v -refreshToken')
       .lean();
     
