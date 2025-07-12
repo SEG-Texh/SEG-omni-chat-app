@@ -126,7 +126,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showWhatsAppPlaceholder();
         return;
       }
-      // setupWhatsAppSocket(); // Removed as per edit hint
       loadWhatsAppConversations();
       // Message form submit
       const form = document.getElementById('whatsappMessageForm');
