@@ -26,7 +26,7 @@ exports.webhook = async (req, res) => {
         return res.status(400).json({ error: 'Invalid Facebook webhook payload' });
       }
       // Find SEGbot user
-      const segbot = await User.findOne({ role: 'bot', name: '🤖 SEGbot' });
+      const segbot = await User.findOne({ role: 'bot', name: 'SEGbot' });
       if (!segbot) throw new Error('SEGbot user not found');
       // Check for active conversation
       let conversation = await Conversation.findOne({

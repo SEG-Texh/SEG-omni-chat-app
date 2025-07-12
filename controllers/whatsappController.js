@@ -29,7 +29,7 @@ class WhatsAppController {
         return res.status(400).json({ error: 'Invalid WhatsApp webhook payload' });
       }
       // Find SEGbot user
-      const segbot = await User.findOne({ role: 'bot', name: '🤖 SEGbot' });
+      const segbot = await User.findOne({ name: 'SEGbot', role: 'bot' });
       if (!segbot) throw new Error('SEGbot user not found');
       // Check for active conversation
       let conversation = await Conversation.findOne({
