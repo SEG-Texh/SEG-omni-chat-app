@@ -167,7 +167,13 @@ io.on('connection', async (socket) => {
       } catch (err) {
         console.error('Failed to send WhatsApp connection message:', err);
       }
-      socket.emit('claim_result', { success: true, conversation });
+      
+      // Populate conversation with necessary fields before sending
+      const populatedConversation = await Conversation.findById(conversation._id)
+        .populate('participants', 'name email avatar')
+        .populate('lastMessage');
+      
+      socket.emit('claim_result', { success: true, conversation: populatedConversation });
       // Notify all other agents to remove notification
       io.emit('session_claimed', { conversationId });
     } catch (err) {
@@ -204,9 +210,15 @@ io.on('connection', async (socket) => {
         socket.emit('claim_result', { success: false, message: "Session already claimed." });
         return;
       }
+      
+      // Populate conversation with necessary fields before sending
+      const populatedConversation = await Conversation.findById(conversation._id)
+        .populate('participants', 'name email avatar')
+        .populate('lastMessage');
+      
       // Notify this agent and the customer
-      socket.emit('claim_result', { success: true, conversation });
-      io.to(conversation.customerId).emit('session_paired', { conversation });
+      socket.emit('claim_result', { success: true, conversation: populatedConversation });
+      io.to(conversation.customerId).emit('session_paired', { conversation: populatedConversation });
       // Notify all other agents to remove this request from their UI
       for (const [userId, { socketId, user }] of connectedUsers.entries()) {
         if ((user.role === 'agent' || user.role === 'supervisor') && userId !== socket.userId) {
